@@ -1479,6 +1479,39 @@
             </div>
         </div>
 
+        <!-- MODAL: Create New Playlist -->
+        <div id="modal-create-playlist" class="modal-overlay hidden" onclick="if(event.target === this) window.App && window.App.closeCreatePlaylistModal()">
+            <div class="modal-card create-playlist-modal-card">
+                <div class="modal-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="modal-header-icon" style="background: var(--accent-subtle); color: var(--accent-red); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor;"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
+                        </div>
+                        <h3>Nouvelle playlist</h3>
+                    </div>
+                    <button class="icon-btn close-modal-btn" onclick="window.App && window.App.closeCreatePlaylistModal()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body create-playlist-modal-body">
+                    <p class="modal-desc" style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 16px; line-height: 1.5;">Donnez un nom inspirant à votre nouvelle collection de morceaux.</p>
+                    <div class="create-pl-form-group">
+                        <label for="new-playlist-modal-name" style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;">Titre de la playlist</label>
+                        <input type="text" id="new-playlist-modal-name" class="modern-input" placeholder="Ex : Soirée chill, Workout, Électro 2026..." maxlength="80" autocomplete="off">
+                    </div>
+                </div>
+                <div class="modal-footer create-playlist-modal-footer">
+                    <button class="btn secondary" onclick="window.App && window.App.closeCreatePlaylistModal()">Annuler</button>
+                    <button id="submit-create-playlist-btn" class="btn primary" onclick="window.App && window.App.submitCreatePlaylist()">
+                        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: currentColor; margin-right: 6px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <span>Créer la playlist</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL: Playlist Importer (YouTube URL or Text List) -->
         <div id="modal-import-playlist" class="modal-overlay hidden">
             <div class="modal-card wide">

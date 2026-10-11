@@ -113,55 +113,83 @@ async function getAudioStreamUrl(videoId) {
     const fs = require('fs');
     const cookiesPath = path.join(__dirname, 'cookies.txt');
     const cacheDir = path.join(__dirname, '.yt-dlp-cache');
-    const ytdlpArgs = [
-        '-g',
-        '-f', '251/140/250/ba/b/bestaudio/best',
-        '--no-playlist',
-        '--no-warnings',
-        '--no-check-certificates',
-        '--prefer-free-formats',
-        '--cache-dir', cacheDir,
-        '--js-runtimes', `node:${process.execPath}`
-    ];
 
-    if (hasCookies) {
-        ytdlpArgs.push('--cookies', cookiesPath);
-    }
-
-    ytdlpArgs.push('--', `https://www.youtube.com/watch?v=${videoId}`);
+    const runYtDlp = (extraArgs = []) => {
+        return new Promise((resolve, reject) => {
+            const args = [
+                '-g',
+                '-f', '251/140/250/ba/b/bestaudio/best',
+                '--no-playlist',
+                '--no-warnings',
+                '--cache-dir', cacheDir,
+                '--js-runtimes', `node:${process.execPath}`,
+                ...extraArgs,
+                '--',
+                `https://www.youtube.com/watch?v=${videoId}`
+            ];
+            execFile(
+                YTDLP_PATH,
+                args,
+                { timeout: 35000 },
+                (err, stdout, stderr) => {
+                    if (err) {
+                        const errMsg = (stderr || stdout || err.message || '').trim();
+                        return reject(new Error(errMsg));
+                    }
+                    const lines = stdout.trim().split('\n');
+                    const streamUrl = lines[0]?.trim();
+                    if (!streamUrl || !streamUrl.startsWith('http')) {
+                        return reject(new Error('Invalid audio stream URL returned'));
+                    }
+                    resolve(streamUrl);
+                }
+            );
+        });
+    };
 
     // 5. Extract stream with yt-dlp and deduplicate concurrent calls
-    const streamPromise = new Promise((resolve, reject) => {
-        execFile(
-            YTDLP_PATH,
-            ytdlpArgs,
-            { timeout: 60000 },
-            async (err, stdout, stderr) => {
-                inFlightStreams.delete(videoId);
-                if (err) {
-                    const errMsg = stderr ? stderr.trim() : err.message;
-                    console.error(`yt-dlp error for ${videoId}:`, errMsg);
-                    return reject(new Error(errMsg || 'Failed to extract audio stream URL'));
-                }
-                const lines = stdout.trim().split('\n');
-                const streamUrl = lines[0]?.trim();
-                if (!streamUrl || !streamUrl.startsWith('http')) {
-                    return reject(new Error('Invalid audio stream URL returned'));
-                }
-
-                // 5 hours TTL for persistent stream URL
-                const ttl = Math.max(config.cacheTtl.stream, 5 * 3600 * 1000);
-                const expiresAt = Date.now() + ttl;
-                // Save to instance in-memory cache
-                streamCache.set(videoId, { url: streamUrl, expiresAt });
-                // Persist to database cache
-                try {
-                    await db.setStreamCache(videoId, streamUrl, expiresAt);
-                } catch (e) { }
-
-                resolve(streamUrl);
+    const streamPromise = (async () => {
+        let lastErr = null;
+        // Attempt 1: with cookies if available
+        if (hasCookies) {
+            try {
+                return await runYtDlp(['--cookies', cookiesPath]);
+            } catch (err) {
+                console.warn(`yt-dlp attempt with cookies failed for ${videoId}: ${err.message}. Retrying without cookies...`);
+                lastErr = err;
             }
-        );
+        }
+
+        // Attempt 2: standard without cookies
+        try {
+            return await runYtDlp([]);
+        } catch (err) {
+            console.warn(`yt-dlp standard attempt failed for ${videoId}: ${err.message}. Retrying with android client...`);
+            lastErr = err;
+        }
+
+        // Attempt 3: with android extractor client fallback (bypasses datacenter blocks)
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=android,web']);
+        } catch (err) {
+            console.error(`yt-dlp all attempts failed for ${videoId}: ${err.message}`);
+            throw lastErr || err;
+        }
+    })().then(async (streamUrl) => {
+        inFlightStreams.delete(videoId);
+        // 5 hours TTL for persistent stream URL
+        const ttl = Math.max(config.cacheTtl.stream, 5 * 3600 * 1000);
+        const expiresAt = Date.now() + ttl;
+        // Save to instance in-memory cache
+        streamCache.set(videoId, { url: streamUrl, expiresAt });
+        // Persist to database cache
+        try {
+            await db.setStreamCache(videoId, streamUrl, expiresAt);
+        } catch (e) { }
+        return streamUrl;
+    }).catch((err) => {
+        inFlightStreams.delete(videoId);
+        throw err;
     });
 
     inFlightStreams.set(videoId, streamPromise);

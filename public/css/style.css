@@ -5387,3 +5387,63 @@ textarea#import-text-input:focus {
   font-size: 13px;
   color: #ffc800;
 }
+
+/* Modal Create Playlist */
+.create-playlist-modal-card {
+  max-width: 440px;
+  width: 92%;
+  border-radius: 20px;
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.create-playlist-modal-body {
+  padding: 20px 24px 8px 24px;
+}
+
+.create-pl-form-group {
+  margin-bottom: 8px;
+}
+
+.create-pl-form-group .modern-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #ffffff;
+  font-size: 14.5px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.create-pl-form-group .modern-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-red);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.create-pl-form-group .modern-input.shake-error {
+  animation: inputShake 0.35s ease;
+  border-color: #ff334b !important;
+}
+
+@keyframes inputShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.create-playlist-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 20px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+

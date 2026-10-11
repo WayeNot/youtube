@@ -809,15 +809,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Playlists Management
             const openCreatePl = () => {
-                const name = prompt('Nom de la nouvelle playlist :');
-                if (name && name.trim()) {
-                    const pl = Storage.createPlaylist(name.trim());
-                    this.showToast(`Playlist "${pl.name}" créée !`);
-                    this.renderPlaylists();
-                }
+                this.openCreatePlaylistModal();
             };
             if (this.dom.createPlaylistBtn) this.dom.createPlaylistBtn.addEventListener('click', openCreatePl);
             if (this.dom.createPlaylistBtn2) this.dom.createPlaylistBtn2.addEventListener('click', openCreatePl);
+
+            // Modal Create Playlist Enter key support
+            const createPlInput = document.getElementById('new-playlist-modal-name');
+            if (createPlInput) {
+                createPlInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.submitCreatePlaylist();
+                    } else if (e.key === 'Escape') {
+                        this.closeCreatePlaylistModal();
+                    }
+                });
+            }
 
             if (this.dom.createAndAddPlBtn) {
                 this.dom.createAndAddPlBtn.addEventListener('click', () => {
@@ -2974,13 +2982,42 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         openCreatePlaylistPrompt() {
-            const name = prompt('Nom de la nouvelle playlist :');
-            if (name && name.trim()) {
-                const pl = Storage.createPlaylist(name.trim());
-                this.showToast(`Playlist "${pl.name}" créée !`);
-                this.renderPlaylists();
-                this.openPlaylistView(pl.id);
+            this.openCreatePlaylistModal();
+        },
+
+        openCreatePlaylistModal() {
+            const modal = document.getElementById('modal-create-playlist');
+            const input = document.getElementById('new-playlist-modal-name');
+            if (!modal) return;
+            if (input) input.value = '';
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                if (input) input.focus();
+            }, 60);
+        },
+
+        closeCreatePlaylistModal() {
+            const modal = document.getElementById('modal-create-playlist');
+            if (modal) modal.classList.add('hidden');
+        },
+
+        submitCreatePlaylist() {
+            const input = document.getElementById('new-playlist-modal-name');
+            const name = input ? input.value.trim() : '';
+            if (!name) {
+                if (input) {
+                    input.focus();
+                    input.classList.add('shake-error');
+                    setTimeout(() => input.classList.remove('shake-error'), 400);
+                }
+                this.showToast('⚠️ Veuillez entrer un nom pour la playlist');
+                return;
             }
+            const pl = Storage.createPlaylist(name);
+            this.closeCreatePlaylistModal();
+            this.showToast(`✨ Playlist "${pl.name}" créée !`);
+            this.renderPlaylists();
+            this.openPlaylistView(pl.id);
         },
 
         async playTrackById(id) {
