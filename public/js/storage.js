@@ -141,7 +141,13 @@ const Storage = {
           if (json.data.playlists) localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(json.data.playlists));
           if (json.data.history) localStorage.setItem(this.KEYS.HISTORY, JSON.stringify(json.data.history));
           if (json.data.recent_searches) localStorage.setItem(this.KEYS.RECENT_SEARCHES, JSON.stringify(json.data.recent_searches));
-          if (json.data.settings) localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(json.data.settings));
+          if (json.data.settings) {
+            localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(json.data.settings));
+            if (json.data.settings.accentColor) {
+              localStorage.setItem('ytm_accent_color', json.data.settings.accentColor);
+            }
+            window.dispatchEvent(new CustomEvent('settings_changed', { detail: { settings: json.data.settings } }));
+          }
           window.dispatchEvent(new CustomEvent('favorites_changed', { detail: { list: json.data.favorites } }));
           window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists: json.data.playlists } }));
           window.dispatchEvent(new CustomEvent('history_changed', { detail: { history: json.data.history } }));
@@ -459,21 +465,23 @@ const Storage = {
 
   // Settings
   getSettings() {
+    const defaults = {
+      volume: 0.9,
+      muted: false,
+      repeat: 'off', // off, all, one
+      shuffle: false,
+      autoplayRadio: true,
+      playbackRate: 1,
+      audioQuality: 'high',
+      eqPreset: 'flat',
+      accentColor: '#ff0033',
+      ambientGlow: true
+    };
     try {
-      return (
-        JSON.parse(localStorage.getItem(this.KEYS.SETTINGS)) || {
-          volume: 0.9,
-          muted: false,
-          repeat: 'off', // off, all, one
-          shuffle: false,
-          autoplayRadio: true,
-          playbackRate: 1,
-          audioQuality: 'high',
-          eqPreset: 'flat'
-        }
-      );
+      const saved = JSON.parse(localStorage.getItem(this.KEYS.SETTINGS));
+      return saved ? { ...defaults, ...saved } : defaults;
     } catch (e) {
-      return { volume: 0.9, repeat: 'off', shuffle: false, autoplayRadio: true, playbackRate: 1 };
+      return defaults;
     }
   },
 

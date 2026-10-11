@@ -54,6 +54,18 @@ const db = {
       try {
         await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT ''`;
       } catch (e) {}
+      try {
+        await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT TRUE`;
+      } catch (e) {}
+
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS user_follows (
+          follower_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+          followed_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+          created_at BIGINT NOT NULL,
+          PRIMARY KEY (follower_id, followed_id)
+        );
+      `;
 
       await neonSql`
         CREATE TABLE IF NOT EXISTS user_data (
@@ -139,15 +151,20 @@ const db = {
       await neonSql`CREATE INDEX IF NOT EXISTS idx_pl_tracks ON playlist_tracks(playlist_id, position);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_history_user ON listen_history(user_id, listened_at DESC);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_stream_expires ON stream_cache(expires_at);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_follows_follower ON user_follows(follower_id);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_follows_followed ON user_follows(followed_id);`;
 
-      console.log('✅ Tables relationnelles NeonDB (liked_tracks, playlists, playlist_tracks, history) prêtes !');
+      console.log('✅ Tables relationnelles NeonDB (liked_tracks, playlists, playlist_tracks, history, user_follows) prêtes !');
     } else {
       sqliteDb.exec(`
         CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY,
           username TEXT UNIQUE NOT NULL COLLATE NOCASE,
           password_hash TEXT NOT NULL,
-          created_at INTEGER NOT NULL
+          created_at INTEGER NOT NULL,
+          avatar TEXT DEFAULT '',
+          bio TEXT DEFAULT '',
+          is_public INTEGER DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS user_data (
@@ -159,6 +176,15 @@ const db = {
           settings TEXT NOT NULL DEFAULT '{}',
           updated_at INTEGER NOT NULL,
           FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS user_follows (
+          follower_id TEXT NOT NULL,
+          followed_id TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (follower_id, followed_id),
+          FOREIGN KEY(follower_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY(followed_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS liked_tracks (
@@ -221,7 +247,13 @@ const db = {
         CREATE INDEX IF NOT EXISTS idx_pl_tracks ON playlist_tracks(playlist_id, position);
         CREATE INDEX IF NOT EXISTS idx_history_user ON listen_history(user_id, listened_at DESC);
         CREATE INDEX IF NOT EXISTS idx_stream_expires ON stream_cache(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_follows_follower ON user_follows(follower_id);
+        CREATE INDEX IF NOT EXISTS idx_follows_followed ON user_follows(followed_id);
       `);
+
+      try {
+        sqliteDb.exec('ALTER TABLE users ADD COLUMN is_public INTEGER DEFAULT 1');
+      } catch (e) {}
       console.log('✅ Tables relationnelles SQLite prêtes !');
     }
   },
@@ -229,31 +261,99 @@ const db = {
   // Users
   async findUserByUsername(username) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, created_at FROM users WHERE username = ?').get(username.trim()) || null;
+      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, created_at FROM users WHERE username = ?').get(username.trim()) || null;
     }
   },
 
   async findUserById(id) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, avatar, bio, created_at FROM users WHERE id = ${id} LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, avatar, bio, is_public, created_at FROM users WHERE id = ${id} LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, avatar, bio, created_at FROM users WHERE id = ?').get(id) || null;
+      return sqliteDb.prepare('SELECT id, username, avatar, bio, is_public, created_at FROM users WHERE id = ?').get(id) || null;
     }
   },
 
-  async updateUserProfile(userId, { avatar, bio }) {
+  async updateUserProfile(userId, { avatar, bio, isPublic }) {
+    const isPubVal = isPublic !== undefined ? (isPublic ? true : false) : true;
     if (isNeon) {
       await neonSql`
         UPDATE users
-        SET avatar = ${avatar || ''}, bio = ${bio || ''}
+        SET avatar = ${avatar || ''}, bio = ${bio || ''}, is_public = ${isPubVal}
         WHERE id = ${userId}
       `;
     } else {
-      sqliteDb.prepare('UPDATE users SET avatar = ?, bio = ? WHERE id = ?').run(avatar || '', bio || '', userId);
+      sqliteDb.prepare('UPDATE users SET avatar = ?, bio = ?, is_public = ? WHERE id = ?').run(
+        avatar || '',
+        bio || '',
+        isPubVal ? 1 : 0,
+        userId
+      );
+    }
+  },
+
+  // Follow / Subscription System
+  async isFollowing(followerId, targetUserId) {
+    if (!followerId || !targetUserId) return false;
+    if (isNeon) {
+      const rows = await neonSql`
+        SELECT 1 FROM user_follows WHERE follower_id = ${followerId} AND followed_id = ${targetUserId} LIMIT 1
+      `;
+      return rows.length > 0;
+    } else {
+      const row = sqliteDb.prepare('SELECT 1 FROM user_follows WHERE follower_id = ? AND followed_id = ?').get(followerId, targetUserId);
+      return Boolean(row);
+    }
+  },
+
+  async toggleFollow(followerId, targetUserId) {
+    if (!followerId || !targetUserId || String(followerId) === String(targetUserId)) {
+      throw new Error('Action impossible : vous ne pouvez pas vous abonner à vous-même.');
+    }
+    const alreadyFollowing = await this.isFollowing(followerId, targetUserId);
+    const now = Date.now();
+
+    if (isNeon) {
+      if (alreadyFollowing) {
+        await neonSql`DELETE FROM user_follows WHERE follower_id = ${followerId} AND followed_id = ${targetUserId}`;
+      } else {
+        await neonSql`INSERT INTO user_follows (follower_id, followed_id, created_at) VALUES (${followerId}, ${targetUserId}, ${now}) ON CONFLICT DO NOTHING`;
+      }
+    } else {
+      if (alreadyFollowing) {
+        sqliteDb.prepare('DELETE FROM user_follows WHERE follower_id = ? AND followed_id = ?').run(followerId, targetUserId);
+      } else {
+        sqliteDb.prepare('INSERT OR IGNORE INTO user_follows (follower_id, followed_id, created_at) VALUES (?, ?, ?)').run(followerId, targetUserId, now);
+      }
+    }
+
+    const counts = await this.getFollowCounts(targetUserId);
+    return {
+      isFollowing: !alreadyFollowing,
+      followersCount: counts.followersCount,
+      followingCount: counts.followingCount
+    };
+  },
+
+  async getFollowCounts(userId) {
+    if (!userId) return { followersCount: 0, followingCount: 0 };
+    if (isNeon) {
+      const followersRes = await neonSql`SELECT COUNT(*)::int AS count FROM user_follows WHERE followed_id = ${userId}`;
+      const followingRes = await neonSql`SELECT COUNT(*)::int AS count FROM user_follows WHERE follower_id = ${userId}`;
+      return {
+        followersCount: followersRes[0]?.count || 0,
+        followingCount: followingRes[0]?.count || 0
+      };
+    } else {
+      const followersRow = sqliteDb.prepare('SELECT COUNT(*) as count FROM user_follows WHERE followed_id = ?').get(userId);
+      const followingRow = sqliteDb.prepare('SELECT COUNT(*) as count FROM user_follows WHERE follower_id = ?').get(userId);
+      return {
+        followersCount: followersRow?.count || 0,
+        followingCount: followingRow?.count || 0
+      };
     }
   },
 
@@ -261,11 +361,16 @@ const db = {
     const user = await this.findUserByUsername(username);
     if (!user) return null;
     const isOwner = viewerUserId && String(viewerUserId) === String(user.id);
+    const isPublic = user.is_public !== false && user.is_public !== 0;
     const data = (await this.getUserData(user.id)) || { favorites: [], playlists: [], history: [] };
     const allPlaylists = data.playlists || [];
     const visiblePlaylists = allPlaylists.filter(p => isOwner || p.isPublic !== false);
     const favorites = data.favorites || [];
     const history = data.history || [];
+
+    // Follower counts and isFollowing status
+    const followCounts = await this.getFollowCounts(user.id);
+    const isFollowing = viewerUserId ? await this.isFollowing(viewerUserId, user.id) : false;
 
     // Calculate Top Artists from history & favorites
     const artistCounts = {};
@@ -308,6 +413,9 @@ const db = {
     if (history.length >= 5) {
       badges.push({ id: 'explorer', icon: '⚡', title: 'Auditeur Passionné', desc: `${history.length} titres écoutés` });
     }
+    if (followCounts.followersCount >= 1) {
+      badges.push({ id: 'influencer', icon: '🌟', title: 'Vedette', desc: `${followCounts.followersCount} abonné${followCounts.followersCount > 1 ? 's' : ''}` });
+    }
     if (badges.length === 0) {
       badges.push({ id: 'newbie', icon: '✨', title: 'Nouvel Arrivant', desc: 'Prêt à découvrir de nouvelles vibes' });
     }
@@ -318,11 +426,16 @@ const db = {
       avatar: user.avatar || '',
       banner: user.banner || '',
       bio: user.bio || '',
+      isPublic,
+      isOwner: Boolean(isOwner),
+      isFollowing: Boolean(isFollowing),
       createdAt: createdAtMs,
       stats: {
         likesCount: favorites.length,
         playlistsCount: visiblePlaylists.length,
-        historyCount: history.length
+        historyCount: history.length,
+        followersCount: followCounts.followersCount,
+        followingCount: followCounts.followingCount
       },
       topArtists,
       badges,

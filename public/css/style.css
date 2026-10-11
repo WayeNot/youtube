@@ -732,10 +732,36 @@ html, body {
   gap: 8px;
 }
 
-.shelf-carousel {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+.shelf-carousel,
+.horizontal-shelf-carousel {
+  display: flex !important;
+  overflow-x: auto !important;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  gap: 16px !important;
+  padding: 8px 4px 16px 4px !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scroll-behavior: smooth;
+}
+
+.shelf-carousel::-webkit-scrollbar,
+.horizontal-shelf-carousel::-webkit-scrollbar {
+  height: 6px;
+}
+
+.shelf-carousel::-webkit-scrollbar-thumb,
+.horizontal-shelf-carousel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.shelf-carousel .music-card,
+.horizontal-shelf-carousel .music-card {
+  flex: 0 0 170px !important;
+  width: 170px !important;
+  min-width: 170px !important;
+  scroll-snap-align: start;
 }
 
 /* Music Card Component */
@@ -5699,6 +5725,43 @@ textarea#import-text-input:focus {
   width: 18px;
   height: 18px;
   fill: currentColor;
+}
+
+/* Profile Follow Button */
+#profile-follow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+#profile-follow-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+#profile-follow-btn.following {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#profile-follow-btn.following:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.profile-private-notice {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  margin-top: 24px;
 }
 
 /* Liked Help Carousel Modal */

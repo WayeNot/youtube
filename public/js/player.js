@@ -52,6 +52,7 @@ class PlayerEngine {
     } else if (typeof s.muted === 'boolean') {
       this.audio.muted = s.muted;
     }
+    this._lastVolume = this.audio.volume > 0.05 ? this.audio.volume : 0.9;
     this.repeatMode = s.repeat || 'off';
     this.autoplayRadio = s.autoplayRadio !== undefined ? s.autoplayRadio : true;
     this.crossfadeDuration = typeof s.crossfade === 'number' ? s.crossfade : 4; // default 4 seconds crossfade
@@ -749,12 +750,20 @@ class PlayerEngine {
   setVolume(vol) {
     const val = Math.max(0, Math.min(1, vol));
     this.audio.volume = val;
-    this.audio.muted = false;
+    this.audio.muted = val === 0;
+    if (val > 0.05) {
+      this._lastVolume = val;
+    }
 
     // Sync Web Audio GainNode
     if (this.gainNode && this.audioCtx) {
       try {
+        if (this.audioCtx.state === 'suspended' && val > 0) {
+          this.audioCtx.resume();
+        }
+        this.gainNode.gain.cancelScheduledValues(this.audioCtx.currentTime);
         this.gainNode.gain.setValueAtTime(val, this.audioCtx.currentTime);
+        this.gainNode.gain.value = val;
       } catch (e) {}
     }
 
@@ -767,28 +776,47 @@ class PlayerEngine {
           func: 'setVolume',
           args: [Math.round(val * 100)]
         }), '*');
-        iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+        iframe.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: val === 0 ? 'mute' : 'unMute',
+          args: []
+        }), '*');
       }
     }
 
     try {
       localStorage.setItem('ytm_volume', val.toString());
-      localStorage.setItem('ytm_muted', 'false');
+      localStorage.setItem('ytm_muted', val === 0 ? 'true' : 'false');
     } catch (e) {}
     Storage.saveSetting('volume', val);
-    Storage.saveSetting('muted', false);
-    this.emit('volume_change', { volume: val, muted: false });
+    Storage.saveSetting('muted', val === 0);
+    this.emit('volume_change', { volume: val, muted: val === 0 });
   }
 
   toggleMute() {
-    this.audio.muted = !this.audio.muted;
+    const willMute = !this.audio.muted;
+    if (willMute) {
+      if (this.audio.volume > 0.05) {
+        this._lastVolume = this.audio.volume;
+      }
+      this.audio.muted = true;
+    } else {
+      this.audio.muted = false;
+      const restored = this._lastVolume || 0.9;
+      this.audio.volume = restored;
+    }
     const isMuted = this.audio.muted;
+    const currentVol = isMuted ? 0 : (this.audio.volume || 0.9);
 
     // Sync Web Audio GainNode
     if (this.gainNode && this.audioCtx) {
       try {
-        const targetGain = isMuted ? 0 : (this.audio.volume ?? 1);
-        this.gainNode.gain.setValueAtTime(targetGain, this.audioCtx.currentTime);
+        if (this.audioCtx.state === 'suspended' && !isMuted) {
+          this.audioCtx.resume();
+        }
+        this.gainNode.gain.cancelScheduledValues(this.audioCtx.currentTime);
+        this.gainNode.gain.setValueAtTime(currentVol, this.audioCtx.currentTime);
+        this.gainNode.gain.value = currentVol;
       } catch (e) {}
     }
 
@@ -799,16 +827,29 @@ class PlayerEngine {
         iframe.contentWindow.postMessage(JSON.stringify({
           event: 'command',
           func: isMuted ? 'mute' : 'unMute',
-          args: ''
+          args: []
         }), '*');
+        if (!isMuted) {
+          iframe.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'setVolume',
+            args: [Math.round(currentVol * 100)]
+          }), '*');
+        }
       }
     }
 
     try {
       localStorage.setItem('ytm_muted', isMuted ? 'true' : 'false');
+      if (!isMuted) {
+        localStorage.setItem('ytm_volume', currentVol.toString());
+      }
     } catch (e) {}
     Storage.saveSetting('muted', isMuted);
-    this.emit('volume_change', { volume: this.audio.volume, muted: isMuted });
+    if (!isMuted) {
+      Storage.saveSetting('volume', currentVol);
+    }
+    this.emit('volume_change', { volume: currentVol, muted: isMuted });
     return isMuted;
   }
 

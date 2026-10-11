@@ -520,10 +520,23 @@
                                         <span id="profile-stat-history" class="profile-stat-value">0</span>
                                         <span class="profile-stat-label">Écoutes</span>
                                     </div>
+                                    <div class="profile-stat-item" id="profile-stat-followers-wrap">
+                                        <span id="profile-stat-followers" class="profile-stat-value">0</span>
+                                        <span class="profile-stat-label">Abonnés</span>
+                                    </div>
+                                    <div class="profile-stat-item" id="profile-stat-following-wrap">
+                                        <span id="profile-stat-following" class="profile-stat-value">0</span>
+                                        <span class="profile-stat-label">Abonnements</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="profile-actions-block" id="profile-actions-block">
-                                <button class="btn secondary small"
+                                <button id="profile-follow-btn" class="btn primary small hidden"
+                                    onclick="window.App && window.App.toggleFollowCurrentProfile()">
+                                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                                    <span class="follow-btn-text">S'abonner</span>
+                                </button>
+                                <button class="btn secondary small profile-edit-btn"
                                     onclick="window.App && window.App.openSettings(event)">
                                     <svg viewBox="0 0 24 24">
                                         <path
@@ -780,6 +793,17 @@
                                 <div id="bio-char-count" class="bio-char-count">0 / 500</div>
                             </div>
 
+                            <div class="settings-item-row" style="margin-top: 14px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.06);">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Profil Public & Abonnements</span>
+                                    <span class="settings-item-desc">Autoriser la communauté à consulter votre profil, vos playlists publiques et votre nombre d'abonnements.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settings-profile-public" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
                             <button class="btn primary small" style="align-self: flex-start; margin-top: 10px;"
                                 onclick="window.App && window.App.saveProfileSettings()">
                                 <svg viewBox="0 0 24 24">
@@ -860,7 +884,7 @@
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="settings-ambient-glow" checked
-                                        onchange="document.getElementById('ambient-glow').classList.toggle('disabled', !this.checked)">
+                                        onchange="window.App && window.App.toggleAmbientGlow(this.checked)">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>

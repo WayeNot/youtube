@@ -1556,6 +1556,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
                 username: user.username,
                 avatar: user.avatar || '',
                 bio: user.bio || '',
+                isPublic: user.is_public !== false && user.is_public !== 0,
                 createdAt: Number(user.created_at)
             },
             data: userData
@@ -1656,9 +1657,35 @@ app.get('/api/user/:username/playlist/:playlistName', async (req, res) => {
     }
 });
 
-// 7. Update User Profile Settings (avatar, bio, etc.)
+// 6c. Follow / Unfollow user (/api/user/:username/follow)
+app.post('/api/user/:username/follow', authMiddleware, async (req, res) => {
+    const { username } = req.params;
+    if (!username) return res.status(400).json({ error: 'Nom d\'utilisateur requis' });
+
+    try {
+        const targetUser = await db.findUserByUsername(username);
+        if (!targetUser) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+        if (String(targetUser.id) === String(req.user.id)) {
+            return res.status(400).json({ error: 'Vous ne pouvez pas vous abonner à votre propre compte' });
+        }
+
+        const result = await db.toggleFollow(req.user.id, targetUser.id);
+        res.json({
+            success: true,
+            isFollowing: result.isFollowing,
+            followersCount: result.followersCount,
+            followingCount: result.followingCount
+        });
+    } catch (err) {
+        console.error('Follow error:', err);
+        res.status(500).json({ error: err.message || 'Erreur lors de l\'abonnement' });
+    }
+});
+
+// 7. Update User Profile Settings (avatar, bio, isPublic, etc.)
 app.put('/api/user/profile', authMiddleware, async (req, res) => {
-    let { avatar, bio } = req.body || {};
+    let { avatar, bio, isPublic } = req.body || {};
     avatar = typeof avatar === 'string' ? avatar.trim() : '';
     bio = typeof bio === 'string' ? bio.trim() : '';
 
@@ -1674,7 +1701,11 @@ app.put('/api/user/profile', authMiddleware, async (req, res) => {
     }
 
     try {
-        await db.updateUserProfile(req.user.id, { avatar, bio });
+        await db.updateUserProfile(req.user.id, {
+            avatar,
+            bio,
+            isPublic: typeof isPublic === 'boolean' ? isPublic : undefined
+        });
         const user = await db.findUserById(req.user.id);
         res.json({
             success: true,
@@ -1683,6 +1714,7 @@ app.put('/api/user/profile', authMiddleware, async (req, res) => {
                 username: user.username,
                 avatar: user.avatar,
                 bio: user.bio,
+                isPublic: user.is_public !== false && user.is_public !== 0,
                 createdAt: Number(user.created_at)
             }
         });

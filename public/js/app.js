@@ -31,6 +31,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 Storage.pullFromCloud();
             }
 
+            // Apply saved appearance & ambient glow settings
+            const initialSettings = Storage.getSettings();
+            if (initialSettings.accentColor) {
+                this.applyAccentThemeDirect(initialSettings.accentColor, initialSettings.accentHoverColor);
+            }
+            if (typeof initialSettings.ambientGlow === 'boolean') {
+                const glowEl = document.getElementById('ambient-glow');
+                if (glowEl) glowEl.classList.toggle('disabled', !initialSettings.ambientGlow);
+                const glowInput = document.getElementById('settings-ambient-glow');
+                if (glowInput) glowInput.checked = initialSettings.ambientGlow;
+            }
+
             // Initialize volume UI from saved settings
             if (Player.audio) {
                 this.updateVolumeUI(Player.audio.volume, Player.audio.muted);
@@ -1072,6 +1084,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.cancelTimerBtn) this.dom.cancelTimerBtn.classList.add('hidden');
             });
 
+            // Cloud settings synchronization
+            window.addEventListener('settings_changed', (e) => {
+                const s = e.detail?.settings;
+                if (!s) return;
+                if (s.accentColor) {
+                    this.applyAccentThemeDirect(s.accentColor, s.accentHoverColor);
+                }
+                if (typeof s.ambientGlow === 'boolean') {
+                    const glowEl = document.getElementById('ambient-glow');
+                    if (glowEl) glowEl.classList.toggle('disabled', !s.ambientGlow);
+                    const glowInput = document.getElementById('settings-ambient-glow');
+                    if (glowInput) glowInput.checked = s.ambientGlow;
+                }
+            });
+
             // Error
             window.addEventListener('player_error', (e) => {
                 this.showToast(e.detail?.message || 'Erreur de lecture');
@@ -1330,7 +1357,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const randomShelfHTML = `
         <div class="home-shelf" data-shelf-id="random-discoveries">
           <div class="shelf-header">
-            <h2 class="shelf-title">🎲 Titres aléatoires & Découvertes</h2>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <h2 class="shelf-title">🎲 Titres aléatoires & Découvertes</h2>
+              <div class="shelf-nav-arrows">
+                <button type="button" class="shelf-arrow-btn" title="Précédent" onclick="const c = document.getElementById('home-random-carousel'); if(c) c.scrollBy({left: -360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button type="button" class="shelf-arrow-btn" title="Suivant" onclick="const c = document.getElementById('home-random-carousel'); if(c) c.scrollBy({left: 360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+              </div>
+            </div>
             <div class="shelf-actions">
               <button class="btn primary small" id="home-play-all-random-btn">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1342,7 +1379,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </div>
           </div>
-          <div class="shelf-carousel" id="home-random-carousel">
+          <div class="shelf-carousel horizontal-shelf-carousel" id="home-random-carousel">
             ${initialRandom.map(item => this.createMusicCardHTML(item)).join('')}
           </div>
         </div>
@@ -1352,7 +1389,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const topHitsShelfHTML = `
         <div class="home-shelf" data-shelf-id="top-hits">
           <div class="shelf-header">
-            <h2 class="shelf-title">🔥 Hits du Moment & Tendances</h2>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <h2 class="shelf-title">🔥 Hits du Moment & Tendances</h2>
+              <div class="shelf-nav-arrows">
+                <button type="button" class="shelf-arrow-btn" title="Précédent" onclick="const c = document.getElementById('home-tophits-carousel'); if(c) c.scrollBy({left: -360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button type="button" class="shelf-arrow-btn" title="Suivant" onclick="const c = document.getElementById('home-tophits-carousel'); if(c) c.scrollBy({left: 360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+              </div>
+            </div>
             <div class="shelf-actions">
               <button class="btn secondary small" id="home-play-all-tophits-btn">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1360,7 +1407,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </div>
           </div>
-          <div class="shelf-carousel" id="home-tophits-carousel">
+          <div class="shelf-carousel horizontal-shelf-carousel" id="home-tophits-carousel">
             ${topHits.map(item => this.createMusicCardHTML(item)).join('')}
           </div>
         </div>
@@ -1369,7 +1416,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const rapShelfHTML = `
         <div class="home-shelf" data-shelf-id="rap-fr">
           <div class="shelf-header">
-            <h2 class="shelf-title">⚡ Rap Français & Urbain</h2>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <h2 class="shelf-title">⚡ Rap Français & Urbain</h2>
+              <div class="shelf-nav-arrows">
+                <button type="button" class="shelf-arrow-btn" title="Précédent" onclick="const c = document.getElementById('home-rap-carousel'); if(c) c.scrollBy({left: -360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button type="button" class="shelf-arrow-btn" title="Suivant" onclick="const c = document.getElementById('home-rap-carousel'); if(c) c.scrollBy({left: 360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+              </div>
+            </div>
             <div class="shelf-actions">
               <button class="btn secondary small" id="home-play-all-rap-btn">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1377,7 +1434,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </div>
           </div>
-          <div class="shelf-carousel" id="home-rap-carousel">
+          <div class="shelf-carousel horizontal-shelf-carousel" id="home-rap-carousel">
             ${rapHits.map(item => this.createMusicCardHTML(item)).join('')}
           </div>
         </div>
@@ -1386,7 +1443,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const chillShelfHTML = `
         <div class="home-shelf" data-shelf-id="chill-lofi">
           <div class="shelf-header">
-            <h2 class="shelf-title">☕ Chill, Lo-Fi & Détente</h2>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <h2 class="shelf-title">☕ Chill, Lo-Fi & Détente</h2>
+              <div class="shelf-nav-arrows">
+                <button type="button" class="shelf-arrow-btn" title="Précédent" onclick="const c = document.getElementById('home-chill-carousel'); if(c) c.scrollBy({left: -360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button type="button" class="shelf-arrow-btn" title="Suivant" onclick="const c = document.getElementById('home-chill-carousel'); if(c) c.scrollBy({left: 360, behavior: 'smooth'});">
+                  <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+              </div>
+            </div>
             <div class="shelf-actions">
               <button class="btn secondary small" id="home-play-all-chill-btn">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1394,7 +1461,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </div>
           </div>
-          <div class="shelf-carousel" id="home-chill-carousel">
+          <div class="shelf-carousel horizontal-shelf-carousel" id="home-chill-carousel">
             ${chillHits.map(item => this.createMusicCardHTML(item)).join('')}
           </div>
         </div>
@@ -2605,11 +2672,14 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         updateVolumeUI(vol, muted) {
-            this.dom.volumeSlider.value = muted ? 0 : vol;
-            const volHigh = this.dom.muteBtn.querySelector('.vol-high');
-            const volMuted = this.dom.muteBtn.querySelector('.vol-muted');
-            volHigh.classList.toggle('hidden', muted || vol === 0);
-            volMuted.classList.toggle('hidden', !muted && vol > 0);
+            const effectiveVol = muted ? 0 : (vol > 0 ? vol : 0.8);
+            if (this.dom.volumeSlider) this.dom.volumeSlider.value = effectiveVol;
+            if (this.dom.muteBtn) {
+                const volHigh = this.dom.muteBtn.querySelector('.vol-high');
+                const volMuted = this.dom.muteBtn.querySelector('.vol-muted');
+                if (volHigh) volHigh.classList.toggle('hidden', muted || effectiveVol === 0);
+                if (volMuted) volMuted.classList.toggle('hidden', !muted && effectiveVol > 0);
+            }
         },
 
         updateRepeatUI(mode) {
@@ -3540,8 +3610,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Toggle edit profile button depending on whether viewer is owner
                 const currentUser = Storage.getUser();
                 const isOwner = currentUser && currentUser.username.toLowerCase() === profile.username.toLowerCase();
-                const editBtn = document.querySelector('#profile-actions-block button[onclick*="openSettings"]');
+                const editBtn = document.querySelector('#profile-actions-block .profile-edit-btn') || document.querySelector('#profile-actions-block button[onclick*="openSettings"]');
                 if (editBtn) editBtn.classList.toggle('hidden', !isOwner);
+
+                // Handle Follow Button
+                const followBtn = document.getElementById('profile-follow-btn');
+                if (followBtn) {
+                    if (isOwner) {
+                        followBtn.classList.add('hidden');
+                    } else {
+                        followBtn.classList.remove('hidden');
+                        this.updateProfileFollowBtnUI(profile.isFollowing);
+                    }
+                }
+
+                // Handle Followers & Following Visibility based on isPublic setting
+                const isPublicProfile = profile.isPublic !== false;
+                const followersWrap = document.getElementById('profile-stat-followers-wrap');
+                const followingWrap = document.getElementById('profile-stat-following-wrap');
+                const statFollowers = document.getElementById('profile-stat-followers');
+                const statFollowing = document.getElementById('profile-stat-following');
+
+                if (followersWrap && followingWrap) {
+                    if (isPublicProfile || isOwner) {
+                        followersWrap.classList.remove('hidden');
+                        followingWrap.classList.remove('hidden');
+                        if (statFollowers) statFollowers.textContent = profile.stats ? (profile.stats.followersCount || 0) : 0;
+                        if (statFollowing) statFollowing.textContent = profile.stats ? (profile.stats.followingCount || 0) : 0;
+                    } else {
+                        // User chose not to make profile public
+                        followersWrap.classList.add('hidden');
+                        followingWrap.classList.add('hidden');
+                    }
+                }
 
                 // Render user public playlists
                 if (!profile.playlists || profile.playlists.length === 0) {
@@ -3566,6 +3667,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) {
                 this.showErrorView('Utilisateur introuvable', `Impossible de charger le profil de l'utilisateur "${this.escapeHtml(username)}".`);
+            }
+        },
+
+        updateProfileFollowBtnUI(isFollowing) {
+            const followBtn = document.getElementById('profile-follow-btn');
+            if (!followBtn) return;
+            followBtn.classList.toggle('following', Boolean(isFollowing));
+            if (isFollowing) {
+                followBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <span class="follow-btn-text">Abonné(e) ✓</span>
+                `;
+            } else {
+                followBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    <span class="follow-btn-text">S'abonner</span>
+                `;
+            }
+        },
+
+        async toggleFollowCurrentProfile() {
+            if (!this.currentProfileUser) return;
+            if (!Storage.isLoggedIn()) {
+                this.showToast('Connectez-vous pour vous abonner !');
+                this.openAuthModal();
+                return;
+            }
+            const username = this.currentProfileUser.username;
+            try {
+                const token = Storage.getToken();
+                const res = await fetch(`/api/user/${encodeURIComponent(username)}/follow`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    this.showToast(data.error || 'Erreur lors de l\'abonnement');
+                    return;
+                }
+
+                this.currentProfileUser.isFollowing = data.isFollowing;
+                if (!this.currentProfileUser.stats) this.currentProfileUser.stats = {};
+                this.currentProfileUser.stats.followersCount = data.followersCount;
+                this.currentProfileUser.stats.followingCount = data.followingCount;
+
+                this.updateProfileFollowBtnUI(data.isFollowing);
+                const statFollowers = document.getElementById('profile-stat-followers');
+                if (statFollowers) statFollowers.textContent = data.followersCount;
+
+                if (data.isFollowing) {
+                    this.showToast(`Abonné à ${username} ! 🔔`);
+                } else {
+                    this.showToast(`Désabonné de ${username}`);
+                }
+            } catch (e) {
+                console.error('Follow toggle error:', e);
+                this.showToast('Erreur de connexion');
             }
         },
 
@@ -3823,7 +3984,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.settingsBioInput) {
                     this.dom.settingsBioInput.value = u.bio || '';
                     const counter = document.getElementById('bio-char-count');
-                    if (counter) counter.textContent = `${this.dom.settingsBioInput.value.length} / 250`;
+                    if (counter) counter.textContent = `${this.dom.settingsBioInput.value.length} / 500`;
                 }
                 const avatarPreview = document.getElementById('settings-avatar-preview');
                 if (avatarPreview) {
@@ -3833,9 +3994,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (usernameDisp) {
                     usernameDisp.textContent = u.username;
                 }
+                const pubCheckbox = document.getElementById('settings-profile-public');
+                if (pubCheckbox) {
+                    pubCheckbox.checked = u.isPublic !== false;
+                }
             }
+
+            // Sync settings UI with current settings
+            const currentSettings = Storage.getSettings();
+            const glowInput = document.getElementById('settings-ambient-glow');
+            if (glowInput && typeof currentSettings.ambientGlow === 'boolean') {
+                glowInput.checked = currentSettings.ambientGlow;
+            }
+
             // Highlight current accent dot
-            const currentAccent = localStorage.getItem('ytm_accent_color') || '#ff0033';
+            const currentAccent = currentSettings.accentColor || localStorage.getItem('ytm_accent_color') || '#ff0033';
             document.querySelectorAll('.theme-color-dot').forEach(dot => {
                 dot.classList.toggle('active', dot.getAttribute('data-color') === currentAccent);
             });
@@ -3854,6 +4027,14 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         setAccentTheme(color, hoverColor, name) {
+            if (!color) return;
+            this.applyAccentThemeDirect(color, hoverColor);
+            Storage.saveSetting('accentColor', color);
+            Storage.saveSetting('accentHoverColor', hoverColor || color);
+            this.showToast(`Thème d'accentuation activé : ${name || color} ✨`);
+        },
+
+        applyAccentThemeDirect(color, hoverColor) {
             if (!color) return;
             const hex = color.replace('#', '');
             let r = 255, g = 0, b = 51;
@@ -3880,13 +4061,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.theme-color-dot').forEach(dot => {
                 dot.classList.toggle('active', dot.getAttribute('data-color') === color);
             });
+        },
 
-            this.showToast(`Thème d'accentuation activé : ${name || color} ✨`);
+        toggleAmbientGlow(enabled) {
+            const glowEl = document.getElementById('ambient-glow');
+            if (glowEl) glowEl.classList.toggle('disabled', !enabled);
+            Storage.saveSetting('ambientGlow', enabled);
+            this.showToast(enabled ? 'Ambiance lumineuse activée ✨' : 'Ambiance lumineuse désactivée');
         },
 
         async saveProfileSettings() {
             const avatar = (this.dom.settingsAvatarInput.value || '').trim();
             const bio = (this.dom.settingsBioInput.value || '').trim();
+            const pubInput = document.getElementById('settings-profile-public');
+            const isPublic = pubInput ? pubInput.checked : true;
             const token = Storage.getToken();
 
             if (!token) {
@@ -3906,7 +4094,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ avatar, bio })
+                    body: JSON.stringify({ avatar, bio, isPublic })
                 });
                 const json = await res.json();
                 if (res.ok && json.success && json.user) {
