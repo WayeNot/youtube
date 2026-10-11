@@ -48,6 +48,7 @@ class PlayerEngine {
     }
     this.repeatMode = s.repeat || 'off';
     this.autoplayRadio = s.autoplayRadio !== undefined ? s.autoplayRadio : true;
+    this.crossfadeDuration = typeof s.crossfade === 'number' ? s.crossfade : 4; // default 4 seconds crossfade
     if (s.playbackRate) this.audio.playbackRate = s.playbackRate;
   }
 
@@ -55,6 +56,7 @@ class PlayerEngine {
     this.audio.addEventListener('play', () => {
       this.isPlaying = true;
       this.isLoading = false;
+      this.initEqualizer();
       this.updateMediaSessionState();
       this.emit('playback_change', { isPlaying: true, isLoading: false });
     });
@@ -83,9 +85,26 @@ class PlayerEngine {
         window.LyricsManager.updateTime(cur);
       }
 
-      // Pre-fetch next track stream URL when current song is near completion
-      if (dur > 30 && dur - cur < 15 && !this.prefetchedNext) {
-        this.prefetchNextTrack();
+      // Smooth Crossfade & Gapless Transition:
+      // If crossfade is enabled (3-8s) and we are close to song end, trigger playNext smoothly
+      if (this.crossfadeDuration > 0 && dur > 25 && dur - cur <= this.crossfadeDuration && !this._isCrossfading && this.isPlaying) {
+        this._isCrossfading = true;
+        // Fade out slightly
+        const targetVol = this.audio.volume;
+        const fadeInterval = setInterval(() => {
+          if (this.audio.volume > 0.15) {
+            this.audio.volume = Math.max(0.05, this.audio.volume - 0.15);
+          } else {
+            clearInterval(fadeInterval);
+          }
+        }, 300);
+
+        setTimeout(() => {
+          clearInterval(fadeInterval);
+          this._isCrossfading = false;
+          this.setVolume(targetVol);
+          this.playNext();
+        }, this.crossfadeDuration * 1000);
       }
     });
 
@@ -165,7 +184,7 @@ class PlayerEngine {
     }
   }
 
-  // Web Audio Equalizer (5-Band)
+  // Web Audio Equalizer (5-Band) & Analyser for Visualizer
   initEqualizer() {
     if (this.isEqInitialized) return;
     try {
@@ -173,6 +192,11 @@ class PlayerEngine {
       if (!AudioContext) return;
       this.audioCtx = new AudioContext();
       this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
+
+      // Create AnalyserNode for audio visualizer
+      this.analyser = this.audioCtx.createAnalyser();
+      this.analyser.fftSize = 128;
+      this.analyser.smoothingTimeConstant = 0.8;
 
       const freqs = [60, 230, 910, 3600, 14000];
       const types = ['lowshelf', 'peaking', 'peaking', 'peaking', 'highshelf'];
@@ -188,11 +212,20 @@ class PlayerEngine {
         return filter;
       });
 
-      prevNode.connect(this.audioCtx.destination);
+      // Connect through analyser before destination
+      prevNode.connect(this.analyser);
+      this.analyser.connect(this.audioCtx.destination);
       this.isEqInitialized = true;
     } catch (e) {
       console.warn('Equalizer initialization error:', e);
     }
+  }
+
+  getFrequencyData() {
+    if (!this.analyser) return null;
+    const data = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(data);
+    return data;
   }
 
   setEqBand(bandIndex, gainValue) {
@@ -380,15 +413,25 @@ class PlayerEngine {
   async fetchRadioRecommendations() {
     if (!this.currentTrack) return;
     try {
-      const related = await API.getRelated(this.currentTrack.id);
-      if (related && related.length > 0) {
-        // Filter out songs already in queue
+      this.emit('radio_loading', { track: this.currentTrack });
+      let candidates = await API.getRelated(this.currentTrack.id);
+
+      // Fallback: If no direct related tracks found, search for similar artist radio
+      if (!candidates || candidates.length === 0) {
+        const query = `${this.currentTrack.artist || ''} mix radio hits`.trim();
+        const searchResults = await API.search(query, 'songs');
+        candidates = searchResults.songs || [];
+      }
+
+      if (candidates && candidates.length > 0) {
+        // Filter out songs already played or in queue
         const existingIds = new Set(this.queue.map(t => t.id));
-        const newTracks = related.filter(t => !existingIds.has(t.id));
+        const newTracks = candidates.filter(t => !existingIds.has(t.id));
         if (newTracks.length > 0) {
-          this.queue.push(...newTracks);
+          const nextSongs = newTracks.slice(0, 5);
+          this.queue.push(...nextSongs);
           this.currentIndex++;
-          this.emit('queue_change', { queue: this.queue });
+          this.emit('queue_change', { queue: this.queue, isRadioInfinite: true });
           this.playTrack(this.queue[this.currentIndex]);
           return;
         }

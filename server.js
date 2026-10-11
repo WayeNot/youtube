@@ -1,3 +1,4 @@
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
@@ -6,11 +7,13 @@ const { execFile } = require('child_process');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { WebSocketServer, WebSocket } = require('ws');
 
 const config = require('./config');
 const db = require('./db');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = config.port;
 const YTDLP_PATH = config.ytdlpPath;
 
@@ -1582,6 +1585,129 @@ async function ensureYtDlp() {
     }
 }
 
+// ==========================================================================
+// WebSocket Party Mode / Écoute Synchronisée en direct
+// ==========================================================================
+const partyRooms = new Map(); // roomId -> { hostId, currentTrack, currentTime, isPlaying, lastUpdated, members: Map(ws -> { username, id }) }
+
+const wss = new WebSocketServer({ server, path: '/api/party-ws' });
+
+wss.on('connection', (ws) => {
+    let currentRoomId = null;
+    let userId = 'user_' + Math.random().toString(36).substr(2, 6);
+    let userName = 'Invité';
+
+    ws.on('message', (raw) => {
+        try {
+            const data = JSON.parse(raw);
+            const { type, roomId, username, track, currentTime, isPlaying, message } = data;
+
+            if (type === 'join') {
+                currentRoomId = roomId;
+                userName = username || userName;
+                if (!partyRooms.has(roomId)) {
+                    partyRooms.set(roomId, {
+                        roomId,
+                        hostId: userId,
+                        currentTrack: null,
+                        currentTime: 0,
+                        isPlaying: false,
+                        lastUpdated: Date.now(),
+                        members: new Map()
+                    });
+                }
+                const room = partyRooms.get(roomId);
+                room.members.set(ws, { id: userId, username: userName });
+
+                // Send current room state to joining member
+                ws.send(JSON.stringify({
+                    type: 'room_state',
+                    roomId,
+                    isHost: room.hostId === userId,
+                    hostId: room.hostId,
+                    currentTrack: room.currentTrack,
+                    currentTime: room.currentTime,
+                    isPlaying: room.isPlaying,
+                    serverTime: Date.now(),
+                    memberCount: room.members.size,
+                    members: Array.from(room.members.values())
+                }));
+
+                // Broadcast updated members list to room
+                broadcastToRoom(roomId, {
+                    type: 'member_joined',
+                    username: userName,
+                    memberCount: room.members.size,
+                    members: Array.from(room.members.values())
+                });
+            } else if (type === 'sync_playback') {
+                const room = partyRooms.get(currentRoomId);
+                if (room) {
+                    // Update state
+                    if (track !== undefined) room.currentTrack = track;
+                    if (currentTime !== undefined) room.currentTime = currentTime;
+                    if (isPlaying !== undefined) room.isPlaying = isPlaying;
+                    room.lastUpdated = Date.now();
+
+                    // Broadcast to other peers in room
+                    broadcastToRoom(currentRoomId, {
+                        type: 'playback_sync',
+                        currentTrack: room.currentTrack,
+                        currentTime: room.currentTime,
+                        isPlaying: room.isPlaying,
+                        serverTime: Date.now(),
+                        fromUser: userName
+                    }, ws);
+                }
+            } else if (type === 'chat_message') {
+                if (currentRoomId && message) {
+                    broadcastToRoom(currentRoomId, {
+                        type: 'chat_message',
+                        sender: userName,
+                        text: String(message).substring(0, 300),
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        } catch (e) { }
+    });
+
+    ws.on('close', () => {
+        if (currentRoomId && partyRooms.has(currentRoomId)) {
+            const room = partyRooms.get(currentRoomId);
+            room.members.delete(ws);
+            if (room.members.size === 0) {
+                partyRooms.delete(currentRoomId);
+            } else {
+                // Elect new host if host leaves
+                if (room.hostId === userId) {
+                    const firstMember = room.members.values().next().value;
+                    if (firstMember) {
+                        room.hostId = firstMember.id;
+                    }
+                }
+                broadcastToRoom(currentRoomId, {
+                    type: 'member_left',
+                    username: userName,
+                    memberCount: room.members.size,
+                    members: Array.from(room.members.values())
+                });
+            }
+        }
+    });
+});
+
+function broadcastToRoom(roomId, payload, senderWs = null) {
+    const room = partyRooms.get(roomId);
+    if (!room) return;
+    const msg = JSON.stringify(payload);
+    for (const [clientWs] of room.members) {
+        if (clientWs !== senderWs && clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(msg);
+        }
+    }
+}
+
 // Initialize Database schema and start server
 (async () => {
     try {
@@ -1591,8 +1717,8 @@ async function ensureYtDlp() {
         console.error('Erreur initialisation DB:', e);
     }
 
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`🎵 Serveur YouTube Music prêt sur http://localhost:${PORT}`);
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`🎵 Serveur YouTube Music (HTTP & WebSockets) prêt sur http://localhost:${PORT}`);
         if (db.isNeon()) {
             console.log('☁️ Base de données: NeonDB (PostgreSQL Serverless)');
         } else {
