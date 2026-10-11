@@ -59,7 +59,31 @@ setInterval(async () => {
     } catch (e) { }
 }, 15 * 60 * 1000);
 
-// Helper: Extract audio URL using fast DB cache + yt-dlp
+// Helper: Ensure cookies.txt is created from environment variables if present
+function syncCookiesFile() {
+    const fs = require('fs');
+    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    try {
+        if (process.env.YTDLP_COOKIES_BASE64 && process.env.YTDLP_COOKIES_BASE64.trim()) {
+            const decoded = Buffer.from(process.env.YTDLP_COOKIES_BASE64.trim(), 'base64').toString('utf-8');
+            if (decoded.length > 20) {
+                fs.writeFileSync(cookiesPath, decoded, 'utf-8');
+                return true;
+            }
+        }
+        if (process.env.YTDLP_COOKIES && process.env.YTDLP_COOKIES.trim()) {
+            fs.writeFileSync(cookiesPath, process.env.YTDLP_COOKIES.trim(), 'utf-8');
+            return true;
+        }
+    } catch (e) {
+        console.error('❌ Erreur écriture cookies.txt:', e.message);
+    }
+    return fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
+}
+
+// Helper: Extract audio URL using fast in-memory cache + yt-dlp
+// NOTE: Google Video stream URLs are strictly bound to the outgoing IP of the server that resolved them.
+// Therefore, we keep the stream cache in memory per-instance to prevent cross-server IP 403 Forbidden errors.
 async function getAudioStreamUrl(videoId) {
     const now = Date.now();
     // 1. Check in-memory cache
@@ -68,25 +92,11 @@ async function getAudioStreamUrl(videoId) {
         return mem.url;
     }
 
-    // 2. Check persistent database cache (NeonDB / SQLite)
-    try {
-        const cached = await db.getStreamCache(videoId);
-        if (cached && cached.expiresAt > now) {
-            streamCache.set(videoId, { url: cached.url, expiresAt: cached.expiresAt });
-            return cached.url;
-        }
-    } catch (e) { }
-
-    // Check for cookies file or environment variable
-    const cookiesPath = path.join(__dirname, 'cookies.txt');
-    if (process.env.YTDLP_COOKIES && process.env.YTDLP_COOKIES.trim()) {
-        try {
-            const fs = require('fs');
-            fs.writeFileSync(cookiesPath, process.env.YTDLP_COOKIES.trim(), 'utf-8');
-        } catch (e) { }
-    }
+    // 2. Ensure cookies file exists if env variable is set
+    syncCookiesFile();
 
     const fs = require('fs');
+    const cookiesPath = path.join(__dirname, 'cookies.txt');
     const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
 
     const ytdlpArgs = [
@@ -104,7 +114,7 @@ async function getAudioStreamUrl(videoId) {
 
     ytdlpArgs.push('--', `https://www.youtube.com/watch?v=${videoId}`);
 
-    // 3. Fallback to yt-dlp with optimized flags for instant extraction
+    // 3. Extract stream with yt-dlp
     return new Promise((resolve, reject) => {
         execFile(
             YTDLP_PATH,
@@ -123,12 +133,8 @@ async function getAudioStreamUrl(videoId) {
                 }
 
                 const expiresAt = now + config.cacheTtl.stream;
-                // Save to memory
+                // Save to instance in-memory cache
                 streamCache.set(videoId, { url: streamUrl, expiresAt });
-                // Save to Database (NeonDB / SQLite)
-                try {
-                    await db.setStreamCache(videoId, streamUrl, expiresAt);
-                } catch (e) { }
 
                 resolve(streamUrl);
             }
@@ -640,6 +646,7 @@ app.get('/api/album/:id', async (req, res) => {
 
 // Diagnostic endpoint to check environment & yt-dlp binary
 app.get('/api/debug', (req, res) => {
+    syncCookiesFile();
     const fs = require('fs');
     const exists = fs.existsSync(YTDLP_PATH);
     let size = 0;
@@ -648,6 +655,7 @@ app.get('/api/debug', (req, res) => {
     }
     const cookiesPath = path.join(__dirname, 'cookies.txt');
     const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
+    const cookiesSize = hasCookies ? fs.statSync(cookiesPath).size : 0;
     const { execFile } = require('child_process');
     execFile(YTDLP_PATH, ['--version'], { timeout: 4000 }, (err, stdout, stderr) => {
         res.json({
@@ -655,6 +663,9 @@ app.get('/api/debug', (req, res) => {
             exists,
             size,
             hasCookies,
+            cookiesSize,
+            hasEnvCookies: !!(process.env.YTDLP_COOKIES && process.env.YTDLP_COOKIES.trim()),
+            hasBase64Cookies: !!(process.env.YTDLP_COOKIES_BASE64 && process.env.YTDLP_COOKIES_BASE64.trim()),
             version: stdout ? stdout.trim() : null,
             err: err ? err.message : null,
             stderr: stderr ? stderr.trim() : null,
@@ -677,8 +688,13 @@ app.get('/api/stream/:id', async (req, res) => {
         }
         const streamUrl = await getAudioStreamUrl(videoId);
 
-        // Forward Range header from browser
-        const fetchHeaders = {};
+        // Standard headers to prevent Google Video 403 Forbidden
+        const fetchHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Encoding': 'identity;q=1, *;q=0',
+            'Connection': 'keep-alive'
+        };
         if (req.headers.range) {
             fetchHeaders['Range'] = req.headers.range;
         }
@@ -694,7 +710,7 @@ app.get('/api/stream/:id', async (req, res) => {
         });
 
         if (!upstreamRes.ok && upstreamRes.status !== 206) {
-            // Stream URL might have expired, invalidate cache and retry once
+            // Stream URL might have expired or been rejected, invalidate cache and retry once
             streamCache.delete(videoId);
             console.warn(`Upstream error ${upstreamRes.status} for ${videoId}, retrying with fresh URL...`);
             const freshUrl = await getAudioStreamUrl(videoId);
@@ -766,7 +782,12 @@ app.get('/api/download/:id', async (req, res) => {
 
     try {
         const streamUrl = await getAudioStreamUrl(videoId);
-        const upstream = await fetch(streamUrl);
+        const upstream = await fetch(streamUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
+                'Accept': '*/*'
+            }
+        });
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(cleanTitle)}.m4a"`);
         res.setHeader('Content-Type', upstream.headers.get('content-type') || 'audio/mp4');
 
@@ -1410,7 +1431,7 @@ app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Ensure yt-dlp binary is present (auto-download on cloud deploy like Render if missing)
+// Ensure yt-dlp binary and cookies are present
 async function ensureYtDlp() {
     const fs = require('fs');
     const binDir = path.dirname(YTDLP_PATH);
@@ -1426,6 +1447,15 @@ async function ensureYtDlp() {
         } catch (e) {
             console.error('❌ Échec du téléchargement de yt-dlp:', e.message);
         }
+    }
+
+    // Ensure cookies are synchronized on startup
+    const hasCookies = syncCookiesFile();
+    if (hasCookies) {
+        const cookiesPath = path.join(__dirname, 'cookies.txt');
+        console.log('🍪 Cookies YouTube actifs ! Taille:', fs.statSync(cookiesPath).size, 'octets');
+    } else {
+        console.log('⚠️ Aucun cookie YouTube détecté (YTDLP_COOKIES ou YTDLP_COOKIES_BASE64 non défini)');
     }
 }
 
