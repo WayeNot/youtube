@@ -493,27 +493,12 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     bindListeners() {
-      // Touch & Hover Preventive Audio Prefetching for Instant Playback
-      document.addEventListener('pointerenter', (e) => {
-        const trackEl = e.target && e.target.closest && e.target.closest('[data-track-id]');
-        if (trackEl) {
-          const id = trackEl.getAttribute('data-track-id');
-          if (id) API.prefetch(id);
-        }
-      }, { capture: true, passive: true });
-
-      document.addEventListener('touchstart', (e) => {
-        const trackEl = e.target && e.target.closest && e.target.closest('[data-track-id]');
-        if (trackEl) {
-          const id = trackEl.getAttribute('data-track-id');
-          if (id) API.prefetch(id);
-        }
-      }, { passive: true });
-
       // Sidebar Toggle
-      this.dom.sidebarToggleBtn.addEventListener('click', () => {
-        this.dom.appSidebar.classList.toggle('collapsed');
-      });
+      if (this.dom.sidebarToggleBtn) {
+        this.dom.sidebarToggleBtn.addEventListener('click', () => {
+          this.dom.appSidebar.classList.toggle('collapsed');
+        });
+      }
 
       if (this.dom.brandHomeBtn) {
         this.dom.brandHomeBtn.addEventListener('click', (e) => {

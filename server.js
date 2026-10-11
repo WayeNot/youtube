@@ -81,6 +81,9 @@ function syncCookiesFile() {
     return fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
 }
 
+// In-flight extraction promises map to avoid duplicate concurrent yt-dlp processes
+const inFlightStreams = new Map();
+
 // Helper: Extract audio URL using fast in-memory cache + yt-dlp
 // NOTE: Google Video stream URLs are strictly bound to the outgoing IP of the server that resolved them.
 // Therefore, we keep the stream cache in memory per-instance to prevent cross-server IP 403 Forbidden errors.
@@ -92,7 +95,12 @@ async function getAudioStreamUrl(videoId) {
         return mem.url;
     }
 
-    // 2. Ensure cookies file exists if env variable is set
+    // 2. Return active in-flight extraction if already solving
+    if (inFlightStreams.has(videoId)) {
+        return inFlightStreams.get(videoId);
+    }
+
+    // 3. Ensure cookies file exists if env variable is set
     const hasCookies = syncCookiesFile();
 
     const fs = require('fs');
@@ -113,13 +121,14 @@ async function getAudioStreamUrl(videoId) {
 
     ytdlpArgs.push('--', `https://www.youtube.com/watch?v=${videoId}`);
 
-    // 3. Extract stream with yt-dlp (allow up to 60s for cloud CPU JS solver)
-    return new Promise((resolve, reject) => {
+    // 4. Extract stream with yt-dlp and deduplicate concurrent calls
+    const streamPromise = new Promise((resolve, reject) => {
         execFile(
             YTDLP_PATH,
             ytdlpArgs,
             { timeout: 60000 },
             async (err, stdout, stderr) => {
+                inFlightStreams.delete(videoId);
                 if (err) {
                     const errMsg = stderr ? stderr.trim() : err.message;
                     console.error(`yt-dlp error for ${videoId}:`, errMsg);
@@ -131,7 +140,7 @@ async function getAudioStreamUrl(videoId) {
                     return reject(new Error('Invalid audio stream URL returned'));
                 }
 
-                const expiresAt = now + config.cacheTtl.stream;
+                const expiresAt = Date.now() + config.cacheTtl.stream;
                 // Save to instance in-memory cache
                 streamCache.set(videoId, { url: streamUrl, expiresAt });
 
@@ -139,6 +148,9 @@ async function getAudioStreamUrl(videoId) {
             }
         );
     });
+
+    inFlightStreams.set(videoId, streamPromise);
+    return streamPromise;
 }
 
 // Helper: Search via YouTube Innertube WEB API

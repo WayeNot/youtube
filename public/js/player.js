@@ -255,12 +255,6 @@ class PlayerEngine {
     this.audio.preload = 'auto';
     this.audio.src = streamUrl;
 
-    // Aggressively prefetch the upcoming track in background so next click is instant
-    const nextTrack = this.queue[this.currentIndex + 1];
-    if (nextTrack) {
-      API.prefetch(nextTrack.id);
-    }
-
     try {
       if (this.audioCtx && this.audioCtx.state === 'suspended') {
         await this.audioCtx.resume();
