@@ -21,6 +21,12 @@ class PlayerEngine {
     this.sleepTimerInterval = null;
     this.sleepAtTrackEnd = false;
 
+    // Predictive Pre-buffering & Background Cache
+    this.preloadAudio = new Audio();
+    this.preloadAudio.preload = 'auto';
+    this.preloadedTrackId = null;
+    this.preloadedNextAudio = false;
+
     // Web Audio Equalizer
     this.audioCtx = null;
     this.sourceNode = null;
@@ -83,6 +89,12 @@ class PlayerEngine {
       this.emit('time_update', { currentTime: cur, duration: dur });
       if (window.LyricsManager) {
         window.LyricsManager.updateTime(cur);
+      }
+
+      // Predictive Pre-buffering: at 65% of track (or 30s remaining), buffer next track silently
+      if (dur > 20 && ((cur / dur >= 0.65) || (dur - cur <= 30)) && !this.preloadedNextAudio) {
+        this.preloadedNextAudio = true;
+        this.bufferNextTrack();
       }
 
       // Smooth Crossfade & Gapless Transition:
@@ -298,6 +310,8 @@ class PlayerEngine {
     this.emit('track_change', { track: this.currentTrack, index: this.currentIndex });
     this.updateMediaSessionMetadata();
 
+    this.preloadedNextAudio = false;
+
     // Check if track is cached in IndexedDB offline vault
     try {
       const offlineItem = await Storage.getTrackOffline(track.id);
@@ -325,6 +339,12 @@ class PlayerEngine {
         console.warn('Audio play request failed:', err);
       }
     }
+
+    // Proactive background pre-warming of next upcoming tracks in queue
+    if (this._prefetchTimer) clearTimeout(this._prefetchTimer);
+    this._prefetchTimer = setTimeout(() => {
+      this.prefetchNextTrack();
+    }, 1500);
   }
 
   async fallbackDirectStream(track) {
@@ -341,10 +361,27 @@ class PlayerEngine {
 
   prefetchNextTrack() {
     this.prefetchedNext = true;
-    const nextTrack = this.queue[this.currentIndex + 1];
-    if (nextTrack) {
-      API.prefetch(nextTrack.id);
+    const nextTracks = this.queue.slice(this.currentIndex + 1, this.currentIndex + 4);
+    if (nextTracks.length > 0) {
+      const ids = nextTracks.map(t => t.id).filter(Boolean);
+      if (API.prefetchBatch) {
+        API.prefetchBatch(ids);
+      } else {
+        ids.forEach(id => API.prefetch(id));
+      }
     }
+  }
+
+  bufferNextTrack() {
+    const nextTrack = this.queue[this.currentIndex + 1];
+    if (!nextTrack || !nextTrack.id) return;
+    if (this.preloadedTrackId === nextTrack.id) return;
+    this.preloadedTrackId = nextTrack.id;
+    try {
+      // Silently request and pre-buffer first bytes of next track
+      this.preloadAudio.src = API.getStreamUrl(nextTrack.id);
+      this.preloadAudio.load();
+    } catch (e) {}
   }
 
   async play() {

@@ -26,10 +26,24 @@
                 var c = localStorage.getItem('ytm_accent_color');
                 var h = localStorage.getItem('ytm_accent_hover');
                 if (c) {
-                    document.documentElement.style.setProperty('--accent-red', c);
-                    document.documentElement.style.setProperty('--primary-red', c);
-                    if (h) document.documentElement.style.setProperty('--accent-red-hover', h);
+                    var hex = c.replace('#', '');
+                    var r = 255, g = 0, b = 51;
+                    if (hex.length === 6) {
+                        r = parseInt(hex.substring(0, 2), 16) || 0;
+                        g = parseInt(hex.substring(2, 4), 16) || 0;
+                        b = parseInt(hex.substring(4, 6), 16) || 0;
+                    }
+                    var root = document.documentElement;
+                    root.style.setProperty('--accent-red', c);
+                    root.style.setProperty('--primary-red', c);
+                    root.style.setProperty('--accent-red-hover', h || c);
+                    root.style.setProperty('--accent-glow', 'rgba(' + r + ',' + g + ',' + b + ',0.45)');
+                    root.style.setProperty('--accent-subtle', 'rgba(' + r + ',' + g + ',' + b + ',0.16)');
+                    root.style.setProperty('--accent-subtle-hover', 'rgba(' + r + ',' + g + ',' + b + ',0.28)');
+                    root.style.setProperty('--accent-light', c);
+                    root.style.setProperty('--accent-gradient-liked', 'linear-gradient(135deg, ' + c + ', rgba(' + r + ',' + g + ',' + b + ',0.35))');
                 }
+            } catch (e) { }
                 var u = JSON.parse(localStorage.getItem('ytm_auth_user'));
                 var token = localStorage.getItem('ytm_auth_token');
                 if ((!u || !u.username) && token) {
@@ -118,12 +132,6 @@
                             d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
                     </svg>
                     <span class="desktop-only-text">Importer</span>
-                </button>
-                <button id="fullscreen-btn" class="icon-btn" title="Plein écran" aria-label="Plein écran"
-                    onclick="!document.fullscreenElement ? document.documentElement.requestFullscreen().catch(()=>{}) : document.exitFullscreen().catch(()=>{})">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                    </svg>
                 </button>
                 <div class="user-menu-wrapper" id="user-menu-wrapper">
                     <button id="auth-btn" class="btn secondary small auth-pill-btn" title="Compte utilisateur"

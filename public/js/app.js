@@ -2034,7 +2034,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Sidebar list (Includes Titres likés + Custom/Imported Playlists)
             const likedSidebarItem = `
         <div class="playlist-nav-item featured" data-playlist-id="liked_tracks" title="Titres likés">
-          <span style="color:#ff0033;">❤️ Titres likés (${favs.length})</span>
+          <span style="color:var(--accent-red);">❤️ Titres likés (${favs.length})</span>
         </div>
       `;
             this.dom.sidebarPlaylists.innerHTML = likedSidebarItem + playlists
@@ -2057,7 +2057,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Library grid: Show Titres likés card first + all user/imported playlists
             const likedCardHTML = `
         <div class="music-card featured-liked-card" data-playlist-id="liked_tracks">
-          <div class="card-thumb-wrapper" style="background: linear-gradient(135deg, #ff0033, #66001a);">
+          <div class="card-thumb-wrapper" style="background: var(--accent-gradient-liked, linear-gradient(135deg, var(--accent-red), rgba(0,0,0,0.6)));">
             <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ffffff;">
               <svg viewBox="0 0 24 24" width="56" height="56" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             </div>
@@ -2075,7 +2075,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="music-card" data-playlist-id="${p.id}">
               <div class="card-thumb-wrapper" style="background: linear-gradient(135deg, #2b2b2b, #111);">
                 ${cover ? `<img src="${cover}" alt="${this.escapeHtml(p.name)}" loading="lazy">` : `
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff0033;">
+                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">
                   <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
                 </div>`}
                 <div class="card-play-overlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
@@ -2143,7 +2143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (this.dom.playlistCoverEditBadge) this.dom.playlistCoverEditBadge.classList.add('hidden');
                 if (this.dom.playlistCoverBig) {
-                    this.dom.playlistCoverBig.style.background = 'linear-gradient(135deg, #ff0033, #66001a)';
+                    this.dom.playlistCoverBig.style.background = 'var(--accent-gradient-liked, linear-gradient(135deg, var(--accent-red), rgba(0,0,0,0.6)))';
                     this.dom.playlistCoverBig.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ffffff;">
               <svg viewBox="0 0 24 24" width="72" height="72" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
@@ -2164,6 +2164,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.dom.playlistPlayAllBtn.onclick = () => {
                     if (favs.length > 0) Player.playTrack(favs[0], favs);
                 };
+
+                // Predictive background pre-warming of first tracks in liked playlist
+                if (favs.length > 0 && window.API?.prefetchBatch) {
+                    API.prefetchBatch(favs.slice(0, 3).map(t => t.id));
+                }
 
                 this.switchView('playlist', false);
                 this.updateURL('/library/liked');
@@ -2233,7 +2238,7 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
                 } else {
                     this.dom.playlistCoverBig.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff0033;">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">
               <svg viewBox="0 0 24 24" width="72" height="72" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
             </div>
             ${isOwner ? `
@@ -2274,6 +2279,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.dom.playlistPlayAllBtn.onclick = () => {
                 if (pl.tracks && pl.tracks.length > 0) Player.playTrack(pl.tracks[0], pl.tracks);
             };
+
+            // Predictive background pre-warming of first tracks in custom playlist
+            if (pl.tracks && pl.tracks.length > 0 && window.API?.prefetchBatch) {
+                API.prefetchBatch(pl.tracks.slice(0, 3).map(t => t.id));
+            }
 
             this.dom.playlistDeleteBtn.onclick = () => {
                 if (confirm(`Supprimer définitivement la playlist "${pl.name}" ?`)) {
@@ -3233,7 +3243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="music-card" data-playlist-id="${p.id}">
               <div class="card-thumb-wrapper" style="background: linear-gradient(135deg, #2b2b2b, #111);">
                 ${p.cover ? `<img src="${p.cover}" alt="">` : `
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff0033;">
+                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">
                   <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
                 </div>`}
               </div>
@@ -3536,8 +3546,24 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         setAccentTheme(color, hoverColor, name) {
-            document.documentElement.style.setProperty('--accent-red', color);
-            document.documentElement.style.setProperty('--accent-red-hover', hoverColor || color);
+            if (!color) return;
+            const hex = color.replace('#', '');
+            let r = 255, g = 0, b = 51;
+            if (hex.length === 6) {
+                r = parseInt(hex.substring(0, 2), 16) || 0;
+                g = parseInt(hex.substring(2, 4), 16) || 0;
+                b = parseInt(hex.substring(4, 6), 16) || 0;
+            }
+            const root = document.documentElement;
+            root.style.setProperty('--accent-red', color);
+            root.style.setProperty('--primary-red', color);
+            root.style.setProperty('--accent-red-hover', hoverColor || color);
+            root.style.setProperty('--accent-glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
+            root.style.setProperty('--accent-subtle', `rgba(${r}, ${g}, ${b}, 0.16)`);
+            root.style.setProperty('--accent-subtle-hover', `rgba(${r}, ${g}, ${b}, 0.28)`);
+            root.style.setProperty('--accent-light', color);
+            root.style.setProperty('--accent-gradient-liked', `linear-gradient(135deg, ${color}, rgba(${r}, ${g}, ${b}, 0.35))`);
+
             try {
                 localStorage.setItem('ytm_accent_color', color);
                 localStorage.setItem('ytm_accent_hover', hoverColor || color);
@@ -3973,9 +3999,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fill();
             ctx.restore();
 
+            const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-red').trim() || '#ff0033';
+
             // Brand Header at top
             ctx.save();
-            ctx.fillStyle = '#ff0033';
+            ctx.fillStyle = accentColor;
             ctx.beginPath();
             ctx.arc(w / 2 - 110, 95, 14, 0, Math.PI * 2);
             ctx.fill();
@@ -4059,7 +4087,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ctx.stroke();
 
                     // Music quote icon
-                    ctx.fillStyle = '#ff0033';
+                    ctx.fillStyle = accentColor;
                     ctx.font = 'bold 40px serif';
                     ctx.textAlign = 'left';
                     ctx.fillText('“', cardX + 30, cardY + 60);

@@ -123,6 +123,18 @@ const API = {
     fetch(`/api/stream-url/${id}`).catch(() => {});
   },
 
+  prefetchBatch(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const toFetch = ids.filter(id => id && !this._prefetched.has(id));
+    toFetch.forEach(id => this._prefetched.add(id));
+    if (toFetch.length === 0) return;
+    fetch('/api/prefetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: toFetch })
+    }).catch(() => {});
+  },
+
   getDownloadUrl(id, title) {
     return `/api/download/${id}?title=${encodeURIComponent(title || 'audio')}`;
   },

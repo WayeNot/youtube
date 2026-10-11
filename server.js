@@ -84,9 +84,7 @@ function syncCookiesFile() {
 // In-flight extraction promises map to avoid duplicate concurrent yt-dlp processes
 const inFlightStreams = new Map();
 
-// Helper: Extract audio URL using fast in-memory cache + yt-dlp
-// NOTE: Google Video stream URLs are strictly bound to the outgoing IP of the server that resolved them.
-// Therefore, we keep the stream cache in memory per-instance to prevent cross-server IP 403 Forbidden errors.
+// Helper: Extract audio URL using fast in-memory cache + persistent DB + yt-dlp
 async function getAudioStreamUrl(videoId) {
     const now = Date.now();
     // 1. Check in-memory cache
@@ -95,12 +93,21 @@ async function getAudioStreamUrl(videoId) {
         return mem.url;
     }
 
-    // 2. Return active in-flight extraction if already solving
+    // 2. Check persistent DB cache (SQLite / Postgres)
+    try {
+        const dbCached = await db.getStreamCache(videoId);
+        if (dbCached && dbCached.streamUrl && dbCached.expiresAt > now) {
+            streamCache.set(videoId, { url: dbCached.streamUrl, expiresAt: dbCached.expiresAt });
+            return dbCached.streamUrl;
+        }
+    } catch (e) { }
+
+    // 3. Return active in-flight extraction if already solving
     if (inFlightStreams.has(videoId)) {
         return inFlightStreams.get(videoId);
     }
 
-    // 3. Ensure cookies file exists if env variable is set
+    // 4. Ensure cookies file exists if env variable is set
     const hasCookies = syncCookiesFile();
 
     const fs = require('fs');
@@ -111,6 +118,8 @@ async function getAudioStreamUrl(videoId) {
         '-f', '251/140/250/ba/b/bestaudio/best',
         '--no-playlist',
         '--no-warnings',
+        '--no-check-certificates',
+        '--prefer-free-formats',
         '--cache-dir', cacheDir,
         '--js-runtimes', `node:${process.execPath}`
     ];
@@ -121,7 +130,7 @@ async function getAudioStreamUrl(videoId) {
 
     ytdlpArgs.push('--', `https://www.youtube.com/watch?v=${videoId}`);
 
-    // 4. Extract stream with yt-dlp and deduplicate concurrent calls
+    // 5. Extract stream with yt-dlp and deduplicate concurrent calls
     const streamPromise = new Promise((resolve, reject) => {
         execFile(
             YTDLP_PATH,
@@ -140,9 +149,15 @@ async function getAudioStreamUrl(videoId) {
                     return reject(new Error('Invalid audio stream URL returned'));
                 }
 
-                const expiresAt = Date.now() + config.cacheTtl.stream;
+                // 5 hours TTL for persistent stream URL
+                const ttl = Math.max(config.cacheTtl.stream, 5 * 3600 * 1000);
+                const expiresAt = Date.now() + ttl;
                 // Save to instance in-memory cache
                 streamCache.set(videoId, { url: streamUrl, expiresAt });
+                // Persist to database cache
+                try {
+                    await db.setStreamCache(videoId, streamUrl, expiresAt);
+                } catch (e) { }
 
                 resolve(streamUrl);
             }
@@ -798,6 +813,20 @@ app.get('/api/stream-url/:id', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// 4b. Batch Pre-fetch endpoint for background predictive stream pre-warming
+app.post('/api/prefetch', (req, res) => {
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return res.json({ success: true, count: 0 });
+    }
+    const cleanIds = ids.filter(id => typeof id === 'string' && /^[\w-]{11}$/.test(id)).slice(0, 5);
+    // Asynchronously resolve in background without blocking response
+    cleanIds.forEach(id => {
+        getAudioStreamUrl(id).catch(() => {});
+    });
+    res.json({ success: true, count: cleanIds.length });
 });
 
 // 5. Download track as Audio file
