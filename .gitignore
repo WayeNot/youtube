@@ -5,3 +5,4 @@ bin/
 *.db
 .DS_Store
 cookies.txt
+.yt-dlp-cache/

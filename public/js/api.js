@@ -112,6 +112,14 @@ const API = {
     return `/api/stream/${id}`;
   },
 
+  _prefetched: new Set(),
+  prefetch(id) {
+    if (!id || this._prefetched.has(id)) return;
+    this._prefetched.add(id);
+    // Silent background pre-warm of stream cache
+    fetch(`/api/stream-url/${id}`).catch(() => {});
+  },
+
   getDownloadUrl(id, title) {
     return `/api/download/${id}?title=${encodeURIComponent(title || 'audio')}`;
   },

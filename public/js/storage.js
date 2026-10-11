@@ -81,6 +81,10 @@ const Storage = {
   async pushToCloud() {
     const token = this.getToken();
     if (!token) return;
+    if (this._isSyncing) {
+      this.scheduleCloudSync();
+      return;
+    }
 
     // Check online status
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -89,6 +93,7 @@ const Storage = {
       return;
     }
 
+    this._isSyncing = true;
     try {
       const res = await fetch('/api/user/sync', {
         method: 'POST',
@@ -112,6 +117,8 @@ const Storage = {
     } catch (e) {
       console.warn('Cloud sync error (réseau indisponible, persistance locale conservée):', e.message);
       localStorage.setItem('ytm_pending_sync', 'true');
+    } finally {
+      this._isSyncing = false;
     }
   },
 

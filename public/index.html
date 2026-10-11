@@ -809,6 +809,9 @@
 
     <!-- MOBILE FULLSCREEN NOW PLAYING MODAL -->
     <div id="mobile-fullscreen-player" class="mobile-fullscreen-player hidden">
+      <div class="mobile-drag-handle-bar">
+        <span class="mobile-drag-indicator"></span>
+      </div>
       <div class="mobile-player-header">
         <button id="close-fullscreen-player-btn" class="icon-btn" aria-label="Réduire">
           <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
@@ -825,9 +828,10 @@
           <img id="mobile-big-cover" src="/icons/icon.svg" alt="Cover" class="mobile-big-cover">
         </div>
 
-        <!-- Mobile Tabs (Lecteur / File d'attente) -->
+        <!-- Mobile Tabs (Lecteur / Paroles / File d'attente) -->
         <div class="mobile-player-tabs">
           <button class="mobile-tab-btn active" data-tab="meta">Lecteur</button>
+          <button class="mobile-tab-btn" data-tab="lyrics">Paroles</button>
           <button class="mobile-tab-btn" data-tab="queue">File d'attente</button>
         </div>
 
@@ -890,7 +894,15 @@
           </div>
         </div>
 
-        <!-- Tab 2: Queue -->
+        <!-- Tab 2: Lyrics -->
+        <div id="mobile-tab-lyrics" class="mobile-tab-content">
+          <div class="lyrics-toolbar" style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
+            <button id="mobile-copy-lyrics-btn" class="text-link-btn" onclick="const t = document.getElementById('mobile-lyrics-container')?.innerText; if(t) { navigator.clipboard.writeText(t); window.App && window.App.showToast('Paroles copiées !'); }">Copier les paroles</button>
+          </div>
+          <div id="mobile-lyrics-container" class="lyrics-container mobile-lyrics-view"></div>
+        </div>
+
+        <!-- Tab 3: Queue -->
         <div id="mobile-tab-queue" class="mobile-tab-content">
           <div class="queue-toolbar">
             <label class="toggle-label">

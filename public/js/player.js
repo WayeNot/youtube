@@ -252,7 +252,14 @@ class PlayerEngine {
 
     // Set audio source
     const streamUrl = API.getStreamUrl(track.id);
+    this.audio.preload = 'auto';
     this.audio.src = streamUrl;
+
+    // Aggressively prefetch the upcoming track in background so next click is instant
+    const nextTrack = this.queue[this.currentIndex + 1];
+    if (nextTrack) {
+      API.prefetch(nextTrack.id);
+    }
 
     try {
       if (this.audioCtx && this.audioCtx.state === 'suspended') {
@@ -282,8 +289,7 @@ class PlayerEngine {
     this.prefetchedNext = true;
     const nextTrack = this.queue[this.currentIndex + 1];
     if (nextTrack) {
-      // Warm up backend stream cache
-      fetch(`/api/stream/${nextTrack.id}`, { headers: { Range: 'bytes=0-10' } }).catch(() => {});
+      API.prefetch(nextTrack.id);
     }
   }
 

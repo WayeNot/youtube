@@ -97,13 +97,13 @@ async function getAudioStreamUrl(videoId) {
 
     const fs = require('fs');
     const cookiesPath = path.join(__dirname, 'cookies.txt');
-    const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
-
+    const cacheDir = path.join(__dirname, '.yt-dlp-cache');
     const ytdlpArgs = [
         '-g',
-        '-f', 'bestaudio/ba/b/best',
+        '-f', '251/140/250/ba/b/bestaudio/best',
         '--no-playlist',
         '--no-warnings',
+        '--cache-dir', cacheDir,
         '--js-runtimes', `node:${process.execPath}`
     ];
 
@@ -726,8 +726,13 @@ app.get('/api/stream/:id', async (req, res) => {
             });
             res.setHeader('Cache-Control', 'public, max-age=3600');
 
-            const reader = freshUpstream.body.getReader();
-            return pumpStream(reader, res);
+            const { Readable } = require('stream');
+            if (freshUpstream.body) {
+                Readable.fromWeb(freshUpstream.body).pipe(res);
+            } else {
+                res.end();
+            }
+            return;
         }
 
         // Forward response status (200 or 206) and headers
@@ -738,8 +743,12 @@ app.get('/api/stream/:id', async (req, res) => {
         });
         res.setHeader('Cache-Control', 'public, max-age=3600');
 
-        const reader = upstreamRes.body.getReader();
-        await pumpStream(reader, res);
+        const { Readable } = require('stream');
+        if (upstreamRes.body) {
+            Readable.fromWeb(upstreamRes.body).pipe(res);
+        } else {
+            res.end();
+        }
     } catch (err) {
         if (err.name === 'AbortError') return;
         console.error(`Streaming error for ${videoId}:`, err.message);

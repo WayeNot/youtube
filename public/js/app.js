@@ -443,6 +443,23 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     bindListeners() {
+      // Touch & Hover Preventive Audio Prefetching for Instant Playback
+      document.addEventListener('pointerenter', (e) => {
+        const trackEl = e.target && e.target.closest && e.target.closest('[data-track-id]');
+        if (trackEl) {
+          const id = trackEl.getAttribute('data-track-id');
+          if (id) API.prefetch(id);
+        }
+      }, { capture: true, passive: true });
+
+      document.addEventListener('touchstart', (e) => {
+        const trackEl = e.target && e.target.closest && e.target.closest('[data-track-id]');
+        if (trackEl) {
+          const id = trackEl.getAttribute('data-track-id');
+          if (id) API.prefetch(id);
+        }
+      }, { passive: true });
+
       // Sidebar Toggle
       this.dom.sidebarToggleBtn.addEventListener('click', () => {
         this.dom.appSidebar.classList.toggle('collapsed');
@@ -649,6 +666,18 @@ document.addEventListener('DOMContentLoaded', () => {
       this.dom.closeFullscreenPlayerBtn.addEventListener('click', () => {
         this.closeMobileFullscreenPlayer();
       });
+
+      // Swipe down gesture to dismiss mobile fullscreen player
+      let touchStartY = 0;
+      this.dom.mobileFullscreenPlayer.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+      this.dom.mobileFullscreenPlayer.addEventListener('touchend', (e) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        if (touchEndY - touchStartY > 90) {
+          this.closeMobileFullscreenPlayer();
+        }
+      }, { passive: true });
 
       // Mobile Fullscreen Tabs (Meta / Lyrics / Queue)
       document.querySelectorAll('.mobile-tab-btn').forEach((tab) => {

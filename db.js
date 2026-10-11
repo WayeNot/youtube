@@ -408,30 +408,50 @@ const db = {
         `;
       }
 
-      // 3. Synchronize playlists & playlist_tracks relational tables
-      await neonSql`DELETE FROM playlists WHERE user_id = ${userId}`;
-      for (const pl of plsArr) {
-        if (!pl || !pl.id) continue;
-        const plTime = pl.createdAt || updatedAt;
-        const isPub = pl.isPublic !== false;
-        await neonSql`
-          INSERT INTO playlists (id, user_id, name, is_public, created_at, updated_at)
-          VALUES (${pl.id}, ${userId}, ${pl.name || 'Playlist'}, ${isPub}, ${plTime}, ${updatedAt})
-          ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            is_public = EXCLUDED.is_public,
-            updated_at = EXCLUDED.updated_at
-        `;
-        if (Array.isArray(pl.tracks)) {
-          for (let i = 0; i < pl.tracks.length; i++) {
-            const tr = pl.tracks[i];
-            if (!tr || !tr.id) continue;
-            await neonSql`
-              INSERT INTO playlist_tracks (playlist_id, track_id, title, artist, thumbnail, duration, duration_sec, position, added_at)
-              VALUES (${pl.id}, ${tr.id}, ${tr.title || 'Inconnu'}, ${tr.artist || ''}, ${tr.thumbnail || ''}, ${tr.duration || ''}, ${tr.durationSec || 0}, ${i}, ${tr.addedAt || plTime})
-            `;
+      // 3. Synchronize playlists & playlist_tracks relational tables safely
+      try {
+        const validPlIds = plsArr.filter(p => p && p.id).map(p => p.id);
+        if (validPlIds.length === 0) {
+          await neonSql`DELETE FROM playlists WHERE user_id = ${userId}`;
+        } else {
+          // Delete playlists no longer present
+          await neonSql`DELETE FROM playlists WHERE user_id = ${userId} AND id NOT IN ${neonSql(validPlIds)}`;
+        }
+
+        for (const pl of plsArr) {
+          if (!pl || !pl.id) continue;
+          const plTime = pl.createdAt || updatedAt;
+          const isPub = pl.isPublic !== false;
+          await neonSql`
+            INSERT INTO playlists (id, user_id, name, is_public, created_at, updated_at)
+            VALUES (${pl.id}, ${userId}, ${pl.name || 'Playlist'}, ${isPub}, ${plTime}, ${updatedAt})
+            ON CONFLICT (id) DO UPDATE SET
+              user_id = EXCLUDED.user_id,
+              name = EXCLUDED.name,
+              is_public = EXCLUDED.is_public,
+              updated_at = EXCLUDED.updated_at
+          `;
+
+          // Clear existing tracks for this playlist before inserting updated ones
+          await neonSql`DELETE FROM playlist_tracks WHERE playlist_id = ${pl.id}`;
+
+          if (Array.isArray(pl.tracks) && pl.tracks.length > 0) {
+            for (let i = 0; i < pl.tracks.length; i++) {
+              const tr = pl.tracks[i];
+              if (!tr || !tr.id) continue;
+              try {
+                await neonSql`
+                  INSERT INTO playlist_tracks (playlist_id, track_id, title, artist, thumbnail, duration, duration_sec, position, added_at)
+                  VALUES (${pl.id}, ${tr.id}, ${tr.title || 'Inconnu'}, ${tr.artist || ''}, ${tr.thumbnail || ''}, ${tr.duration || ''}, ${tr.durationSec || 0}, ${i}, ${tr.addedAt || plTime})
+                `;
+              } catch (trackInsertErr) {
+                // Ignore transient concurrent track conflict
+              }
+            }
           }
         }
+      } catch (plSyncErr) {
+        console.warn('⚠️ Playlist relational sync warning (user_data json is safely preserved):', plSyncErr.message);
       }
 
       // 4. Synchronize listen_history relational table (keep latest 100)
