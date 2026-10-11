@@ -101,15 +101,13 @@ async function getAudioStreamUrl(videoId) {
 
     const ytdlpArgs = [
         '-g',
-        '-f', 'ba/b',
+        '-f', 'bestaudio/ba/b/best',
         '--no-playlist',
         '--no-warnings'
     ];
 
     if (hasCookies) {
         ytdlpArgs.push('--cookies', cookiesPath);
-    } else {
-        ytdlpArgs.push('--extractor-args', 'youtube:player_client=android_embedded');
     }
 
     ytdlpArgs.push('--', `https://www.youtube.com/watch?v=${videoId}`);
@@ -672,6 +670,22 @@ app.get('/api/debug', (req, res) => {
             platform: process.platform,
             arch: process.arch
         });
+    });
+});
+
+// Diagnostic endpoint to check available formats directly from Render
+app.get('/api/test-formats/:id', (req, res) => {
+    const videoId = req.params.id;
+    const fs = require('fs');
+    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
+    const args = ['-F', '--no-warnings'];
+    if (hasCookies) args.push('--cookies', cookiesPath);
+    args.push('--', `https://www.youtube.com/watch?v=${videoId}`);
+
+    const { execFile } = require('child_process');
+    execFile(YTDLP_PATH, args, { timeout: 20000 }, (err, stdout, stderr) => {
+        res.type('text/plain').send((stdout || '') + '\n' + (stderr || '') + (err ? '\nError: ' + err.message : ''));
     });
 });
 
