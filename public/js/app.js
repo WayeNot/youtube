@@ -162,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 favoritesList: document.getElementById('favorites-list'),
                 playlistsGrid: document.getElementById('playlists-grid'),
                 historyList: document.getElementById('history-list'),
+                sidebarCollections: document.getElementById('sidebar-collections'),
                 sidebarPlaylists: document.getElementById('sidebar-playlists'),
                 playAllFavoritesBtn: document.getElementById('play-all-favorites-btn'),
                 shuffleFavoritesBtn: document.getElementById('shuffle-favorites-btn'),
@@ -1200,11 +1201,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // If switching away from playlist view, clear active playlist highlight
             if (viewName !== 'playlist') {
                 this.currentActivePlaylistId = null;
-                if (this.dom.sidebarPlaylists) {
-                    this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach(el => {
-                        el.classList.remove('active');
-                    });
-                }
+                document.querySelectorAll('.playlist-nav-item').forEach(el => {
+                    el.classList.remove('active');
+                });
             }
 
             // Update View sections
@@ -2069,36 +2068,87 @@ document.addEventListener('DOMContentLoaded', () => {
         // -------------------------------------------------------------
         // PLAYLISTS & LIBRARY
         // -------------------------------------------------------------
-        renderPlaylists() {
+        async renderPlaylists() {
             const playlists = Storage.getPlaylists();
             const favs = Storage.getFavorites();
+            let offlineTracks = [];
+            try {
+                if (Storage.getAllOfflineTracks) {
+                    offlineTracks = await Storage.getAllOfflineTracks();
+                }
+            } catch (e) {}
 
-            // Sidebar list (Includes Titres likés + Custom/Imported Playlists)
-            const isLikedActive = String(this.currentActivePlaylistId) === 'liked_tracks';
-            const likedSidebarItem = `
-        <div class="playlist-nav-item ${isLikedActive ? 'active' : ''}" data-playlist-id="liked_tracks" title="Titres likés">
-          <span>❤️ Titres likés (${favs.length})</span>
-        </div>
-      `;
-            this.dom.sidebarPlaylists.innerHTML = likedSidebarItem + playlists
-                .map(
-                    (p) => {
-                        const isActive = String(this.currentActivePlaylistId) === String(p.id);
-                        return `
-            <div class="playlist-nav-item ${isActive ? 'active' : ''}" data-playlist-id="${p.id}" title="${this.escapeHtml(p.name)}">
-              <span>${this.escapeHtml(p.name)} (${p.tracks ? p.tracks.length : 0})</span>
-            </div>
-          `;
-                    }
-                )
-                .join('');
+            // 1. Sidebar Collections (Titres likés & Musiques téléchargées)
+            if (this.dom.sidebarCollections) {
+                const isLikedActive = String(this.currentActivePlaylistId) === 'liked_tracks';
+                const isDownloadsActive = String(this.currentActivePlaylistId) === 'downloaded_tracks';
 
-            this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
-                item.addEventListener('click', () => {
-                    const id = item.getAttribute('data-playlist-id');
-                    this.openPlaylistView(id);
+                this.dom.sidebarCollections.innerHTML = `
+                    <div class="playlist-nav-item collection-item ${isLikedActive ? 'active' : ''}" data-playlist-id="liked_tracks" title="Titres likés">
+                        <div class="sidebar-item-icon liked-icon">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </div>
+                        <div class="sidebar-item-text">
+                            <span class="sidebar-item-title">Titres likés</span>
+                            <span class="sidebar-item-count">${favs.length} titre${favs.length > 1 ? 's' : ''}</span>
+                        </div>
+                    </div>
+                    <div class="playlist-nav-item collection-item ${isDownloadsActive ? 'active' : ''}" data-playlist-id="downloaded_tracks" title="Musiques téléchargées">
+                        <div class="sidebar-item-icon download-icon">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                        </div>
+                        <div class="sidebar-item-text">
+                            <span class="sidebar-item-title">Téléchargements</span>
+                            <span class="sidebar-item-count">${offlineTracks.length} hors-ligne</span>
+                        </div>
+                    </div>
+                `;
+
+                this.dom.sidebarCollections.querySelectorAll('.playlist-nav-item').forEach((item) => {
+                    item.addEventListener('click', () => {
+                        const id = item.getAttribute('data-playlist-id');
+                        this.openPlaylistView(id);
+                    });
                 });
-            });
+            }
+
+            // 2. Sidebar Playlists de l'utilisateur
+            if (this.dom.sidebarPlaylists) {
+                if (playlists.length === 0) {
+                    this.dom.sidebarPlaylists.innerHTML = `
+                        <div class="sidebar-empty-playlists">
+                            <span>Aucune playlist</span>
+                        </div>
+                    `;
+                } else {
+                    this.dom.sidebarPlaylists.innerHTML = playlists
+                        .map((p) => {
+                            const isActive = String(this.currentActivePlaylistId) === String(p.id);
+                            const count = p.tracks ? p.tracks.length : 0;
+                            const cover = p.customCover || (p.tracks && p.tracks[0] ? p.tracks[0].thumbnail : null);
+                            return `
+                                <div class="playlist-nav-item user-playlist-item ${isActive ? 'active' : ''}" data-playlist-id="${p.id}" title="${this.escapeHtml(p.name)}">
+                                    <div class="sidebar-item-icon user-pl-icon">
+                                        ${cover ? `<img src="${this.escapeHtml(cover)}" alt="" class="sidebar-pl-thumb" />` : `
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>`}
+                                    </div>
+                                    <div class="sidebar-item-text">
+                                        <span class="sidebar-item-title">${this.escapeHtml(p.name)}</span>
+                                        <span class="sidebar-item-count">${count} titre${count > 1 ? 's' : ''}</span>
+                                    </div>
+                                </div>
+                            `;
+                        })
+                        .join('');
+
+                    this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
+                        item.addEventListener('click', () => {
+                            const id = item.getAttribute('data-playlist-id');
+                            this.openPlaylistView(id);
+                        });
+                    });
+                }
+            }
 
             // Library grid: Show Titres likés card first + all user/imported playlists
             const likedCardHTML = `
@@ -2172,10 +2222,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async openPlaylistView(playlistId, username = null) {
             this.currentActivePlaylistId = playlistId;
-            if (this.dom.sidebarPlaylists) {
-                this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
+            const updateNavHighlights = () => {
+                document.querySelectorAll('.playlist-nav-item').forEach((item) => {
                     item.classList.toggle('active', item.getAttribute('data-playlist-id') === String(playlistId));
                 });
+            };
+            updateNavHighlights();
+
+            if (playlistId === 'downloaded_tracks') {
+                let offlineTracks = [];
+                try {
+                    if (Storage.getAllOfflineTracks) {
+                        offlineTracks = await Storage.getAllOfflineTracks();
+                    }
+                } catch (e) {}
+
+                this.currentOpenPlaylist = {
+                    id: 'downloaded_tracks',
+                    name: '📥 Musiques téléchargées',
+                    tracks: offlineTracks,
+                    isPublic: false
+                };
+                this.dom.playlistDetailTitle.textContent = '📥 Musiques téléchargées';
+                this.dom.playlistDetailMeta.textContent = `${offlineTracks.length} titres hors-ligne`;
+                this.dom.playlistDeleteBtn.classList.add('hidden');
+                if (this.dom.playlistPrivacyToggleBtn) this.dom.playlistPrivacyToggleBtn.classList.add('hidden');
+                if (this.dom.playlistPrivacyBadge) {
+                    this.dom.playlistPrivacyBadge.className = 'badge-status private';
+                    this.dom.playlistPrivacyBadge.textContent = '💾 Disponible hors-ligne';
+                }
+                if (this.dom.playlistCoverEditBadge) this.dom.playlistCoverEditBadge.classList.add('hidden');
+                if (this.dom.playlistCoverBig) {
+                    this.dom.playlistCoverBig.style.background = 'linear-gradient(135deg, #10b981, rgba(6, 78, 59, 0.8))';
+                    this.dom.playlistCoverBig.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ffffff;">
+              <svg viewBox="0 0 24 24" width="72" height="72" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+            </div>
+          `;
+                    this.dom.playlistCoverBig.onclick = null;
+                }
+
+                if (offlineTracks.length === 0) {
+                    this.dom.playlistTracksList.innerHTML = '<p class="empty-msg">Aucun titre téléchargé hors-ligne. Vous pouvez télécharger des titres depuis le lecteur ou les playlists.</p>';
+                } else {
+                    this.dom.playlistTracksList.innerHTML = offlineTracks
+                        .map((track, idx) => this.createTrackRowHTML(track, idx, true, 'downloaded_tracks'))
+                        .join('');
+                    this.attachTrackClickHandlers(this.dom.playlistTracksList);
+                }
+
+                this.dom.playlistPlayAllBtn.onclick = () => {
+                    if (offlineTracks.length > 0) Player.playTrack(offlineTracks[0], offlineTracks);
+                };
+
+                this.switchView('playlist', false);
+                this.currentActivePlaylistId = 'downloaded_tracks';
+                updateNavHighlights();
+                this.updateURL('/library/downloads');
+                return;
             }
 
             if (playlistId === 'liked_tracks') {
@@ -2225,11 +2329,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 this.switchView('playlist', false);
                 this.currentActivePlaylistId = 'liked_tracks';
-                if (this.dom.sidebarPlaylists) {
-                    this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
-                        item.classList.toggle('active', item.getAttribute('data-playlist-id') === 'liked_tracks');
-                    });
-                }
+                updateNavHighlights();
                 this.updateURL('/library/liked');
                 return;
             }
@@ -2354,11 +2454,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.switchView('playlist', false);
             this.currentActivePlaylistId = pl.id;
-            if (this.dom.sidebarPlaylists) {
-                this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
-                    item.classList.toggle('active', item.getAttribute('data-playlist-id') === String(pl.id));
-                });
-            }
+            updateNavHighlights();
             const ownerName = pl.ownerUsername || (currentUser ? currentUser.username : 'user');
             this.updateURL(`/user/${encodeURIComponent(ownerName)}/playlist/${encodeURIComponent(pl.name)}`);
         },

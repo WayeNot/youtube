@@ -177,11 +177,19 @@ async function getAudioStreamUrl(videoId) {
     const streamPromise = (async () => {
         let lastErr = null;
 
-        // Attempt 1: Android Music client (never blocked on Datacenters/Render, fastest extraction)
+        // Attempt 1: TV Embedded client (bypasses bot verification completely on datacenter/cloud IPs)
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=tv_embedded'], '251/140/ba/b');
+        } catch (err) {
+            console.warn(`yt-dlp tv_embedded attempt failed for ${videoId}: ${err.message}. Retrying with android_music...`);
+            lastErr = err;
+        }
+
+        // Attempt 2: Android Music client
         try {
             return await runYtDlp(['--extractor-args', 'youtube:player_client=android_music,android'], '140/251/ba/b');
         } catch (err) {
-            console.warn(`yt-dlp android_music attempt failed for ${videoId}: ${err.message}. Retrying with android...`);
+            console.warn(`yt-dlp android_music attempt failed for ${videoId}: ${err.message}. Retrying with cookies...`);
             lastErr = err;
         }
 

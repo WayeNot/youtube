@@ -458,31 +458,115 @@ html, body {
   letter-spacing: 0.5px;
 }
 
+.sidebar-collections-list,
 .sidebar-playlists-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   margin-top: 4px;
 }
 
 .playlist-nav-item {
   display: flex;
   align-items: center;
+  gap: 12px;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-secondary);
   text-decoration: none;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: all var(--transition-fast);
+  border-left: 3px solid transparent;
 }
 
 .playlist-nav-item:hover {
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
+  transform: translateX(2px);
+}
+
+.playlist-nav-item .sidebar-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.playlist-nav-item .sidebar-item-icon.liked-icon {
+  background: linear-gradient(135deg, rgba(255, 0, 51, 0.25), rgba(255, 0, 51, 0.08));
+  color: var(--accent-red);
+}
+
+.playlist-nav-item .sidebar-item-icon.download-icon {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.08));
+  color: #10b981;
+}
+
+.playlist-nav-item .sidebar-item-icon.user-pl-icon {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.playlist-nav-item .sidebar-pl-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.playlist-nav-item .sidebar-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.playlist-nav-item .sidebar-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-nav-item .sidebar-item-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-nav-item.active {
+  border-left: 3px solid var(--accent-red) !important;
+  padding-left: 10px !important;
+  background: var(--accent-subtle) !important;
+}
+
+.playlist-nav-item.active .sidebar-item-title {
+  color: var(--accent-red) !important;
+  font-weight: 700 !important;
+}
+
+.playlist-nav-item.active .sidebar-item-count {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.sidebar-empty-playlists {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .sidebar-footer {
@@ -4182,19 +4266,7 @@ textarea#import-text-input:focus {
   color: var(--accent-red);
 }
 
-/* Playlist nav item in sidebar — only active item gets highlighted */
-.playlist-nav-item.active {
-  border-left: 3px solid var(--accent-red) !important;
-  padding-left: 9px !important;
-  background: var(--accent-subtle) !important;
-  color: var(--accent-red) !important;
-  font-weight: 700 !important;
-}
 
-.playlist-nav-item.active span {
-  color: var(--accent-red) !important;
-  font-weight: 700 !important;
-}
 
 /* Library tab transitions */
 .library-tab {
@@ -5455,19 +5527,7 @@ textarea#import-text-input:focus {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Sidebar Playlist Active State (Identique à Titres likés) */
-.playlist-nav-item.active {
-  border-left: 3px solid var(--accent-red) !important;
-  padding-left: 9px !important;
-  background: var(--accent-subtle) !important;
-  color: #ffffff !important;
-  font-weight: 600;
-}
 
-.playlist-nav-item.active span {
-  color: var(--accent-red) !important;
-  font-weight: 600;
-}
 
 /* Playlist Creation Cover Upload Section */
 .create-pl-cover-section {
