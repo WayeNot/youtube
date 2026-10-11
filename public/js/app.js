@@ -2074,10 +2074,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const favs = Storage.getFavorites();
 
             // Sidebar list (Includes Titres likés + Custom/Imported Playlists)
-            const isLikedActive = this.currentActivePlaylistId === 'liked_tracks';
+            const isLikedActive = String(this.currentActivePlaylistId) === 'liked_tracks';
             const likedSidebarItem = `
-        <div class="playlist-nav-item featured ${isLikedActive ? 'active' : ''}" data-playlist-id="liked_tracks" title="Titres likés">
-          <span style="color:var(--accent-red);">❤️ Titres likés (${favs.length})</span>
+        <div class="playlist-nav-item ${isLikedActive ? 'active' : ''}" data-playlist-id="liked_tracks" title="Titres likés">
+          <span>❤️ Titres likés (${favs.length})</span>
         </div>
       `;
             this.dom.sidebarPlaylists.innerHTML = likedSidebarItem + playlists

@@ -129,7 +129,7 @@ async function getAudioStreamUrl(videoId) {
             execFile(
                 YTDLP_PATH,
                 args,
-                { timeout: 12000 },
+                { timeout: 7000 },
                 (err, stdout, stderr) => {
                     if (err) {
                         const errMsg = (stderr || stdout || err.message || '').trim();
@@ -146,27 +146,35 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: Fast Android client first (no JS challenge required, < 2s response)
+    // 5. Extract stream with yt-dlp: Web Embedded client first (bypasses bot verification on datacenter IPs)
     const streamPromise = (async () => {
         let lastErr = null;
 
-        // Attempt 1: Ultra-fast Android client (instant direct streaming without n-sig JS challenges)
+        // Attempt 1: Web Embedded client (never triggers 'Sign in to confirm you are not a bot' on datacenters)
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], '251/140/ba/b');
+        } catch (err) {
+            console.warn(`yt-dlp web_embedded attempt failed for ${videoId}: ${err.message}. Retrying with mweb...`);
+            lastErr = err;
+        }
+
+        // Attempt 2: MWeb client
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=mweb'], '140/251/ba/b');
+        } catch (err) {
+            console.warn(`yt-dlp mweb attempt failed for ${videoId}: ${err.message}. Retrying with android...`);
+            lastErr = err;
+        }
+
+        // Attempt 3: Fast Android client
         try {
             return await runYtDlp(['--extractor-args', 'youtube:player_client=android'], '140/251/ba/b');
         } catch (err) {
-            console.warn(`yt-dlp fast android attempt failed for ${videoId}: ${err.message}. Retrying with android,web...`);
+            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying with cookies/web...`);
             lastErr = err;
         }
 
-        // Attempt 2: Hybrid android,web client
-        try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=android,web'], '251/140/ba/b');
-        } catch (err) {
-            console.warn(`yt-dlp hybrid attempt failed for ${videoId}: ${err.message}. Trying cookies/web fallback...`);
-            lastErr = err;
-        }
-
-        // Attempt 3: With cookies if present
+        // Attempt 4: With cookies if present
         if (hasCookies) {
             try {
                 return await runYtDlp(['--cookies', cookiesPath], '251/140/ba/b');
@@ -176,7 +184,7 @@ async function getAudioStreamUrl(videoId) {
             }
         }
 
-        // Attempt 4: Standard default
+        // Attempt 5: Ba/b default
         try {
             return await runYtDlp([], 'ba/b');
         } catch (err) {
