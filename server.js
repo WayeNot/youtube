@@ -619,6 +619,29 @@ app.get('/api/album/:id', async (req, res) => {
   }
 });
 
+// Diagnostic endpoint to check environment & yt-dlp binary
+app.get('/api/debug', (req, res) => {
+  const fs = require('fs');
+  const exists = fs.existsSync(YTDLP_PATH);
+  let size = 0;
+  if (exists) {
+    try { size = fs.statSync(YTDLP_PATH).size; } catch(e) {}
+  }
+  const { execFile } = require('child_process');
+  execFile(YTDLP_PATH, ['--version'], { timeout: 4000 }, (err, stdout, stderr) => {
+    res.json({
+      ytdlpPath: YTDLP_PATH,
+      exists,
+      size,
+      version: stdout ? stdout.trim() : null,
+      err: err ? err.message : null,
+      stderr: stderr ? stderr.trim() : null,
+      platform: process.platform,
+      arch: process.arch
+    });
+  });
+});
+
 // 3. Audio Streaming Proxy with HTTP Range Support
 app.get('/api/stream/:id', async (req, res) => {
   const videoId = req.params.id;
