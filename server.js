@@ -93,8 +93,9 @@ async function getAudioStreamUrl(videoId) {
       { timeout: 20000 },
       async (err, stdout, stderr) => {
         if (err) {
-          console.error(`yt-dlp error for ${videoId}:`, stderr || err.message);
-          return reject(new Error('Failed to extract audio stream URL'));
+          const errMsg = stderr ? stderr.trim() : err.message;
+          console.error(`yt-dlp error for ${videoId}:`, errMsg);
+          return reject(new Error(errMsg || 'Failed to extract audio stream URL'));
         }
         const lines = stdout.trim().split('\n');
         const streamUrl = lines[0]?.trim();
