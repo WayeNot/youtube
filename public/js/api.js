@@ -76,10 +76,14 @@ const API = {
     }
   },
 
-  async getRelated(id) {
+  async getRelated(id, artist = '', title = '') {
     if (!id) return [];
     try {
-      const res = await fetch(`/api/related/${id}`);
+      const q = new URLSearchParams();
+      if (artist) q.set('artist', artist);
+      if (title) q.set('title', title);
+      const queryStr = q.toString() ? `?${q.toString()}` : '';
+      const res = await fetch(`/api/related/${id}${queryStr}`);
       const data = await res.json();
       return data.results || [];
     } catch (err) {

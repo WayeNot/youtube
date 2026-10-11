@@ -200,7 +200,7 @@ class PlayerEngine {
     }
   }
 
-  // Web Audio Equalizer (5-Band) & Analyser for Visualizer
+  // Web Audio Equalizer (5-Band), 3D Convolver Reverb & Analyser
   initEqualizer() {
     if (this.isEqInitialized) return;
     try {
@@ -231,24 +231,80 @@ class PlayerEngine {
       this.compressor.attack.setValueAtTime(0.003, this.audioCtx.currentTime);
       this.compressor.release.setValueAtTime(0.25, this.audioCtx.currentTime);
 
+      // ConvolverNode for 3D Spatial Reverb & Acoustics
+      this.convolver = this.audioCtx.createConvolver();
+      this.convolverGain = this.audioCtx.createGain();
+      this.convolverGain.gain.setValueAtTime(0, this.audioCtx.currentTime); // Wet level (0 = dry)
+
+      this.dryGain = this.audioCtx.createGain();
+      this.dryGain.gain.setValueAtTime(1.0, this.audioCtx.currentTime); // Dry level
+
       // GainNode for universal volume & mute control (required on iOS/Mobile & Web Audio graph)
       this.gainNode = this.audioCtx.createGain();
       const currentVol = this.audio.muted ? 0 : (this.audio.volume ?? 1);
       this.gainNode.gain.setValueAtTime(currentVol, this.audioCtx.currentTime);
 
-      // Connect filters through compressor and gainNode to destination
+      // Connect filters through compressor
       prevNode.connect(this.compressor);
-      this.compressor.connect(this.gainNode);
+
+      // Split into Dry and Wet (Convolver) paths
+      this.compressor.connect(this.dryGain);
+      this.compressor.connect(this.convolver);
+      this.convolver.connect(this.convolverGain);
+
+      // Sum Dry and Wet into Master GainNode
+      this.dryGain.connect(this.gainNode);
+      this.convolverGain.connect(this.gainNode);
       this.gainNode.connect(this.audioCtx.destination);
+
       this.isEqInitialized = true;
     } catch (e) {
       console.warn('Equalizer/Normalizer initialization error:', e);
     }
   }
 
+  generateReverbImpulse(durationSec = 2.0, decay = 2.0) {
+    if (!this.audioCtx) return null;
+    try {
+      const rate = this.audioCtx.sampleRate;
+      const length = Math.floor(rate * durationSec);
+      const impulse = this.audioCtx.createBuffer(2, length, rate);
+      for (let channel = 0; channel < 2; channel++) {
+        const data = impulse.getChannelData(channel);
+        for (let i = 0; i < length; i++) {
+          const t = i / length;
+          const env = Math.pow(1 - t, decay);
+          data[i] = ((Math.random() * 2) - 1) * env;
+        }
+      }
+      return impulse;
+    } catch (e) {
+      console.warn('Impulse generation error:', e);
+      return null;
+    }
+  }
+
+  setSpatialReverb(durationSec = 0, decay = 2.0, dryLevel = 1.0, wetLevel = 0) {
+    this.initEqualizer();
+    if (!this.convolver || !this.convolverGain || !this.dryGain || !this.audioCtx) return;
+    try {
+      if (wetLevel > 0 && durationSec > 0) {
+        const buf = this.generateReverbImpulse(durationSec, decay);
+        if (buf) this.convolver.buffer = buf;
+        this.convolverGain.gain.setValueAtTime(wetLevel, this.audioCtx.currentTime);
+        this.dryGain.gain.setValueAtTime(dryLevel, this.audioCtx.currentTime);
+      } else {
+        this.convolverGain.gain.setValueAtTime(0, this.audioCtx.currentTime);
+        this.dryGain.gain.setValueAtTime(1.0, this.audioCtx.currentTime);
+      }
+    } catch (e) {
+      console.warn('Spatial reverb setup error:', e);
+    }
+  }
+
   setEqBand(bandIndex, gainValue) {
     this.initEqualizer();
-    if (this.eqFilters[bandIndex]) {
+    if (this.eqFilters && this.eqFilters[bandIndex]) {
       this.eqFilters[bandIndex].gain.value = gainValue;
     }
   }
@@ -258,13 +314,25 @@ class PlayerEngine {
     const presets = {
       flat: [0, 0, 0, 0, 0],
       bass_boost: [6, 4, 1, 0, 0],
+      mega_bass: [12, 7, 2, -1, 0], // Ultra Bass Boost with deep low-end sub
       treble_boost: [0, 0, 1, 4, 6],
       vocal: [-2, 1, 4, 3, -1],
       rock: [4, 2, -1, 2, 4],
-      electronic: [5, 3, 0, 2, 4]
+      electronic: [5, 3, 0, 2, 4],
+      club_3d: [6, 3, 1, 3, 5], // Club 3D with immersive spatial acoustic reverb
+      acoustic_salon: [2, 1, 4, 3, 2] // Warm acoustique salon ambience
     };
     const gains = presets[presetName] || presets.flat;
     gains.forEach((g, i) => this.setEqBand(i, g));
+
+    if (presetName === 'club_3d') {
+      this.setSpatialReverb(2.0, 1.8, 0.82, 0.38);
+    } else if (presetName === 'acoustic_salon') {
+      this.setSpatialReverb(2.6, 2.5, 0.8, 0.42);
+    } else {
+      this.setSpatialReverb(0, 0, 1.0, 0);
+    }
+
     Storage.saveSetting('eqPreset', presetName);
   }
 
@@ -566,12 +634,17 @@ class PlayerEngine {
     if (this.currentIndex < this.queue.length - 1) {
       const nextIdx = this.currentIndex + 1;
       this.playTrack(this.queue[nextIdx], null, nextIdx);
+
+      // Pre-emptively fetch next batch of infinite radio if approaching end of queue
+      if (this.autoplayRadio && (this.queue.length - nextIdx <= 2)) {
+        this.fetchRadioRecommendations(false);
+      }
     } else {
       // Reached end of queue
       if (this.repeatMode === 'all' && this.queue.length > 0) {
         this.playTrack(this.queue[0], null, 0);
       } else if (this.autoplayRadio && this.currentTrack) {
-        this.fetchRadioRecommendations();
+        this.fetchRadioRecommendations(true);
       } else {
         this.pause();
         this.seek(0);
@@ -627,36 +700,49 @@ class PlayerEngine {
     }
   }
 
-  async fetchRadioRecommendations() {
-    if (!this.currentTrack) return;
+  async fetchRadioRecommendations(autoPlayImmediately = true) {
+    if (!this.currentTrack || this._isLoadingRadio) return;
+    this._isLoadingRadio = true;
     try {
       this.emit('radio_loading', { track: this.currentTrack });
-      let candidates = await API.getRelated(this.currentTrack.id);
+      const currentTrack = this.currentTrack;
+      let candidates = await API.getRelated(currentTrack.id, currentTrack.artist, currentTrack.title);
 
-      // Fallback: If no direct related tracks found, search for similar artist radio
-      if (!candidates || candidates.length === 0) {
-        const query = `${this.currentTrack.artist || ''} mix radio hits`.trim();
+      // Complement with artist and genre searches if fewer than 20 candidates
+      if (!candidates || candidates.length < 20) {
+        const query = `${currentTrack.artist || ''} mix radio hits`.trim();
         const searchResults = await API.search(query, 'songs');
-        candidates = searchResults.songs || [];
+        const songResults = searchResults.songs || [];
+        candidates = [...(candidates || []), ...songResults];
       }
 
       if (candidates && candidates.length > 0) {
-        // Filter out songs already played or in queue
+        // Filter out songs already in queue
         const existingIds = new Set(this.queue.map(t => t.id));
         const newTracks = candidates.filter(t => !existingIds.has(t.id));
         if (newTracks.length > 0) {
-          const nextSongs = newTracks.slice(0, 5);
-          this.queue.push(...nextSongs);
-          this.currentIndex++;
+          // Add 20 new tracks
+          const batch = newTracks.slice(0, 20);
+          this.queue.push(...batch);
           this.emit('queue_change', { queue: this.queue, isRadioInfinite: true });
-          this.playTrack(this.queue[this.currentIndex]);
-          return;
+
+          if (autoPlayImmediately) {
+            this.currentIndex++;
+            if (this.queue[this.currentIndex]) {
+              this.playTrack(this.queue[this.currentIndex]);
+            }
+          }
+          return batch;
         }
       }
     } catch (e) {
       console.warn('Radio autoplay error:', e);
+    } finally {
+      this._isLoadingRadio = false;
     }
-    this.pause();
+    if (autoPlayImmediately) {
+      this.pause();
+    }
   }
 
   // Queue manipulation

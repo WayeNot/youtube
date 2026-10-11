@@ -277,6 +277,7 @@
                             <button class="filter-pill active" data-type="all">Tous</button>
                             <button class="filter-pill" data-type="songs">Titres</button>
                             <button class="filter-pill" data-type="artists">Artistes</button>
+                            <button class="filter-pill" data-type="albums">Albums</button>
                         </div>
                     </div>
                     <div id="search-results-list" class="tracks-list"></div>
@@ -505,8 +506,12 @@
                                     <h1 id="profile-display-username" class="profile-username-title">Utilisateur</h1>
                                     <div class="profile-badges-row" id="profile-badges-row"></div>
                                 </div>
-                                <p id="profile-bio-text" class="profile-bio-text">Passionné de musique sur YouTube Music
-                                    Maison.</p>
+                                <div class="profile-bio-card">
+                                    <div class="bio-quote-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z" fill="currentColor"/></svg>
+                                    </div>
+                                    <p id="profile-bio-text" class="profile-bio-text">Passionné de musique sur YouTube Music Maison.</p>
+                                </div>
                                 <div class="profile-stats-row">
                                     <div class="profile-stat-item">
                                         <span id="profile-stat-likes" class="profile-stat-value">0</span>
@@ -1192,8 +1197,8 @@
                     </div>
 
                     <!-- Download offline -->
-                    <button id="download-track-btn" class="icon-btn" title="Télécharger pour écoute hors-ligne"
-                        onclick="if(window.Player && window.Player.currentTrack) { window.open(window.API.getDownloadUrl(window.Player.currentTrack.id, window.Player.currentTrack.title), '_blank'); window.App && window.App.showToast('Téléchargement lancé...'); }">
+                    <button id="download-track-btn" class="icon-btn" title="Télécharger ou écouter hors-ligne"
+                        onclick="if(window.Player && window.Player.currentTrack && window.App) { window.App.openDownloadModal(window.Player.currentTrack); }">
                         <svg viewBox="0 0 24 24">
                             <path
                                 d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
@@ -1319,7 +1324,7 @@
                     <!-- Mobile Extra Action Pills -->
                     <div class="mobile-extra-actions">
                         <button id="mobile-download-btn" class="action-pill-btn"
-                            onclick="if(window.Player && window.Player.currentTrack) { window.open(window.API.getDownloadUrl(window.Player.currentTrack.id, window.Player.currentTrack.title), '_blank'); window.App && window.App.showToast('Téléchargement lancé...'); }">
+                            onclick="if(window.Player && window.Player.currentTrack && window.App) { window.App.openDownloadModal(window.Player.currentTrack); }">
                             <svg viewBox="0 0 24 24">
                                 <path
                                     d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
@@ -1418,6 +1423,55 @@
                     </div>
                 </div>
             </div>
+        <!-- MODAL: Download & Offline Options -->
+        <div id="modal-download-options" class="modal-overlay hidden">
+            <div class="modal-card download-modal-card">
+                <div class="modal-header">
+                    <h3>Téléchargement & Mode Hors-ligne</h3>
+                    <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-download-options').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body download-modal-body">
+                    <div class="download-track-preview">
+                        <img id="download-modal-thumb" src="/icons/icon.svg" alt="" class="download-modal-thumb">
+                        <div class="download-modal-meta">
+                            <span id="download-modal-title" class="download-modal-title">Titre musical</span>
+                            <span id="download-modal-artist" class="download-modal-artist">Artiste</span>
+                            <span id="download-modal-offline-status" class="download-modal-status">Prêt</span>
+                        </div>
+                    </div>
+                    <div class="download-options-list">
+                        <button id="download-mp3-direct-btn" class="download-opt-btn" onclick="window.App && window.App.triggerDownloadDirectMp3()">
+                            <div class="opt-icon-circle mp3-color">
+                                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                            </div>
+                            <div class="opt-text">
+                                <span class="opt-title">Exporter en MP3 direct (.mp3)</span>
+                                <span class="opt-desc">Télécharger le fichier audio sur votre disque ou téléphone</span>
+                            </div>
+                        </button>
+                        <button id="download-vault-toggle-btn" class="download-opt-btn" onclick="window.App && window.App.toggleTrackOfflineVault()">
+                            <div class="opt-icon-circle offline-color" id="download-vault-icon-circle">
+                                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
+                            </div>
+                            <div class="opt-text">
+                                <span id="download-vault-btn-title" class="opt-title">Sauvegarder Hors-ligne (IndexedDB)</span>
+                                <span id="download-vault-btn-desc" class="opt-desc">Écouter sans connexion Internet dans le métro ou l'avion</span>
+                            </div>
+                        </button>
+                        <button id="download-view-library-btn" class="download-opt-btn secondary-opt" onclick="document.getElementById('modal-download-options').classList.add('hidden'); window.App && window.App.openLibraryTab('downloads');">
+                            <div class="opt-icon-circle neutral-color">
+                                <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+                            </div>
+                            <div class="opt-text">
+                                <span class="opt-title">Accéder à mes titres Hors-ligne</span>
+                                <span class="opt-desc">Ouvrir la section Téléchargements de la bibliothèque</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- MODAL: Equalizer -->
@@ -1437,19 +1491,22 @@
                     <div class="eq-presets-row">
                         <button class="eq-preset-btn active" data-preset="flat"
                             onclick="window.Player && window.Player.applyEqPreset('flat'); window.App && window.App.showToast('Égaliseur : Plat');">Plat</button>
+                        <button class="eq-preset-btn" data-preset="mega_bass"
+                            onclick="window.Player && window.Player.applyEqPreset('mega_bass'); window.App && window.App.showToast('Égaliseur : Mega Bass 💥');">Mega Bass</button>
+                        <button class="eq-preset-btn" data-preset="club_3d"
+                            onclick="window.Player && window.Player.applyEqPreset('club_3d'); window.App && window.App.showToast('Égaliseur : Club 3D 🎧');">Club 3D</button>
+                        <button class="eq-preset-btn" data-preset="acoustic_salon"
+                            onclick="window.Player && window.Player.applyEqPreset('acoustic_salon'); window.App && window.App.showToast('Égaliseur : Acoustique Salon 🛋️');">Acoustique Salon</button>
                         <button class="eq-preset-btn" data-preset="bass_boost"
-                            onclick="window.Player && window.Player.applyEqPreset('bass_boost'); window.App && window.App.showToast('Égaliseur : Basses ++');">Basses
-                            ++</button>
+                            onclick="window.Player && window.Player.applyEqPreset('bass_boost'); window.App && window.App.showToast('Égaliseur : Basses ++');">Basses ++</button>
                         <button class="eq-preset-btn" data-preset="vocal"
-                            onclick="window.Player && window.Player.applyEqPreset('vocal'); window.App && window.App.showToast('Égaliseur : Voix claire');">Voix
-                            claire</button>
+                            onclick="window.Player && window.Player.applyEqPreset('vocal'); window.App && window.App.showToast('Égaliseur : Voix claire');">Voix claire</button>
                         <button class="eq-preset-btn" data-preset="electronic"
                             onclick="window.Player && window.Player.applyEqPreset('electronic'); window.App && window.App.showToast('Égaliseur : Électro');">Électro</button>
                         <button class="eq-preset-btn" data-preset="rock"
                             onclick="window.Player && window.Player.applyEqPreset('rock'); window.App && window.App.showToast('Égaliseur : Rock');">Rock</button>
                         <button class="eq-preset-btn" data-preset="treble_boost"
-                            onclick="window.Player && window.Player.applyEqPreset('treble_boost'); window.App && window.App.showToast('Égaliseur : Aigus ++');">Aigus
-                            ++</button>
+                            onclick="window.Player && window.Player.applyEqPreset('treble_boost'); window.App && window.App.showToast('Égaliseur : Aigus ++');">Aigus ++</button>
                     </div>
                     <div class="eq-sliders-container">
                         <div class="eq-band">

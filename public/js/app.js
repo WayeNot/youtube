@@ -527,10 +527,50 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             this.dom.searchInput.addEventListener('keydown', (e) => {
+                const items = Array.from(this.dom.suggestionsDropdown.querySelectorAll('.suggestion-item, .suggestion-artist-item, .suggestion-track-item'));
+                const isDropdownOpen = !this.dom.suggestionsDropdown.classList.contains('hidden') && items.length > 0;
+
+                if (e.key === 'ArrowDown' && isDropdownOpen) {
+                    e.preventDefault();
+                    let currentIdx = items.findIndex(el => el.classList.contains('active-nav'));
+                    if (currentIdx >= 0) items[currentIdx].classList.remove('active-nav');
+                    currentIdx = (currentIdx + 1) % items.length;
+                    items[currentIdx].classList.add('active-nav');
+                    items[currentIdx].scrollIntoView({ block: 'nearest' });
+                    const q = items[currentIdx].getAttribute('data-query') || items[currentIdx].getAttribute('data-artist-name');
+                    if (q) this.dom.searchInput.value = q;
+                    return;
+                }
+
+                if (e.key === 'ArrowUp' && isDropdownOpen) {
+                    e.preventDefault();
+                    let currentIdx = items.findIndex(el => el.classList.contains('active-nav'));
+                    if (currentIdx >= 0) items[currentIdx].classList.remove('active-nav');
+                    currentIdx = (currentIdx - 1 + items.length) % items.length;
+                    items[currentIdx].classList.add('active-nav');
+                    items[currentIdx].scrollIntoView({ block: 'nearest' });
+                    const q = items[currentIdx].getAttribute('data-query') || items[currentIdx].getAttribute('data-artist-name');
+                    if (q) this.dom.searchInput.value = q;
+                    return;
+                }
+
+                if (e.key === 'Escape') {
+                    this.dom.suggestionsDropdown.classList.add('hidden');
+                    return;
+                }
+
                 if (e.key === 'Enter') {
+                    clearTimeout(this.searchDebounceTimer);
+                    if (isDropdownOpen) {
+                        const activeItem = items.find(el => el.classList.contains('active-nav'));
+                        if (activeItem) {
+                            e.preventDefault();
+                            activeItem.click();
+                            return;
+                        }
+                    }
                     const val = this.dom.searchInput.value.trim();
                     if (val) {
-                        clearTimeout(this.searchDebounceTimer);
                         this.dom.suggestionsDropdown.classList.add('hidden');
                         this.executeSearch(val, true);
                     }
@@ -1580,6 +1620,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="icon-btn small row-add-pl-btn" data-id="${track.id}" title="Ajouter à une playlist">
               <svg viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
             </button>
+            <button class="icon-btn small row-download-btn" data-id="${track.id}" title="Télécharger ou écouter hors-ligne">
+              <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+            </button>
             ${isPlaylist ? `
             <button class="icon-btn small row-remove-track-btn" data-pl-id="${playlistId}" data-track-id="${track.id}" title="${playlistId === 'liked_tracks' ? 'Retirer des favoris' : 'Retirer de la playlist'}">
               <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -1604,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             container.querySelectorAll('[data-track-id]').forEach((el) => {
                 el.addEventListener('click', (e) => {
-                    if (e.target.closest('.row-fav-btn') || e.target.closest('.row-add-pl-btn') || e.target.closest('.row-remove-track-btn') || e.target.closest('.row-artist') || e.target.closest('.card-artist')) return;
+                    if (e.target.closest('.row-fav-btn') || e.target.closest('.row-add-pl-btn') || e.target.closest('.row-download-btn') || e.target.closest('.row-remove-track-btn') || e.target.closest('.row-artist') || e.target.closest('.card-artist')) return;
                     const id = el.getAttribute('data-track-id');
                     const track = this.findTrackInMemory(id);
                     if (!track) return;
@@ -1652,6 +1695,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const id = btn.getAttribute('data-id');
                     const track = this.findTrackInMemory(id);
                     if (track) this.openPlaylistPicker(track);
+                });
+            });
+
+            container.querySelectorAll('.row-download-btn').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    const track = this.findTrackInMemory(id);
+                    if (track) this.openDownloadModal(track);
                 });
             });
 
@@ -1985,6 +2037,55 @@ document.addEventListener('DOMContentLoaded', () => {
                     card.addEventListener('click', () => {
                         const artistName = card.getAttribute('data-artist-name');
                         this.openArtistView(artistName);
+                    });
+                });
+                return;
+            }
+
+            if (filter === 'albums') {
+                const albumCards = [];
+                const seenAlbums = new Set();
+                results.forEach(t => {
+                    let albumName = t.album || t.title.replace(/[\(\[].*?[\)\]]/g, '').trim();
+                    if (!seenAlbums.has(albumName) && albumName.length > 2) {
+                        seenAlbums.add(albumName);
+                        albumCards.push({
+                            id: t.id,
+                            title: albumName,
+                            artist: t.artist,
+                            thumbnail: t.thumbnail
+                        });
+                    }
+                });
+
+                if (albumCards.length === 0) {
+                    this.dom.searchResultsList.innerHTML = '<p class="empty-msg">Aucun album trouvé pour cette recherche.</p>';
+                    return;
+                }
+
+                html = `
+                    <div class="search-albums-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; padding: 12px 0;">
+                        ${albumCards.map(a => `
+                            <div class="music-card" data-album-id="${a.id}" data-album-title="${this.escapeHtml(a.title)}" data-album-artist="${this.escapeHtml(a.artist)}">
+                                <div class="card-thumb-wrapper">
+                                    <img src="${a.thumbnail || '/icons/icon.svg'}" alt="${this.escapeHtml(a.title)}" loading="lazy">
+                                    <div class="card-play-overlay">
+                                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                </div>
+                                <span class="card-title">${this.escapeHtml(a.title)}</span>
+                                <span class="card-artist">${this.escapeHtml(a.artist)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                this.dom.searchResultsList.innerHTML = html;
+                this.dom.searchResultsList.querySelectorAll('.music-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const albumId = card.getAttribute('data-album-id');
+                        const albumTitle = card.getAttribute('data-album-title');
+                        const albumArtist = card.getAttribute('data-album-artist');
+                        this.openAlbumView(albumId, albumTitle, albumArtist);
                     });
                 });
                 return;
@@ -2548,6 +2649,109 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.dom.playlistPrivacyLabel.textContent = isPub ? 'Rendre Privée' : 'Rendre Publique';
             }
             this.showToast(isPub ? 'Playlist maintenant Publique (accessible via le lien) 🌐' : 'Playlist maintenant Privée (visible uniquement par vous) 🔒');
+        },
+
+        async openDownloadModal(track) {
+            if (!track || !track.id) return;
+            this.selectedTrackForDownload = track;
+
+            const modal = document.getElementById('modal-download-options');
+            if (!modal) return;
+
+            const thumbEl = document.getElementById('download-modal-thumb');
+            const titleEl = document.getElementById('download-modal-title');
+            const artistEl = document.getElementById('download-modal-artist');
+            const statusEl = document.getElementById('download-modal-offline-status');
+            const vaultBtnTitle = document.getElementById('download-vault-btn-title');
+            const vaultBtnDesc = document.getElementById('download-vault-btn-desc');
+            const vaultIconCircle = document.getElementById('download-vault-icon-circle');
+
+            if (thumbEl) thumbEl.src = track.thumbnail || '/icons/icon.svg';
+            if (titleEl) titleEl.textContent = track.title || 'Titre inconnu';
+            if (artistEl) artistEl.textContent = track.artist || 'Artiste inconnu';
+
+            // Check if stored offline
+            const offlineItem = await Storage.getTrackOffline(track.id);
+            if (offlineItem) {
+                if (statusEl) {
+                    statusEl.textContent = '✅ Enregistré dans le coffre hors-ligne';
+                    statusEl.className = 'download-modal-status badge-status public';
+                }
+                if (vaultBtnTitle) vaultBtnTitle.textContent = 'Retirer du Mode Hors-ligne';
+                if (vaultBtnDesc) vaultBtnDesc.textContent = 'Supprimer le morceau stocké de l\'IndexedDB locale';
+                if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-remove';
+            } else {
+                if (statusEl) {
+                    statusEl.textContent = 'Non synchronisé hors-ligne';
+                    statusEl.className = 'download-modal-status badge-status private';
+                }
+                if (vaultBtnTitle) vaultBtnTitle.textContent = 'Sauvegarder Hors-ligne (IndexedDB)';
+                if (vaultBtnDesc) vaultBtnDesc.textContent = 'Écouter sans connexion Internet dans le métro ou l\'avion';
+                if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-color';
+            }
+
+            modal.classList.remove('hidden');
+        },
+
+        triggerDownloadDirectMp3() {
+            const track = this.selectedTrackForDownload || Player.currentTrack;
+            if (!track || !track.id) return;
+            const url = API.getDownloadUrl(track.id, track.title);
+            window.location.href = url;
+            this.showToast(`Téléchargement direct de "${track.title}" lancé (.mp3) 💾`);
+        },
+
+        async toggleTrackOfflineVault() {
+            const track = this.selectedTrackForDownload || Player.currentTrack;
+            if (!track || !track.id) return;
+
+            const statusEl = document.getElementById('download-modal-offline-status');
+            const vaultBtnTitle = document.getElementById('download-vault-btn-title');
+            const vaultBtnDesc = document.getElementById('download-vault-btn-desc');
+            const vaultIconCircle = document.getElementById('download-vault-icon-circle');
+
+            const existing = await Storage.getTrackOffline(track.id);
+            if (existing) {
+                // Remove from offline
+                await Storage.deleteTrackOffline(track.id);
+                if (statusEl) {
+                    statusEl.textContent = 'Non synchronisé hors-ligne';
+                    statusEl.className = 'download-modal-status badge-status private';
+                }
+                if (vaultBtnTitle) vaultBtnTitle.textContent = 'Sauvegarder Hors-ligne (IndexedDB)';
+                if (vaultBtnDesc) vaultBtnDesc.textContent = 'Écouter sans connexion Internet dans le métro ou l\'avion';
+                if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-color';
+                this.showToast(`Titre "${track.title}" retiré du mode hors-ligne.`);
+            } else {
+                // Download and save blob to IndexedDB
+                if (statusEl) {
+                    statusEl.textContent = '⏳ Téléchargement et mise en cache...';
+                    statusEl.className = 'download-modal-status badge-status private';
+                }
+                try {
+                    const streamUrl = API.getStreamUrl(track.id);
+                    const res = await fetch(streamUrl);
+                    if (!res.ok) throw new Error(`Stream fetch failed HTTP ${res.status}`);
+                    const blob = await res.blob();
+                    await Storage.saveTrackOffline(track, blob);
+
+                    if (statusEl) {
+                        statusEl.textContent = '✅ Enregistré dans le coffre hors-ligne';
+                        statusEl.className = 'download-modal-status badge-status public';
+                    }
+                    if (vaultBtnTitle) vaultBtnTitle.textContent = 'Retirer du Mode Hors-ligne';
+                    if (vaultBtnDesc) vaultBtnDesc.textContent = 'Supprimer le morceau stocké de l\'IndexedDB locale';
+                    if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-remove';
+                    this.showToast(`Morceau prêt pour écoute hors-ligne (métro / avion) ! ✈️`);
+                } catch (e) {
+                    console.error('Offline save error:', e);
+                    if (statusEl) {
+                        statusEl.textContent = '❌ Échec du téléchargement hors-ligne';
+                        statusEl.className = 'download-modal-status badge-status private';
+                    }
+                    this.showToast('Erreur lors du téléchargement hors-ligne');
+                }
+            }
         },
 
         openPlaylistPicker(track) {

@@ -918,7 +918,7 @@ app.post('/api/prefetch', (req, res) => {
     res.json({ success: true, count: cleanIds.length });
 });
 
-// 5. Download track as Audio file
+// 5. Download track as MP3 file
 app.get('/api/download/:id', async (req, res) => {
     const videoId = req.params.id;
     const rawTitle = req.query.title || 'audio';
@@ -932,8 +932,8 @@ app.get('/api/download/:id', async (req, res) => {
                 'Accept': '*/*'
             }
         });
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(cleanTitle)}.m4a"`);
-        res.setHeader('Content-Type', upstream.headers.get('content-type') || 'audio/mp4');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(cleanTitle)}.mp3"`);
+        res.setHeader('Content-Type', 'audio/mpeg');
 
         const reader = upstream.body.getReader();
         await pumpStream(reader, res);
@@ -946,8 +946,11 @@ app.get('/api/download/:id', async (req, res) => {
 // 6. Up next / Related Songs for Continuous Autoplay Radio
 app.get('/api/related/:id', async (req, res) => {
     const videoId = req.params.id;
-    const cached = getCached(relatedCache, videoId);
-    if (cached) return res.json({ results: cached });
+    const artist = req.query.artist || '';
+    const title = req.query.title || '';
+    const cacheKey = `${videoId}_${artist}`;
+    const cached = getCached(relatedCache, cacheKey);
+    if (cached && cached.length >= 10) return res.json({ results: cached });
 
     try {
         const r = await fetch('https://www.youtube.com/youtubei/v1/next', {
@@ -975,19 +978,22 @@ app.get('/api/related/:id', async (req, res) => {
             data?.contents?.twoColumnWatchNextResults?.secondaryResults?.secondaryResults?.results || [];
 
         const results = [];
+        const seenIds = new Set([videoId]);
+
         for (const item of items) {
             if (item.lockupViewModel) {
                 const lm = item.lockupViewModel;
                 const id = lm.contentId;
-                const title =
+                const trackTitle =
                     lm.metadata?.lockupMetadataViewModel?.title?.content ||
                     lm.rendererContext?.accessibilityContext?.label ||
                     '';
-                if (id && /^[\w-]{11}$/.test(id) && id !== videoId) {
+                if (id && /^[\w-]{11}$/.test(id) && !seenIds.has(id)) {
+                    seenIds.add(id);
                     results.push({
                         id,
-                        title: title.replace(/\d+\s*(minutes?|secondes?|min).*$/i, '').trim(),
-                        artist: 'YouTube Music',
+                        title: trackTitle.replace(/\d+\s*(minutes?|secondes?|min).*$/i, '').trim(),
+                        artist: artist || 'YouTube Music',
                         duration: '3:30',
                         durationSec: 210,
                         thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
@@ -996,11 +1002,12 @@ app.get('/api/related/:id', async (req, res) => {
                 }
             } else if (item.compactVideoRenderer) {
                 const cv = item.compactVideoRenderer;
-                if (cv.videoId && cv.videoId !== videoId) {
+                if (cv.videoId && !seenIds.has(cv.videoId)) {
+                    seenIds.add(cv.videoId);
                     results.push({
                         id: cv.videoId,
                         title: cv.title?.simpleText || cv.title?.runs?.[0]?.text || '',
-                        artist: cv.shortBylineText?.runs?.[0]?.text || 'Artiste',
+                        artist: cv.shortBylineText?.runs?.[0]?.text || artist || 'Artiste',
                         duration: cv.lengthText?.simpleText || '3:30',
                         durationSec: 210,
                         thumbnail:
@@ -1012,8 +1019,24 @@ app.get('/api/related/:id', async (req, res) => {
             }
         }
 
+        // Ensure we have a generous batch of 20+ tracks for the infinite radio
+        if (results.length < 20 && artist) {
+            try {
+                const extraTracks = await searchInnertube(`${artist} mix musique`);
+                for (const t of extraTracks) {
+                    if (results.length >= 25) break;
+                    if (t.id && !seenIds.has(t.id)) {
+                        seenIds.add(t.id);
+                        results.push(t);
+                    }
+                }
+            } catch (extraErr) {
+                console.warn('Extra radio search fallback:', extraErr.message);
+            }
+        }
+
         if (results.length > 0) {
-            setCache(relatedCache, videoId, results, 30 * 60 * 1000);
+            setCache(relatedCache, cacheKey, results, 30 * 60 * 1000);
         }
         res.json({ results });
     } catch (err) {
