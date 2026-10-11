@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSearchFilter: 'all',
         currentSearchQuery: '',
         currentSearchArtist: null,
+        currentSearchResults: [],
+        currentProfileUser: null,
         selectedTrackForPlaylist: null,
         searchDebounceTimer: null,
 
@@ -1672,8 +1674,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Register direct tracks in memory for immediate playback
+            if (!Array.isArray(this.currentSearchResults)) {
+                this.currentSearchResults = [];
+            }
             directTracks.forEach(t => {
-                if (t && t.id) this.currentSearchResults.push(t);
+                if (t && t.id && !this.currentSearchResults.some(x => x.id === t.id)) {
+                    this.currentSearchResults.push(t);
+                }
             });
 
             let html = '';
@@ -3057,6 +3064,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                this.currentProfileUser = profile;
                 this.switchView('profile', false);
 
                 this.dom.profileDisplayUsername.textContent = profile.username;
@@ -3726,17 +3734,26 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         shareUserProfile() {
-            const u = Storage.getUser();
-            if (!u) return;
-            const shareUrl = `${window.location.origin}/user/${encodeURIComponent(u.username)}`;
-            if (navigator.clipboard) {
+            const targetUser = this.currentProfileUser || Storage.getUser();
+            const username = targetUser ? targetUser.username : (Storage.getUser() ? Storage.getUser().username : null);
+            if (!username) {
+                this.showToast('Connectez-vous pour partager votre profil.');
+                return;
+            }
+            const shareUrl = `${window.location.origin}/user/${encodeURIComponent(username)}`;
+            const title = `Profil de ${username}`;
+
+            // Open share modal if present, or copy to clipboard
+            if (typeof this.openShareModal === 'function') {
+                this.openShareModal(title, shareUrl);
+            } else if (navigator.clipboard) {
                 navigator.clipboard.writeText(shareUrl).then(() => {
-                    this.showToast(`Lien de votre profil copié ! 📋`);
+                    this.showToast(`Lien du profil copié ! 📋`);
                 }).catch(() => {
-                    prompt('Lien de votre profil :', shareUrl);
+                    prompt('Lien du profil :', shareUrl);
                 });
             } else {
-                prompt('Lien de votre profil :', shareUrl);
+                prompt('Lien du profil :', shareUrl);
             }
         },
 
