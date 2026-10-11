@@ -1,0 +1,546 @@
+// Full Audio Player Engine with Background Playback, MediaSession, Queue, Radio & Equalizer
+class PlayerEngine {
+  constructor() {
+    this.audio = new Audio();
+    this.audio.preload = 'auto';
+    this.audio.crossOrigin = 'anonymous';
+
+    this.currentTrack = null;
+    this.queue = [];
+    this.originalQueue = [];
+    this.currentIndex = -1;
+
+    this.isPlaying = false;
+    this.isLoading = false;
+    this.repeatMode = 'off'; // 'off', 'all', 'one'
+    this.isShuffled = false;
+    this.autoplayRadio = true;
+
+    // Sleep Timer
+    this.sleepTimerId = null;
+    this.sleepTimerEndAt = null;
+    this.sleepTimerInterval = null;
+    this.sleepAtTrackEnd = false;
+
+    // Web Audio Equalizer
+    this.audioCtx = null;
+    this.sourceNode = null;
+    this.eqFilters = [];
+    this.isEqInitialized = false;
+
+    this.initAudioListeners();
+    this.initMediaSession();
+    this.loadSavedSettings();
+  }
+
+  loadSavedSettings() {
+    const s = Storage.getSettings();
+    const savedVol = localStorage.getItem('ytm_volume');
+    const savedMuted = localStorage.getItem('ytm_muted');
+    if (savedVol !== null && !isNaN(parseFloat(savedVol))) {
+      this.audio.volume = Math.max(0, Math.min(1, parseFloat(savedVol)));
+    } else {
+      this.audio.volume = typeof s.volume === 'number' ? s.volume : 0.9;
+    }
+    if (savedMuted !== null) {
+      this.audio.muted = savedMuted === 'true';
+    } else if (typeof s.muted === 'boolean') {
+      this.audio.muted = s.muted;
+    }
+    this.repeatMode = s.repeat || 'off';
+    this.autoplayRadio = s.autoplayRadio !== undefined ? s.autoplayRadio : true;
+    if (s.playbackRate) this.audio.playbackRate = s.playbackRate;
+  }
+
+  initAudioListeners() {
+    this.audio.addEventListener('play', () => {
+      this.isPlaying = true;
+      this.isLoading = false;
+      this.updateMediaSessionState();
+      this.emit('playback_change', { isPlaying: true, isLoading: false });
+    });
+
+    this.audio.addEventListener('pause', () => {
+      this.isPlaying = false;
+      this.updateMediaSessionState();
+      this.emit('playback_change', { isPlaying: false, isLoading: false });
+    });
+
+    this.audio.addEventListener('waiting', () => {
+      this.isLoading = true;
+      this.emit('playback_change', { isPlaying: this.isPlaying, isLoading: true });
+    });
+
+    this.audio.addEventListener('playing', () => {
+      this.isLoading = false;
+      this.emit('playback_change', { isPlaying: true, isLoading: false });
+    });
+
+    this.audio.addEventListener('timeupdate', () => {
+      const cur = this.audio.currentTime || 0;
+      const dur = this.audio.duration || this.currentTrack?.durationSec || 0;
+      this.emit('time_update', { currentTime: cur, duration: dur });
+      if (window.LyricsManager) {
+        window.LyricsManager.updateTime(cur);
+      }
+
+      // Pre-fetch next track stream URL when current song is near completion
+      if (dur > 30 && dur - cur < 15 && !this.prefetchedNext) {
+        this.prefetchNextTrack();
+      }
+    });
+
+    this.audio.addEventListener('ended', () => {
+      this.handleTrackEnded();
+    });
+
+    this.audio.addEventListener('error', (e) => {
+      console.warn('Audio element error, attempting recovery:', e);
+      this.isLoading = false;
+      // Try direct stream url if proxy had an issue
+      if (this.currentTrack && !this.audio.src.includes('/api/stream-url/')) {
+        this.fallbackDirectStream(this.currentTrack);
+      } else {
+        this.emit('error', { message: 'Impossible de lire ce titre' });
+      }
+    });
+  }
+
+  // MediaSession API for Background Playback & Lockscreen controls
+  initMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+
+    try {
+      navigator.mediaSession.setActionHandler('play', () => this.play());
+      navigator.mediaSession.setActionHandler('pause', () => this.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => this.playPrevious());
+      navigator.mediaSession.setActionHandler('nexttrack', () => this.playNext());
+      navigator.mediaSession.setActionHandler('stop', () => this.pause());
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) this.seek(details.seekTime);
+      });
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        this.seek(Math.max(0, this.audio.currentTime - (details.seekOffset || 10)));
+      });
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        this.seek(Math.min(this.audio.duration || 0, this.audio.currentTime + (details.seekOffset || 10)));
+      });
+    } catch (e) {
+      console.warn('MediaSession init error:', e);
+    }
+  }
+
+  updateMediaSessionMetadata() {
+    if (!('mediaSession' in navigator) || !this.currentTrack) return;
+
+    const t = this.currentTrack;
+    const thumbUrl = t.thumbnail || `https://i.ytimg.com/vi/${t.id}/hqdefault.jpg`;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: t.title || 'YouTube Music',
+      artist: t.artist || 'Artiste inconnu',
+      album: 'YouTube Music Maison',
+      artwork: [
+        { src: thumbUrl, sizes: '96x96', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '128x128', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '192x192', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '256x256', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+    this.updateMediaSessionState();
+  }
+
+  updateMediaSessionState() {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
+
+    if (this.audio.duration && !isNaN(this.audio.duration)) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: this.audio.duration,
+          playbackRate: this.audio.playbackRate,
+          position: this.audio.currentTime
+        });
+      } catch (e) {}
+    }
+  }
+
+  // Web Audio Equalizer (5-Band)
+  initEqualizer() {
+    if (this.isEqInitialized) return;
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      this.audioCtx = new AudioContext();
+      this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
+
+      const freqs = [60, 230, 910, 3600, 14000];
+      const types = ['lowshelf', 'peaking', 'peaking', 'peaking', 'highshelf'];
+
+      let prevNode = this.sourceNode;
+      this.eqFilters = freqs.map((freq, idx) => {
+        const filter = this.audioCtx.createBiquadFilter();
+        filter.type = types[idx];
+        filter.frequency.value = freq;
+        filter.gain.value = 0;
+        prevNode.connect(filter);
+        prevNode = filter;
+        return filter;
+      });
+
+      prevNode.connect(this.audioCtx.destination);
+      this.isEqInitialized = true;
+    } catch (e) {
+      console.warn('Equalizer initialization error:', e);
+    }
+  }
+
+  setEqBand(bandIndex, gainValue) {
+    this.initEqualizer();
+    if (this.eqFilters[bandIndex]) {
+      this.eqFilters[bandIndex].gain.value = gainValue;
+    }
+  }
+
+  applyEqPreset(presetName) {
+    this.initEqualizer();
+    const presets = {
+      flat: [0, 0, 0, 0, 0],
+      bass_boost: [6, 4, 1, 0, 0],
+      treble_boost: [0, 0, 1, 4, 6],
+      vocal: [-2, 1, 4, 3, -1],
+      rock: [4, 2, -1, 2, 4],
+      electronic: [5, 3, 0, 2, 4]
+    };
+    const gains = presets[presetName] || presets.flat;
+    gains.forEach((g, i) => this.setEqBand(i, g));
+    Storage.saveSetting('eqPreset', presetName);
+  }
+
+  // Playback Methods
+  async playTrack(track, newQueue = null) {
+    if (!track || !track.id) return;
+
+    this.isLoading = true;
+    this.prefetchedNext = false;
+    this.currentTrack = track;
+
+    // Check if new queue provided
+    if (newQueue && Array.isArray(newQueue)) {
+      this.queue = [...newQueue];
+      this.originalQueue = [...newQueue];
+      this.currentIndex = this.queue.findIndex(t => t.id === track.id);
+      if (this.currentIndex === -1) {
+        this.queue.unshift(track);
+        this.currentIndex = 0;
+      }
+    } else {
+      // If song not in queue, add it
+      const existingIdx = this.queue.findIndex(t => t.id === track.id);
+      if (existingIdx >= 0) {
+        this.currentIndex = existingIdx;
+      } else {
+        this.queue.splice(this.currentIndex + 1, 0, track);
+        this.currentIndex = this.currentIndex + 1;
+      }
+    }
+
+    Storage.addToHistory(track);
+    Storage.addRecentSearch(track);
+    this.emit('track_change', { track: this.currentTrack, index: this.currentIndex });
+    this.updateMediaSessionMetadata();
+
+    // Set audio source
+    const streamUrl = API.getStreamUrl(track.id);
+    this.audio.src = streamUrl;
+
+    try {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        await this.audioCtx.resume();
+      }
+      await this.audio.play();
+    } catch (err) {
+      console.warn('Audio play request failed or interrupted:', err);
+    }
+  }
+
+  async fallbackDirectStream(track) {
+    try {
+      const res = await fetch(`/api/stream-url/${track.id}`);
+      const data = await res.json();
+      if (data.url) {
+        this.audio.src = data.url;
+        await this.audio.play();
+      }
+    } catch (e) {
+      console.error('Fallback failed:', e);
+    }
+  }
+
+  prefetchNextTrack() {
+    this.prefetchedNext = true;
+    const nextTrack = this.queue[this.currentIndex + 1];
+    if (nextTrack) {
+      // Warm up backend stream cache
+      fetch(`/api/stream/${nextTrack.id}`, { headers: { Range: 'bytes=0-10' } }).catch(() => {});
+    }
+  }
+
+  async play() {
+    if (!this.currentTrack) {
+      if (this.queue.length > 0) {
+        return this.playTrack(this.queue[0]);
+      }
+      if (window.App) {
+        return window.App.playRandom();
+      }
+    }
+    try {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        await this.audioCtx.resume();
+      }
+      await this.audio.play();
+    } catch (e) {}
+  }
+
+  pause() {
+    this.audio.pause();
+  }
+
+  togglePlay() {
+    if (this.isPlaying) {
+      this.pause();
+    } else {
+      this.play();
+    }
+  }
+
+  seek(seconds) {
+    if (isNaN(seconds)) return;
+    this.audio.currentTime = Math.max(0, Math.min(seconds, this.audio.duration || 99999));
+    this.updateMediaSessionState();
+  }
+
+  playNext() {
+    if (this.repeatMode === 'one') {
+      this.seek(0);
+      this.play();
+      return;
+    }
+
+    if (this.currentIndex < this.queue.length - 1) {
+      this.currentIndex++;
+      this.playTrack(this.queue[this.currentIndex]);
+    } else {
+      // Reached end of queue
+      if (this.repeatMode === 'all' && this.queue.length > 0) {
+        this.currentIndex = 0;
+        this.playTrack(this.queue[0]);
+      } else if (this.autoplayRadio && this.currentTrack) {
+        this.fetchRadioRecommendations();
+      } else {
+        this.pause();
+        this.seek(0);
+      }
+    }
+  }
+
+  playPrevious() {
+    // If played more than 3 seconds, replay current song
+    if (this.audio.currentTime > 3) {
+      this.seek(0);
+      return;
+    }
+
+    if (this.currentIndex > 0) {
+      this.currentIndex--;
+      this.playTrack(this.queue[this.currentIndex]);
+    } else {
+      this.seek(0);
+    }
+  }
+
+  handleTrackEnded() {
+    if (this.sleepAtTrackEnd) {
+      this.pause();
+      this.cancelSleepTimer();
+      this.emit('sleep_timer_ended');
+      return;
+    }
+
+    if (this.repeatMode === 'one') {
+      this.seek(0);
+      this.play();
+    } else {
+      this.playNext();
+    }
+  }
+
+  async fetchRadioRecommendations() {
+    if (!this.currentTrack) return;
+    try {
+      const related = await API.getRelated(this.currentTrack.id);
+      if (related && related.length > 0) {
+        // Filter out songs already in queue
+        const existingIds = new Set(this.queue.map(t => t.id));
+        const newTracks = related.filter(t => !existingIds.has(t.id));
+        if (newTracks.length > 0) {
+          this.queue.push(...newTracks);
+          this.currentIndex++;
+          this.emit('queue_change', { queue: this.queue });
+          this.playTrack(this.queue[this.currentIndex]);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Radio autoplay error:', e);
+    }
+    this.pause();
+  }
+
+  // Queue manipulation
+  addToQueue(track) {
+    if (!track) return;
+    this.queue.push(track);
+    this.emit('queue_change', { queue: this.queue });
+  }
+
+  playNextInQueue(track) {
+    if (!track) return;
+    this.queue.splice(this.currentIndex + 1, 0, track);
+    this.emit('queue_change', { queue: this.queue });
+  }
+
+  removeFromQueue(index) {
+    if (index < 0 || index >= this.queue.length) return;
+    this.queue.splice(index, 1);
+    if (index < this.currentIndex) {
+      this.currentIndex--;
+    } else if (index === this.currentIndex) {
+      if (this.queue.length > 0) {
+        this.playTrack(this.queue[Math.min(index, this.queue.length - 1)]);
+      } else {
+        this.pause();
+        this.currentTrack = null;
+      }
+    }
+    this.emit('queue_change', { queue: this.queue });
+  }
+
+  clearQueue() {
+    if (this.currentTrack) {
+      this.queue = [this.currentTrack];
+      this.currentIndex = 0;
+    } else {
+      this.queue = [];
+      this.currentIndex = -1;
+    }
+    this.emit('queue_change', { queue: this.queue });
+  }
+
+  toggleShuffle() {
+    this.isShuffled = !this.isShuffled;
+    if (this.isShuffled) {
+      this.originalQueue = [...this.queue];
+      const current = this.currentTrack;
+      const rest = this.queue.filter(t => t.id !== current?.id);
+      // Fisher-Yates shuffle
+      for (let i = rest.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [rest[i], rest[j]] = [rest[j], rest[i]];
+      }
+      this.queue = current ? [current, ...rest] : rest;
+      this.currentIndex = current ? 0 : -1;
+    } else {
+      this.queue = [...this.originalQueue];
+      if (this.currentTrack) {
+        this.currentIndex = this.queue.findIndex(t => t.id === this.currentTrack.id);
+      }
+    }
+    Storage.saveSetting('shuffle', this.isShuffled);
+    this.emit('queue_change', { queue: this.queue, isShuffled: this.isShuffled });
+    return this.isShuffled;
+  }
+
+  cycleRepeatMode() {
+    const modes = ['off', 'all', 'one'];
+    const nextIdx = (modes.indexOf(this.repeatMode) + 1) % modes.length;
+    this.repeatMode = modes[nextIdx];
+    this.audio.loop = this.repeatMode === 'one';
+    Storage.saveSetting('repeat', this.repeatMode);
+    this.emit('repeat_change', { mode: this.repeatMode });
+    return this.repeatMode;
+  }
+
+  setVolume(vol) {
+    const val = Math.max(0, Math.min(1, vol));
+    this.audio.volume = val;
+    this.audio.muted = false;
+    try {
+      localStorage.setItem('ytm_volume', val.toString());
+      localStorage.setItem('ytm_muted', 'false');
+    } catch (e) {}
+    Storage.saveSetting('volume', val);
+    Storage.saveSetting('muted', false);
+    this.emit('volume_change', { volume: val, muted: false });
+  }
+
+  toggleMute() {
+    this.audio.muted = !this.audio.muted;
+    try {
+      localStorage.setItem('ytm_muted', this.audio.muted ? 'true' : 'false');
+    } catch (e) {}
+    Storage.saveSetting('muted', this.audio.muted);
+    this.emit('volume_change', { volume: this.audio.volume, muted: this.audio.muted });
+    return this.audio.muted;
+  }
+
+  setPlaybackRate(rate) {
+    this.audio.playbackRate = rate;
+    Storage.saveSetting('playbackRate', rate);
+    this.emit('rate_change', { rate });
+  }
+
+  // Sleep Timer
+  setSleepTimer(minutes) {
+    this.cancelSleepTimer();
+    if (minutes === 'end_of_track') {
+      this.sleepAtTrackEnd = true;
+      this.emit('sleep_timer_set', { type: 'end_of_track' });
+      return;
+    }
+
+    const ms = minutes * 60 * 1000;
+    this.sleepTimerEndAt = Date.now() + ms;
+    this.sleepTimerId = setTimeout(() => {
+      this.pause();
+      this.cancelSleepTimer();
+      this.emit('sleep_timer_ended');
+    }, ms);
+
+    this.sleepTimerInterval = setInterval(() => {
+      const remainingMs = Math.max(0, this.sleepTimerEndAt - Date.now());
+      this.emit('sleep_timer_tick', { remainingSeconds: Math.ceil(remainingMs / 1000) });
+    }, 1000);
+
+    this.emit('sleep_timer_set', { type: 'minutes', minutes });
+  }
+
+  cancelSleepTimer() {
+    if (this.sleepTimerId) clearTimeout(this.sleepTimerId);
+    if (this.sleepTimerInterval) clearInterval(this.sleepTimerInterval);
+    this.sleepTimerId = null;
+    this.sleepTimerEndAt = null;
+    this.sleepTimerInterval = null;
+    this.sleepAtTrackEnd = false;
+    this.emit('sleep_timer_cancelled');
+  }
+
+  // Events dispatcher
+  emit(eventName, detail = {}) {
+    window.dispatchEvent(new CustomEvent(`player_${eventName}`, { detail }));
+  }
+}
+
+window.Player = new PlayerEngine();

@@ -1,0 +1,16 @@
+{
+  "name": "YouTube Music",
+  "short_name": "YT Music",
+  "description": "YouTube Music maison complet, responsive avec musique en arrière-plan et paroles synchronisées",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#ff0033",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
