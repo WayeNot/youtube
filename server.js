@@ -86,7 +86,7 @@ async function getAudioStreamUrl(videoId) {
         '-f', 'ba[ext=m4a]/ba/b',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=android,web',
+        '--extractor-args', 'youtube:player_client=tv,mweb,web',
         '--',
         `https://www.youtube.com/watch?v=${videoId}`
       ],
