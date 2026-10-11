@@ -19,10 +19,11 @@ const API = {
       const data = await res.json();
       return {
         suggestions: data.suggestions || [],
-        artist: data.artist || null
+        artist: data.artist || null,
+        tracks: Array.isArray(data.tracks) ? data.tracks : []
       };
     } catch (err) {
-      return { suggestions: [], artist: null };
+      return { suggestions: [], artist: null, tracks: [] };
     }
   },
 

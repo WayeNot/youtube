@@ -1525,8 +1525,8 @@ app.put('/api/user/profile', authMiddleware, async (req, res) => {
     if (bio.length > 500) {
         return res.status(400).json({ error: 'La biographie ne doit pas dépasser 500 caractères.' });
     }
-    if (avatar.length > 1000) {
-        return res.status(400).json({ error: 'L\'URL de l\'avatar est trop longue.' });
+    if (avatar.length > 250000) {
+        return res.status(400).json({ error: 'L\'image de l\'avatar est trop volumineuse (max ~180 Ko compressée).' });
     }
     if (avatar && !/^https?:\/\//i.test(avatar) && !avatar.startsWith('data:image/')) {
         return res.status(400).json({ error: 'L\'URL de l\'avatar doit commencer par http:// ou https://' });

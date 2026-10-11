@@ -119,27 +119,6 @@
                     </svg>
                     <span class="desktop-only-text">Importer</span>
                 </button>
-                <button id="crossfade-settings-btn" class="icon-btn" title="Réglage Fondu enchaîné (Crossfade)"
-                    onclick="window.App && window.App.openCrossfadePrompt()">
-                    <svg viewBox="0 0 24 24">
-                        <path
-                            d="M14 6l-3.75 5 2.85 3.8-1.6 1.2-3.5-4.66L14 3v3zm-4 12l3.75-5-2.85-3.8 1.6-1.2 3.5 4.66L10 21v-3z" />
-                    </svg>
-                </button>
-                <button id="eq-btn" class="icon-btn" title="Égaliseur Audio" aria-label="Égaliseur"
-                    onclick="window.App && window.App.openEqualizerModal()">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z" />
-                    </svg>
-                </button>
-                <button id="sleep-timer-btn" class="icon-btn" title="Minuterie de veille" aria-label="Minuterie"
-                    onclick="window.App && window.App.openSleepModal()">
-                    <svg viewBox="0 0 24 24">
-                        <path
-                            d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" />
-                    </svg>
-                    <span id="sleep-timer-badge" class="badge hidden"></span>
-                </button>
                 <button id="fullscreen-btn" class="icon-btn" title="Plein écran" aria-label="Plein écran"
                     onclick="!document.fullscreenElement ? document.documentElement.requestFullscreen().catch(()=>{}) : document.exitFullscreen().catch(()=>{})">
                     <svg viewBox="0 0 24 24">
@@ -358,6 +337,7 @@
                         <div class="library-tabs">
                             <button class="library-tab active" data-tab="playlists">Playlists</button>
                             <button class="library-tab" data-tab="favorites">❤️ Favoris</button>
+                            <button class="library-tab" data-tab="subscriptions">👥 Abonnements</button>
                             <button class="library-tab" data-tab="history">🕒 Historique</button>
                         </div>
                     </div>
@@ -403,6 +383,14 @@
                             </button>
                         </div>
                         <div id="favorites-list" class="tracks-list"></div>
+                    </div>
+
+                    <!-- Subscriptions Tab -->
+                    <div id="library-tab-subscriptions" class="library-tab-content">
+                        <div class="library-actions-bar">
+                            <span style="font-size: 14px; color: var(--text-secondary);">Artistes et profils que vous suivez :</span>
+                        </div>
+                        <div id="subscriptions-grid" class="cards-grid"></div>
                     </div>
 
                     <!-- History Tab -->
@@ -567,6 +555,10 @@
                                         </svg>
                                         <span>Lecture Aléatoire</span>
                                     </button>
+                                    <button id="artist-subscribe-btn" class="btn secondary subscribe-pill-btn" onclick="window.App && window.App.toggleArtistSubscription()">
+                                        <svg viewBox="0 0 24 24" style="width:18px;height:18px;margin-right:6px;fill:currentColor;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                        <span id="artist-subscribe-btn-text">S'abonner</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -679,8 +671,14 @@
                         <h3 class="settings-group-title">👤 Personnalisation du Profil</h3>
                         <div class="settings-card profile-settings-card">
                             <div class="profile-settings-header">
-                                <img id="settings-avatar-preview" src="/icons/icon.svg" class="profile-avatar-preview"
-                                    alt="Avatar">
+                                <div class="profile-avatar-wrapper">
+                                    <img id="settings-avatar-preview" src="/icons/icon.svg" class="profile-avatar-preview"
+                                        alt="Avatar">
+                                    <label for="settings-avatar-file-input" class="avatar-edit-overlay" title="Choisir une photo de profil">
+                                        <svg viewBox="0 0 24 24"><path d="M3 4V1h2v3h3v2H5v3H3V6H0V4h3zm3 6V7h3V4h7l1.83 2H21c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V10h3zm7 9c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-3.2-5c0 1.77 1.43 3.2 3.2 3.2s3.2-1.43 3.2-3.2-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2z"/></svg>
+                                    </label>
+                                    <input type="file" id="settings-avatar-file-input" accept="image/*" style="display: none;">
+                                </div>
                                 <div class="profile-header-meta">
                                     <h4 id="settings-username-display">Mon Compte</h4>
                                     <span class="user-dropdown-badge">Membre Cloud NeonDB</span>
@@ -692,44 +690,61 @@
                                 </div>
                             </div>
 
-                            <div class="input-row">
-                                <label>Photo de profil (URL personnalisée) :</label>
-                                <input type="text" id="settings-avatar-input"
-                                    placeholder="https://exemple.com/mon-avatar.jpg"
-                                    oninput="document.getElementById('settings-avatar-preview').src = this.value.trim() || '/icons/icon.svg'">
-                                <div class="avatar-presets-row">
-                                    <span style="font-size: 12px; color: var(--text-muted);">Presets rapides :</span>
-                                    <img src="https://api.dicebear.com/7.x/identicon/svg?seed=Felix"
-                                        class="avatar-preset-dot" alt=""
-                                        onclick="window.App && window.App.selectAvatarPreset(this.src)"
-                                        title="Identicon Felix">
-                                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Robot1"
-                                        class="avatar-preset-dot" alt=""
-                                        onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Robot">
-                                    <img src="https://api.dicebear.com/7.x/micah/svg?seed=MusicGuy"
-                                        class="avatar-preset-dot" alt=""
-                                        onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Micah">
-                                    <img src="https://api.dicebear.com/7.x/lorelei/svg?seed=MusicGirl"
-                                        class="avatar-preset-dot" alt=""
-                                        onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Lorelei">
-                                    <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NnA5MzZua24xNHhzamR4ZGoybjFkaGx6a2g1MnVsOWZ6Z2cxMDRqYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/1is4K4y0oWyyGnWTSh/giphy.gif"
-                                        class="avatar-preset-dot" alt=""
-                                        onclick="window.App && window.App.selectAvatarPreset(this.src)"
-                                        title="Vinyle DJ">
+                            <!-- Source Switch Tabs -->
+                            <div class="profile-avatar-tabs">
+                                <button type="button" class="avatar-tab-btn active" id="profile-tab-upload-btn" onclick="window.App && window.App.switchProfileAvatarTab('upload')">📁 Téléverser une image</button>
+                                <button type="button" class="avatar-tab-btn" id="profile-tab-url-btn" onclick="window.App && window.App.switchProfileAvatarTab('url')">🔗 Lien d'image URL</button>
+                            </div>
+
+                            <!-- Upload Section -->
+                            <div id="profile-avatar-upload-section" class="profile-tab-content active">
+                                <label for="settings-avatar-file-input" class="avatar-upload-dropzone">
+                                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                                    <span>Choisir une image locale sur cet appareil</span>
+                                    <span class="dropzone-hint">Formats supportés : JPG, PNG, WEBP, GIF (compressé automatiquement)</span>
+                                </label>
+                            </div>
+
+                            <!-- URL Section -->
+                            <div id="profile-avatar-url-section" class="profile-tab-content">
+                                <div class="input-row">
+                                    <label>Lien d'image URL :</label>
+                                    <input type="text" id="settings-avatar-input"
+                                        placeholder="https://media.giphy.com/... ou https://exemple.com/avatar.jpg"
+                                        oninput="document.getElementById('settings-avatar-preview').src = this.value.trim() || '/icons/icon.svg'">
+                                    <div class="avatar-presets-row">
+                                        <span style="font-size: 12px; color: var(--text-muted);">Presets rapides :</span>
+                                        <img src="https://api.dicebear.com/7.x/identicon/svg?seed=Felix"
+                                            class="avatar-preset-dot" alt=""
+                                            onclick="window.App && window.App.selectAvatarPreset(this.src)"
+                                            title="Identicon Felix">
+                                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Robot1"
+                                            class="avatar-preset-dot" alt=""
+                                            onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Robot">
+                                        <img src="https://api.dicebear.com/7.x/micah/svg?seed=MusicGuy"
+                                            class="avatar-preset-dot" alt=""
+                                            onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Micah">
+                                        <img src="https://api.dicebear.com/7.x/lorelei/svg?seed=MusicGirl"
+                                            class="avatar-preset-dot" alt=""
+                                            onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Lorelei">
+                                        <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NnA5MzZua24xNHhzamR4ZGoybjFkaGx6a2g1MnVsOWZ6Z2cxMDRqYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/1is4K4y0oWyyGnWTSh/giphy.gif"
+                                            class="avatar-preset-dot" alt=""
+                                            onclick="window.App && window.App.selectAvatarPreset(this.src)"
+                                            title="Vinyle DJ">
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="bio-textarea-wrapper">
                                 <label
-                                    style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Biographie
-                                    :</label>
-                                <textarea id="settings-bio-input" maxlength="250"
-                                    placeholder="Parlez de vos goûts musicaux, vos artistes fétiches..."
-                                    oninput="document.getElementById('bio-char-count').textContent = this.value.length + ' / 250'"></textarea>
-                                <div id="bio-char-count" class="bio-char-count">0 / 250</div>
+                                    style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Biographie (sauts de ligne supportés) :</label>
+                                <textarea id="settings-bio-input" maxlength="500" rows="4"
+                                    placeholder="Parlez de vos goûts musicaux, vos artistes fétiches... (les retours à la ligne sont conservés)"
+                                    oninput="document.getElementById('bio-char-count').textContent = this.value.length + ' / 500'"></textarea>
+                                <div id="bio-char-count" class="bio-char-count">0 / 500</div>
                             </div>
 
-                            <button class="btn primary small" style="align-self: flex-start; margin-top: 8px;"
+                            <button class="btn primary small" style="align-self: flex-start; margin-top: 10px;"
                                 onclick="window.App && window.App.saveProfileSettings()">
                                 <svg viewBox="0 0 24 24">
                                     <path
@@ -744,6 +759,19 @@
                     <div class="settings-group">
                         <h3 class="settings-group-title">🔊 Préférences Audio & Qualité</h3>
                         <div class="settings-card">
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Minuterie de Veille (Sleep Timer)</span>
+                                    <span class="settings-item-desc" id="settings-sleep-timer-desc">Arrête automatiquement la lecture après le délai choisi.</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="sleep-timer-badge" class="badge hidden" style="font-size: 12px; padding: 4px 8px;"></span>
+                                    <button class="btn secondary small" onclick="window.App && window.App.openSleepModal()">
+                                        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 6px; fill: currentColor;"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" /></svg>
+                                        <span>Programmer</span>
+                                    </button>
+                                </div>
+                            </div>
                             <div class="settings-item-row">
                                 <div class="settings-item-text">
                                     <span class="settings-item-label">Égaliseur Audio (EQ 5 Bandes)</span>
@@ -1650,6 +1678,55 @@
                             </svg>
                         </div>
                     </div>
+                </div>
+            </div>
+        <!-- Modal: Modifier la Cover de la Playlist (Upload Fichier OU Lien URL) -->
+        <div id="modal-playlist-cover" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>🖼️ Modifier la couverture</h3>
+                    <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-playlist-cover').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-desc">Personnalisez l'image principale de votre playlist en téléversant un fichier ou en indiquant une URL d'image.</p>
+                    
+                    <div class="cover-modal-preview-wrapper">
+                        <img id="playlist-cover-modal-preview" src="/icons/icon.svg" class="cover-modal-preview-img" alt="Aperçu Cover">
+                    </div>
+
+                    <div class="cover-source-tabs">
+                        <button type="button" class="cover-tab-btn active" id="cover-tab-upload-btn" onclick="window.App && window.App.switchCoverTab('upload')">📁 Fichier local</button>
+                        <button type="button" class="cover-tab-btn" id="cover-tab-url-btn" onclick="window.App && window.App.switchCoverTab('url')">🔗 Lien URL</button>
+                    </div>
+
+                    <div id="cover-section-upload" class="cover-section-content active">
+                        <label class="cover-upload-dropzone" for="playlist-modal-file-input">
+                            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                            <span>Cliquez pour choisir une photo</span>
+                            <span class="dropzone-hint">JPG, PNG ou WEBP (redimensionnée automatiquement)</span>
+                        </label>
+                        <input type="file" id="playlist-modal-file-input" accept="image/*" style="display: none;">
+                    </div>
+
+                    <div id="cover-section-url" class="cover-section-content">
+                        <div class="input-row">
+                            <label>URL de l'image :</label>
+                            <input type="text" id="playlist-modal-url-input" placeholder="https://exemple.com/image.jpg" oninput="window.App && window.App.previewCoverUrl(this.value)">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn secondary small" id="remove-custom-cover-btn" onclick="window.App && window.App.removePlaylistCustomCover()">
+                        🗑️ Réinitialiser (Cover 1er titre)
+                    </button>
+                    <button type="button" class="btn secondary small" onclick="document.getElementById('modal-playlist-cover').classList.add('hidden')">
+                        Annuler
+                    </button>
+                    <button type="button" class="btn primary small" onclick="window.App && window.App.savePlaylistCoverModal()">
+                        Enregistrer
+                    </button>
                 </div>
             </div>
         </div>

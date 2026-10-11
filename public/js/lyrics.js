@@ -8,6 +8,31 @@ class LyricsManager {
         this.scrollTimeout = null;
     }
 
+    static getInstance() {
+        if (!LyricsManager._instance) LyricsManager._instance = new LyricsManager();
+        return LyricsManager._instance;
+    }
+
+    static setContainer(containerEl) {
+        return LyricsManager.getInstance().setContainer(containerEl);
+    }
+
+    static render() {
+        return LyricsManager.getInstance().render();
+    }
+
+    static loadLyrics(title, artist) {
+        return LyricsManager.getInstance().loadLyrics(title, artist);
+    }
+
+    static updateProgress(currentTime) {
+        return LyricsManager.getInstance().updateProgress(currentTime);
+    }
+
+    static clear() {
+        return LyricsManager.getInstance().clear();
+    }
+
     setContainer(containerEl) {
         this.container = containerEl;
         if (this.container) {

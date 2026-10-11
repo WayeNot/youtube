@@ -427,6 +427,9 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         bindListeners() {
+            this.initProfileAvatarUpload();
+            this.initPlaylistModalFileUpload();
+
             // Sidebar Toggle
             if (this.dom.sidebarToggleBtn) {
                 this.dom.sidebarToggleBtn.addEventListener('click', () => {
@@ -676,8 +679,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (content) content.classList.add('active');
 
                     if (target === 'lyrics') {
-                        LyricsManager.setContainer(this.dom.mobileLyricsContainer);
-                        LyricsManager.render();
+                        if (window.LyricsManager && typeof window.LyricsManager.setContainer === 'function') {
+                            window.LyricsManager.setContainer(this.dom.mobileLyricsContainer);
+                            window.LyricsManager.render();
+                        }
                     }
                 });
             });
@@ -711,9 +716,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.dom.mobileDownloadBtn.addEventListener('click', downloadTrack);
 
             // Sleep Timer Modal
-            const openSleepModal = () => this.dom.modalSleepTimer.classList.remove('hidden');
-            this.dom.sleepTimerBtn.addEventListener('click', openSleepModal);
-            this.dom.mobileSleepBtn.addEventListener('click', openSleepModal);
+            const openSleepModal = () => this.dom.modalSleepTimer && this.dom.modalSleepTimer.classList.remove('hidden');
+            if (this.dom.sleepTimerBtn) this.dom.sleepTimerBtn.addEventListener('click', openSleepModal);
+            if (this.dom.mobileSleepBtn) this.dom.mobileSleepBtn.addEventListener('click', openSleepModal);
 
             document.querySelectorAll('.timer-option-btn[data-minutes]').forEach((btn) => {
                 btn.addEventListener('click', () => {
@@ -801,8 +806,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.querySelectorAll('.library-tab-content').forEach(c => c.classList.remove('active'));
                     tab.classList.add('active');
                     const target = tab.getAttribute('data-tab');
-                    document.getElementById(`library-tab-${target}`).classList.add('active');
+                    const targetEl = document.getElementById(`library-tab-${target}`);
+                    if (targetEl) targetEl.classList.add('active');
+                    if (target === 'subscriptions') {
+                        this.renderSubscriptions();
+                    }
                 });
+            });
+
+            window.addEventListener('subscriptions_changed', () => {
+                this.renderSubscriptions();
             });
 
             this.dom.playAllFavoritesBtn.addEventListener('click', () => {
@@ -1647,7 +1660,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 html += suggestions.slice(0, 6).map(s => `
           <div class="suggestion-item ytm-suggestion-row" data-query="${this.escapeHtml(s)}">
             <div class="suggestion-left">
-              <svg class="suggestion-search-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 14z"/></svg>
+              <svg class="suggestion-search-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
               <span class="suggestion-text">${this.escapeHtml(s)}</span>
             </div>
           </div>
@@ -2107,9 +2120,9 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
                 }
 
-                if (isOwner && this.dom.playlistCoverFileInput) {
+                if (isOwner) {
                     this.dom.playlistCoverBig.onclick = () => {
-                        this.dom.playlistCoverFileInput.click();
+                        this.openPlaylistCoverModal();
                     };
                 } else {
                     this.dom.playlistCoverBig.onclick = null;
@@ -2305,13 +2318,22 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         updateFavoriteUI(isFav) {
+            const fav = !!isFav;
             const btns = [this.dom.playerFavBtn, this.dom.mobilePlayerFavBtn].filter(Boolean);
             btns.forEach(btn => {
-                btn.classList.toggle('favorited', !!isFav);
+                btn.classList.toggle('favorited', fav);
+                btn.setAttribute('aria-label', fav ? 'Retirer des favoris' : 'Ajouter aux favoris');
+                btn.setAttribute('title', fav ? 'Retirer des favoris' : 'Ajouter aux favoris');
                 const empty = btn.querySelector('.heart-empty');
                 const filled = btn.querySelector('.heart-filled');
-                if (empty) empty.classList.toggle('hidden', !!isFav);
-                if (filled) filled.classList.toggle('hidden', !isFav);
+                if (empty) {
+                    empty.classList.toggle('hidden', fav);
+                    empty.style.display = fav ? 'none' : 'block';
+                }
+                if (filled) {
+                    filled.classList.toggle('hidden', !fav);
+                    filled.style.display = fav ? 'block' : 'none';
+                }
             });
         },
 
@@ -2387,8 +2409,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.dom.toggleQueueBtn) this.dom.toggleQueueBtn.classList.toggle('active', panelName === 'queue');
 
             if (panelName === 'lyrics') {
-                LyricsManager.setContainer(this.dom.sideLyricsContainer);
-                LyricsManager.render();
+                if (window.LyricsManager && typeof window.LyricsManager.setContainer === 'function') {
+                    window.LyricsManager.setContainer(this.dom.sideLyricsContainer);
+                    window.LyricsManager.render();
+                }
             } else if (panelName === 'queue') {
                 this.renderQueueUI();
             }
@@ -2451,8 +2475,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (e.target.closest('.remove-queue-btn')) return;
                         const idx = parseInt(item.getAttribute('data-queue-index'), 10);
                         if (!isNaN(idx) && Player.queue[idx]) {
-                            Player.currentIndex = idx;
-                            Player.playTrack(Player.queue[idx]);
+                            Player.playTrack(Player.queue[idx], null, idx);
                             this.renderQueueUI();
                         }
                     });
@@ -2972,6 +2995,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.updateURL(`/artist/${encodeURIComponent(artistName)}`);
             this.switchView('artist', false);
 
+            this.currentArtistData = { name: artistName };
+            this.updateArtistSubscribeUI(artistName);
+
             // Loading state
             if (this.dom.artistName) this.dom.artistName.textContent = artistName;
             if (this.dom.artistSubscribers) this.dom.artistSubscribers.textContent = 'Chargement des titres et albums...';
@@ -2995,6 +3021,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const artist = data.artist;
+                this.currentArtistData = artist;
+                this.updateArtistSubscribeUI(artist.name || artistName);
                 if (this.dom.artistName) this.dom.artistName.textContent = artist.name || artistName;
                 if (this.dom.artistSubscribers) this.dom.artistSubscribers.textContent = artist.subscribers || 'Artiste officiel';
                 if (this.dom.artistBioText) {
@@ -3298,6 +3326,212 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 this.showToast('Erreur de connexion au serveur');
             }
+        },
+
+        switchProfileAvatarTab(tab) {
+            const uploadBtn = document.getElementById('profile-tab-upload-btn');
+            const urlBtn = document.getElementById('profile-tab-url-btn');
+            const uploadSec = document.getElementById('profile-avatar-upload-section');
+            const urlSec = document.getElementById('profile-avatar-url-section');
+
+            if (uploadBtn) uploadBtn.classList.toggle('active', tab === 'upload');
+            if (urlBtn) urlBtn.classList.toggle('active', tab === 'url');
+            if (uploadSec) uploadSec.classList.toggle('active', tab === 'upload');
+            if (urlSec) urlSec.classList.toggle('active', tab === 'url');
+        },
+
+        initProfileAvatarUpload() {
+            const fileInput = document.getElementById('settings-avatar-file-input');
+            if (!fileInput) return;
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (loadEvent) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const maxSize = 240;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > maxSize) {
+                                height = Math.round((height * maxSize) / width);
+                                width = maxSize;
+                            }
+                        } else {
+                            if (height > maxSize) {
+                                width = Math.round((width * maxSize) / height);
+                                height = maxSize;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+                        const preview = document.getElementById('settings-avatar-preview');
+                        if (preview) preview.src = compressedDataUrl;
+                        if (this.dom.settingsAvatarInput) this.dom.settingsAvatarInput.value = compressedDataUrl;
+                        this.showToast('Photo de profil chargée ! Cliquez sur "Enregistrer le profil". 📸');
+                    };
+                    img.src = loadEvent.target.result;
+                };
+                reader.readAsDataURL(file);
+                fileInput.value = '';
+            };
+        },
+
+        openPlaylistCoverModal() {
+            if (!this.currentOpenPlaylist || this.currentOpenPlaylist.id === 'liked_tracks') return;
+            const modal = document.getElementById('modal-playlist-cover');
+            if (!modal) return;
+
+            const preview = document.getElementById('playlist-cover-modal-preview');
+            const urlInput = document.getElementById('playlist-modal-url-input');
+            const currentCover = this.currentOpenPlaylist.customCover || 
+                (this.currentOpenPlaylist.tracks && this.currentOpenPlaylist.tracks[0] ? this.currentOpenPlaylist.tracks[0].thumbnail : '/icons/icon.svg');
+
+            if (preview) preview.src = currentCover;
+            if (urlInput) urlInput.value = (this.currentOpenPlaylist.customCover && !this.currentOpenPlaylist.customCover.startsWith('data:')) ? this.currentOpenPlaylist.customCover : '';
+            this.tempPlaylistCoverData = this.currentOpenPlaylist.customCover || null;
+
+            modal.classList.remove('hidden');
+        },
+
+        switchCoverTab(tab) {
+            const uploadBtn = document.getElementById('cover-tab-upload-btn');
+            const urlBtn = document.getElementById('cover-tab-url-btn');
+            const uploadSec = document.getElementById('cover-section-upload');
+            const urlSec = document.getElementById('cover-section-url');
+
+            if (uploadBtn) uploadBtn.classList.toggle('active', tab === 'upload');
+            if (urlBtn) urlBtn.classList.toggle('active', tab === 'url');
+            if (uploadSec) uploadSec.classList.toggle('active', tab === 'upload');
+            if (urlSec) urlSec.classList.toggle('active', tab === 'url');
+        },
+
+        previewCoverUrl(url) {
+            const preview = document.getElementById('playlist-cover-modal-preview');
+            const trimmed = (url || '').trim();
+            if (trimmed && preview) {
+                preview.src = trimmed;
+                this.tempPlaylistCoverData = trimmed;
+            }
+        },
+
+        initPlaylistModalFileUpload() {
+            const fileInput = document.getElementById('playlist-modal-file-input');
+            if (!fileInput) return;
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (loadEvent) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const maxSize = 500;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > maxSize) {
+                                height = Math.round((height * maxSize) / width);
+                                width = maxSize;
+                            }
+                        } else {
+                            if (height > maxSize) {
+                                width = Math.round((width * maxSize) / height);
+                                height = maxSize;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+                        const preview = document.getElementById('playlist-cover-modal-preview');
+                        if (preview) preview.src = compressedDataUrl;
+                        this.tempPlaylistCoverData = compressedDataUrl;
+                        this.showToast('Image chargée, cliquez sur "Enregistrer" ! 🖼️');
+                    };
+                    img.src = loadEvent.target.result;
+                };
+                reader.readAsDataURL(file);
+                fileInput.value = '';
+            };
+        },
+
+        savePlaylistCoverModal() {
+            if (!this.currentOpenPlaylist || !this.tempPlaylistCoverData) {
+                document.getElementById('modal-playlist-cover')?.classList.add('hidden');
+                return;
+            }
+            Storage.updatePlaylist(this.currentOpenPlaylist.id, { customCover: this.tempPlaylistCoverData });
+            this.currentOpenPlaylist.customCover = this.tempPlaylistCoverData;
+            document.getElementById('modal-playlist-cover')?.classList.add('hidden');
+            this.renderPlaylists();
+            this.openPlaylistView(this.currentOpenPlaylist.id);
+            this.showToast('Couverture de la playlist enregistrée ! 🖼️');
+        },
+
+        removePlaylistCustomCover() {
+            if (!this.currentOpenPlaylist) return;
+            Storage.updatePlaylist(this.currentOpenPlaylist.id, { customCover: null });
+            this.currentOpenPlaylist.customCover = null;
+            document.getElementById('modal-playlist-cover')?.classList.add('hidden');
+            this.renderPlaylists();
+            this.openPlaylistView(this.currentOpenPlaylist.id);
+            this.showToast('Couverture réinitialisée au 1er titre ! 🔄');
+        },
+
+        toggleArtistSubscription() {
+            if (!this.currentArtistData || !this.currentArtistData.name) return;
+            const artist = this.currentArtistData;
+            const isSub = Storage.toggleSubscription({
+                id: artist.name,
+                name: artist.name,
+                avatar: artist.avatar,
+                type: 'artist',
+                subscribers: artist.subscribers || ''
+            });
+
+            this.updateArtistSubscribeUI(artist.name);
+            this.showToast(isSub ? `Abonné à ${artist.name} ! 🎉` : `Désabonné de ${artist.name}`);
+        },
+
+        updateArtistSubscribeUI(artistName) {
+            const btn = document.getElementById('artist-subscribe-btn');
+            const txt = document.getElementById('artist-subscribe-btn-text');
+            if (!btn) return;
+            const isSub = Storage.isSubscribed(artistName);
+            btn.classList.toggle('subscribed', isSub);
+            if (txt) txt.textContent = isSub ? '✓ Abonné' : "S'abonner";
+        },
+
+        renderSubscriptions() {
+            const container = document.getElementById('subscriptions-grid');
+            if (!container) return;
+
+            const subs = Storage.getSubscriptions();
+            if (!subs || subs.length === 0) {
+                container.innerHTML = '<p class="empty-msg" style="grid-column: 1/-1; padding: 24px 0;">Vous n\'êtes abonné à aucun artiste pour le moment. Explorez et abonnez-vous depuis la page d\'un artiste !</p>';
+                return;
+            }
+
+            container.innerHTML = subs.map(sub => `
+                <div class="artist-sub-card" onclick="window.App && window.App.openArtistView('${this.escapeHtml(sub.name)}')">
+                    <img src="${sub.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(sub.name)}" alt="" class="artist-sub-avatar">
+                    <span class="artist-sub-name">${this.escapeHtml(sub.name)}</span>
+                    <span class="artist-sub-badge">${sub.subscribers ? this.escapeHtml(sub.subscribers) : 'Artiste'}</span>
+                </div>
+            `).join('');
         },
 
         closeUserDropdown() {

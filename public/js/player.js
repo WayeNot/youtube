@@ -90,7 +90,7 @@ class PlayerEngine {
       if (this.crossfadeDuration > 0 && dur > 25 && dur - cur <= this.crossfadeDuration && !this._isCrossfading && this.isPlaying) {
         this._isCrossfading = true;
         // Fade out slightly
-        const targetVol = this.audio.volume;
+        const targetVol = this.volume !== undefined ? this.volume : (this.audio.volume || 1);
         const fadeInterval = setInterval(() => {
           if (this.audio.volume > 0.15) {
             this.audio.volume = Math.max(0.05, this.audio.volume - 0.15);
@@ -99,8 +99,10 @@ class PlayerEngine {
           }
         }, 300);
 
-        setTimeout(() => {
+        if (this._crossfadeTimeout) clearTimeout(this._crossfadeTimeout);
+        this._crossfadeTimeout = setTimeout(() => {
           clearInterval(fadeInterval);
+          this._crossfadeTimeout = null;
           this._isCrossfading = false;
           this.setVolume(targetVol);
           this.playNext();
@@ -250,6 +252,12 @@ class PlayerEngine {
   async playTrack(track, newQueue = null, explicitIndex = null) {
     if (!track || !track.id) return;
 
+    if (this._crossfadeTimeout) {
+      clearTimeout(this._crossfadeTimeout);
+      this._crossfadeTimeout = null;
+    }
+    this._isCrossfading = false;
+
     this.isLoading = true;
     this.prefetchedNext = false;
     this.currentTrack = track;
@@ -375,6 +383,12 @@ class PlayerEngine {
   }
 
   playNext() {
+    if (this._crossfadeTimeout) {
+      clearTimeout(this._crossfadeTimeout);
+      this._crossfadeTimeout = null;
+    }
+    this._isCrossfading = false;
+
     if (this.repeatMode === 'one') {
       this.seek(0);
       this.play();
@@ -398,6 +412,12 @@ class PlayerEngine {
   }
 
   playPrevious() {
+    if (this._crossfadeTimeout) {
+      clearTimeout(this._crossfadeTimeout);
+      this._crossfadeTimeout = null;
+    }
+    this._isCrossfading = false;
+
     // If played more than 3 seconds, replay current song
     if (this.audio.currentTime > 3) {
       this.seek(0);
@@ -413,6 +433,17 @@ class PlayerEngine {
   }
 
   handleTrackEnded() {
+    // Guard against duplicate ended events or rapid transitions skipping tracks
+    if (this._isAdvancingTrack) return;
+    this._isAdvancingTrack = true;
+    setTimeout(() => { this._isAdvancingTrack = false; }, 800);
+
+    if (this._crossfadeTimeout) {
+      clearTimeout(this._crossfadeTimeout);
+      this._crossfadeTimeout = null;
+    }
+    this._isCrossfading = false;
+
     if (this.sleepAtTrackEnd) {
       this.pause();
       this.cancelSleepTimer();

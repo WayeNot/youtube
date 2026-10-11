@@ -1278,20 +1278,38 @@ html, body {
 }
 
 /* Like / Favorite Button Styling */
-.fav-btn svg.heart-empty {
+.fav-btn {
+  color: #ffffff;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease;
+}
+.fav-btn svg {
   display: block;
   fill: #ffffff;
+  color: #ffffff;
+  transition: fill 0.2s ease, transform 0.2s ease;
+}
+.fav-btn svg.heart-empty {
+  display: block;
 }
 .fav-btn svg.heart-filled {
   display: none;
+}
+.fav-btn.favorited {
+  color: #ff0033 !important;
+  transform: scale(1.08);
+}
+.fav-btn.favorited svg,
+.fav-btn.favorited svg path {
   fill: #ff0033 !important;
+  color: #ff0033 !important;
 }
 .fav-btn.favorited svg.heart-empty {
-  display: none;
+  display: none !important;
 }
 .fav-btn.favorited svg.heart-filled {
-  display: block;
+  display: block !important;
   fill: #ff0033 !important;
+  color: #ff0033 !important;
 }
 
 /* Track list row like button */
@@ -2572,11 +2590,13 @@ textarea#import-text-input:focus {
 }
 
 .profile-bio-text {
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--text-secondary);
-  margin-bottom: 12px;
-  max-width: 550px;
-  line-height: 1.4;
+  margin-bottom: 14px;
+  max-width: 650px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .profile-stats-row {
@@ -4364,4 +4384,179 @@ textarea#import-text-input:focus {
   background: var(--accent-red, #ff0033);
   color: #fff;
   font-weight: 700;
+}
+
+/* ==========================================================================
+   Redesigned Profile Settings Card & Dual Upload (File OR URL)
+   ========================================================================== */
+.profile-avatar-wrapper {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: #181818;
+  flex-shrink: 0;
+}
+.profile-avatar-wrapper .profile-avatar-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.avatar-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.profile-avatar-wrapper:hover .avatar-edit-overlay {
+  opacity: 1;
+}
+.avatar-edit-overlay svg {
+  width: 26px;
+  height: 26px;
+  fill: #fff;
+}
+.profile-avatar-tabs,
+.cover-source-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 12px 0;
+}
+.avatar-tab-btn,
+.cover-tab-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  padding: 7px 16px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.avatar-tab-btn:hover,
+.cover-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.avatar-tab-btn.active,
+.cover-tab-btn.active {
+  background: #fff;
+  color: #030303;
+  border-color: #fff;
+  font-weight: 600;
+}
+.profile-tab-content,
+.cover-section-content {
+  display: none;
+}
+.profile-tab-content.active,
+.cover-section-content.active {
+  display: block;
+}
+.avatar-upload-dropzone,
+.cover-upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 24px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.avatar-upload-dropzone:hover,
+.cover-upload-dropzone:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+}
+.avatar-upload-dropzone svg,
+.cover-upload-dropzone svg {
+  width: 32px;
+  height: 32px;
+  fill: rgba(255, 255, 255, 0.7);
+}
+.dropzone-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cover-modal-preview-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.cover-modal-preview-img {
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Artist Subscribe Button & Subscriptions Grid */
+.subscribe-pill-btn {
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.subscribe-pill-btn.subscribed {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+.subscribe-pill-btn.subscribed svg {
+  fill: #ff0033 !important;
+}
+.artist-sub-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.artist-sub-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.artist-sub-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+.artist-sub-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.artist-sub-badge {
+  font-size: 12px;
+  color: var(--text-secondary);
 }

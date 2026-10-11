@@ -6,6 +6,7 @@ const Storage = {
     HISTORY: 'ytm_history',
     RECENT_SEARCHES: 'ytm_recent_searches',
     SETTINGS: 'ytm_settings',
+    SUBSCRIPTIONS: 'ytm_subscriptions',
     AUTH_TOKEN: 'ytm_auth_token',
     AUTH_USER: 'ytm_auth_user',
     IS_GUEST: 'ytm_is_guest'
@@ -205,14 +206,17 @@ const Storage = {
   },
 
   isFavorite(id) {
+    if (!id) return false;
+    const cleanId = String(id).trim();
     const list = this.getFavorites();
-    return list.some(item => item.id === id);
+    return list.some(item => item && item.id && (String(item.id).trim() === cleanId));
   },
 
   toggleFavorite(track) {
     if (!track || !track.id) return false;
+    const cleanId = String(track.id).trim();
     let list = this.getFavorites();
-    const idx = list.findIndex(item => item.id === track.id);
+    const idx = list.findIndex(item => item && item.id && (String(item.id).trim() === cleanId));
     let isNowFav = false;
     if (idx >= 0) {
       list.splice(idx, 1);
@@ -248,6 +252,49 @@ const Storage = {
     }
 
     return isNowFav;
+  },
+
+  // Subscriptions (Abonnements aux artistes & créateurs)
+  getSubscriptions() {
+    try {
+      const data = localStorage.getItem(this.KEYS.SUBSCRIPTIONS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  isSubscribed(artistOrUserId) {
+    if (!artistOrUserId) return false;
+    const cleanId = String(artistOrUserId).toLowerCase().trim();
+    const subs = this.getSubscriptions();
+    return subs.some(s => s && String(s.id).toLowerCase().trim() === cleanId);
+  },
+
+  toggleSubscription(item) {
+    if (!item || !item.id) return false;
+    const cleanId = String(item.id).toLowerCase().trim();
+    let subs = this.getSubscriptions();
+    const idx = subs.findIndex(s => s && String(s.id).toLowerCase().trim() === cleanId);
+    let isNowSubbed = false;
+    if (idx >= 0) {
+      subs.splice(idx, 1);
+      isNowSubbed = false;
+    } else {
+      subs.unshift({
+        id: item.id,
+        name: item.name || item.id,
+        avatar: item.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(item.name || item.id)}`,
+        type: item.type || 'artist',
+        subscribers: item.subscribers || '',
+        subscribedAt: Date.now()
+      });
+      isNowSubbed = true;
+    }
+    localStorage.setItem(this.KEYS.SUBSCRIPTIONS, JSON.stringify(subs));
+    window.dispatchEvent(new CustomEvent('subscriptions_changed', { detail: { subscriptions: subs, isNowSubbed, item } }));
+    this.scheduleCloudSync();
+    return isNowSubbed;
   },
 
   // Playlists
