@@ -83,10 +83,10 @@ async function getAudioStreamUrl(videoId) {
       YTDLP_PATH,
       [
         '-g',
-        '-f', 'ba[ext=m4a]/ba/b',
+        '-f', 'ba/b',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=tv,mweb,web',
+        '--extractor-args', 'youtube:player_client=android_music,mweb,mediaconnect',
         '--',
         `https://www.youtube.com/watch?v=${videoId}`
       ],
