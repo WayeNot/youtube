@@ -103,7 +103,8 @@ async function getAudioStreamUrl(videoId) {
         '-g',
         '-f', 'bestaudio/ba/b/best',
         '--no-playlist',
-        '--no-warnings'
+        '--no-warnings',
+        '--js-runtimes', `node:${process.execPath}`
     ];
 
     if (hasCookies) {
@@ -679,7 +680,7 @@ app.get('/api/test-formats/:id', (req, res) => {
     const fs = require('fs');
     const cookiesPath = path.join(__dirname, 'cookies.txt');
     const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
-    const args = ['-F', '--no-warnings'];
+    const args = ['-F', '--no-warnings', '--js-runtimes', `node:${process.execPath}`];
     if (hasCookies) args.push('--cookies', cookiesPath);
     args.push('--', `https://www.youtube.com/watch?v=${videoId}`);
 
