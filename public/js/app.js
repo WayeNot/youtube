@@ -797,13 +797,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Fullscreen Toggle
-            this.dom.fullscreenBtn.addEventListener('click', () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(() => { });
-                } else {
-                    document.exitFullscreen().catch(() => { });
-                }
-            });
+            if (this.dom.fullscreenBtn) {
+                this.dom.fullscreenBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => { });
+                    } else {
+                        document.exitFullscreen().catch(() => { });
+                    }
+                });
+            }
 
             // Playlists Management
             const openCreatePl = () => {
@@ -814,19 +816,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.renderPlaylists();
                 }
             };
-            this.dom.createPlaylistBtn.addEventListener('click', openCreatePl);
-            this.dom.createPlaylistBtn2.addEventListener('click', openCreatePl);
+            if (this.dom.createPlaylistBtn) this.dom.createPlaylistBtn.addEventListener('click', openCreatePl);
+            if (this.dom.createPlaylistBtn2) this.dom.createPlaylistBtn2.addEventListener('click', openCreatePl);
 
-            this.dom.createAndAddPlBtn.addEventListener('click', () => {
-                const name = this.dom.newPlaylistInput.value.trim();
-                if (name && this.selectedTrackForPlaylist) {
-                    const pl = Storage.createPlaylist(name);
-                    Storage.addTrackToPlaylist(pl.id, this.selectedTrackForPlaylist);
-                    this.dom.modalPlaylistPicker.classList.add('hidden');
-                    this.dom.newPlaylistInput.value = '';
-                    this.showToast(`Ajouté à "${pl.name}"`);
-                }
-            });
+            if (this.dom.createAndAddPlBtn) {
+                this.dom.createAndAddPlBtn.addEventListener('click', () => {
+                    const name = this.dom.newPlaylistInput ? this.dom.newPlaylistInput.value.trim() : '';
+                    if (name && this.selectedTrackForPlaylist) {
+                        const pl = Storage.createPlaylist(name);
+                        Storage.addTrackToPlaylist(pl.id, this.selectedTrackForPlaylist);
+                        if (this.dom.modalPlaylistPicker) this.dom.modalPlaylistPicker.classList.add('hidden');
+                        if (this.dom.newPlaylistInput) this.dom.newPlaylistInput.value = '';
+                        this.showToast(`Ajouté à "${pl.name}"`);
+                    }
+                });
+            }
 
             // Library Sub-tabs
             document.querySelectorAll('.library-tab').forEach((tab) => {
@@ -847,34 +851,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderSubscriptions();
             });
 
-            this.dom.playAllFavoritesBtn.addEventListener('click', () => {
-                const favs = Storage.getFavorites();
-                if (favs.length > 0) Player.playTrack(favs[0], favs);
-            });
+            if (this.dom.playAllFavoritesBtn) {
+                this.dom.playAllFavoritesBtn.addEventListener('click', () => {
+                    const favs = Storage.getFavorites();
+                    if (favs.length > 0) Player.playTrack(favs[0], favs);
+                });
+            }
 
-            this.dom.shuffleFavoritesBtn.addEventListener('click', () => {
-                const favs = Storage.getFavorites();
-                if (favs.length > 0) {
-                    Player.playTrack(favs[0], favs);
-                    if (!Player.isShuffled) Player.toggleShuffle();
-                }
-            });
+            if (this.dom.shuffleFavoritesBtn) {
+                this.dom.shuffleFavoritesBtn.addEventListener('click', () => {
+                    const favs = Storage.getFavorites();
+                    if (favs.length > 0) {
+                        Player.playTrack(favs[0], favs);
+                        if (!Player.isShuffled) Player.toggleShuffle();
+                    }
+                });
+            }
 
-            this.dom.clearHistoryBtn.addEventListener('click', () => {
-                if (confirm('Effacer tout l\'historique d\'écoute ?')) {
-                    Storage.clearHistory();
-                    this.showToast('Historique effacé');
-                }
-            });
+            if (this.dom.clearHistoryBtn) {
+                this.dom.clearHistoryBtn.addEventListener('click', () => {
+                    if (confirm('Effacer tout l\'historique d\'écoute ?')) {
+                        Storage.clearHistory();
+                        this.showToast('Historique effacé');
+                    }
+                });
+            }
 
-            this.dom.playlistBackBtn.addEventListener('click', () => {
-                this.switchView('library');
-            });
+            if (this.dom.playlistBackBtn) {
+                this.dom.playlistBackBtn.addEventListener('click', () => {
+                    this.switchView('library');
+                });
+            }
 
             // Export / Import
-            this.dom.exportDataBtn.addEventListener('click', () => Storage.exportData());
-            this.dom.importDataBtn.addEventListener('click', () => this.dom.importFileInput.click());
-            this.dom.importFileInput.addEventListener('change', (e) => {
+            if (this.dom.exportDataBtn) this.dom.exportDataBtn.addEventListener('click', () => Storage.exportData());
+            if (this.dom.importDataBtn && this.dom.importFileInput) {
+                this.dom.importDataBtn.addEventListener('click', () => this.dom.importFileInput.click());
+                this.dom.importFileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
@@ -888,6 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     reader.readAsText(file);
                 }
             });
+            }
 
             // Clear queue button
             if (this.dom.clearQueueBtn) this.dom.clearQueueBtn.addEventListener('click', () => Player.clearQueue());
