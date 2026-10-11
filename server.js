@@ -674,21 +674,6 @@ app.get('/api/debug', (req, res) => {
     });
 });
 
-// Diagnostic endpoint to check available formats directly from Render
-app.get('/api/test-formats/:id', (req, res) => {
-    const videoId = req.params.id;
-    const fs = require('fs');
-    const cookiesPath = path.join(__dirname, 'cookies.txt');
-    const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
-    const args = ['-F', '--no-warnings', '--js-runtimes', `node:${process.execPath}`];
-    if (hasCookies) args.push('--cookies', cookiesPath);
-    args.push('--', `https://www.youtube.com/watch?v=${videoId}`);
-
-    const { execFile } = require('child_process');
-    execFile(YTDLP_PATH, args, { timeout: 60000 }, (err, stdout, stderr) => {
-        res.type('text/plain').send((stdout || '') + '\n' + (stderr || '') + (err ? '\nError: ' + err.message : ''));
-    });
-});
 
 // 3. Audio Streaming Proxy with HTTP Range Support
 app.get('/api/stream/:id', async (req, res) => {
