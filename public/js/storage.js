@@ -344,6 +344,17 @@ const Storage = {
     this.scheduleCloudSync();
   },
 
+  updatePlaylist(playlistId, updates = {}) {
+    const playlists = this.getPlaylists();
+    const pl = playlists.find(p => p.id === playlistId);
+    if (!pl) return null;
+    Object.assign(pl, updates);
+    localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(playlists));
+    window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists } }));
+    this.pushToCloud();
+    return pl;
+  },
+
   // History
   getHistory() {
     try {

@@ -93,7 +93,7 @@ async function getAudioStreamUrl(videoId) {
     }
 
     // 2. Ensure cookies file exists if env variable is set
-    syncCookiesFile();
+    const hasCookies = syncCookiesFile();
 
     const fs = require('fs');
     const cookiesPath = path.join(__dirname, 'cookies.txt');
@@ -1103,16 +1103,118 @@ app.get('/api/info/:id', async (req, res) => {
 app.post('/api/playlist/import', async (req, res) => {
     const { url, text, name } = req.body || {};
 
-    // Case A: Import from YouTube / YouTube Music URL
+    // Case A: Import from URL (Spotify, Deezer, YouTube / YouTube Music)
     if (url && typeof url === 'string') {
         const cleanUrl = url.trim();
+
+        // 1. Spotify Playlist Import
+        const spotifyMatch = cleanUrl.match(/open\.spotify\.com\/(?:embed\/)?playlist\/([a-zA-Z0-9]+)/);
+        if (spotifyMatch) {
+            const spotifyId = spotifyMatch[1];
+            try {
+                const spotifyRes = await fetch(`https://open.spotify.com/embed/playlist/${spotifyId}`, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                    }
+                });
+                if (!spotifyRes.ok) throw new Error('Impossible d\'accéder à la playlist Spotify.');
+                const html = await spotifyRes.text();
+                const jsonMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+                if (!jsonMatch) throw new Error('Structure Spotify non reconnue.');
+                const data = JSON.parse(jsonMatch[1]);
+                const entity = data.props?.pageProps?.state?.data?.entity;
+                const spotifyTitle = entity?.title || name || 'Playlist Spotify';
+                const trackList = entity?.trackList || [];
+
+                if (trackList.length === 0) {
+                    return res.status(400).json({ error: 'Cette playlist Spotify ne contient aucun titre public.' });
+                }
+
+                // Resolve tracks on YouTube (concurrency limited to 5 at a time)
+                const itemsToResolve = trackList.slice(0, 50);
+                const tracks = [];
+                for (const item of itemsToResolve) {
+                    const artist = item.subtitle || '';
+                    const title = item.title || '';
+                    const query = `${artist} - ${title}`.trim();
+                    try {
+                        const found = await performSearch(query, 1);
+                        if (found && found.length > 0) {
+                            tracks.push(found[0]);
+                        }
+                    } catch (e) { }
+                }
+
+                return res.json({
+                    name: spotifyTitle,
+                    tracks,
+                    count: tracks.length
+                });
+            } catch (err) {
+                console.error('Spotify import error:', err);
+                return res.status(400).json({ error: `Erreur import Spotify: ${err.message}` });
+            }
+        }
+
+        // 2. Deezer Playlist Import
+        const deezerMatch = cleanUrl.match(/deezer\.com\/(?:\w{2}\/)?playlist\/(\d+)/) || cleanUrl.match(/deezer\.page\.link\/[a-zA-Z0-9]+/);
+        if (deezerMatch) {
+            try {
+                let playlistId = deezerMatch[1];
+                if (!playlistId) {
+                    // Follow redirect for short links
+                    const headRes = await fetch(cleanUrl, { redirect: 'follow' });
+                    const resolvedMatch = headRes.url.match(/playlist\/(\d+)/);
+                    if (resolvedMatch) playlistId = resolvedMatch[1];
+                }
+
+                if (!playlistId) throw new Error('Identifiant Deezer introuvable.');
+
+                const dzRes = await fetch(`https://api.deezer.com/playlist/${playlistId}`);
+                if (!dzRes.ok) throw new Error('Impossible d\'accéder à l\'API Deezer.');
+                const dzData = await dzRes.json();
+                if (dzData.error) throw new Error(dzData.error.message || 'Erreur API Deezer');
+
+                const deezerTitle = dzData.title || name || 'Playlist Deezer';
+                const dzTracks = dzData.tracks?.data || [];
+                if (dzTracks.length === 0) {
+                    return res.status(400).json({ error: 'Cette playlist Deezer ne contient aucun morceau.' });
+                }
+
+                // Resolve tracks on YouTube (first 50 tracks)
+                const itemsToResolve = dzTracks.slice(0, 50);
+                const tracks = [];
+                for (const item of itemsToResolve) {
+                    const artist = item.artist?.name || '';
+                    const title = item.title || '';
+                    const query = `${artist} - ${title}`.trim();
+                    try {
+                        const found = await performSearch(query, 1);
+                        if (found && found.length > 0) {
+                            tracks.push(found[0]);
+                        }
+                    } catch (e) { }
+                }
+
+                return res.json({
+                    name: deezerTitle,
+                    tracks,
+                    count: tracks.length
+                });
+            } catch (err) {
+                console.error('Deezer import error:', err);
+                return res.status(400).json({ error: `Erreur import Deezer: ${err.message}` });
+            }
+        }
+
+        // 3. YouTube / YouTube Music URL (via yt-dlp)
         execFile(
             YTDLP_PATH,
             ['--flat-playlist', '-j', '--playlist-end', '80', '--', cleanUrl],
             { timeout: 35000 },
             (err, stdout) => {
                 if (err || !stdout) {
-                    return res.status(400).json({ error: 'Impossible de récupérer cette playlist YouTube. Vérifiez le lien.' });
+                    return res.status(400).json({ error: 'Impossible de récupérer cette playlist. Vérifiez le lien.' });
                 }
                 const tracks = [];
                 let detectedPlaylistTitle = name || 'Playlist Importée';

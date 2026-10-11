@@ -174,6 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistPrivacyBadge: document.getElementById('playlist-privacy-badge'),
         playlistPrivacyToggleBtn: document.getElementById('playlist-privacy-toggle-btn'),
         playlistPrivacyLabel: document.getElementById('playlist-privacy-label'),
+        playlistCoverBig: document.getElementById('playlist-cover-big'),
+        playlistCoverFileInput: document.getElementById('playlist-cover-file-input'),
+        playlistCoverEditBadge: document.getElementById('playlist-cover-edit-badge'),
 
         // Desktop Player Bar
         desktopPlayerBar: document.getElementById('desktop-player-bar'),
@@ -438,6 +441,53 @@ document.addEventListener('DOMContentLoaded', () => {
           Storage.clearRecentSearches();
           this.renderRecentSearches();
           this.showToast('Recherches récentes effacées');
+        };
+      }
+
+      // Playlist Custom Cover File Upload
+      if (this.dom.playlistCoverFileInput) {
+        this.dom.playlistCoverFileInput.onchange = (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file || !this.currentOpenPlaylist || this.currentOpenPlaylist.id === 'liked_tracks') return;
+
+          const reader = new FileReader();
+          reader.onload = (loadEvent) => {
+            const img = new Image();
+            img.onload = () => {
+              // Resize / compress to max 500x500 to keep local storage & cloud fast
+              const canvas = document.createElement('canvas');
+              const maxSize = 500;
+              let width = img.width;
+              let height = img.height;
+              if (width > height) {
+                if (width > maxSize) {
+                  height = Math.round((height * maxSize) / width);
+                  width = maxSize;
+                }
+              } else {
+                if (height > maxSize) {
+                  width = Math.round((width * maxSize) / height);
+                  height = maxSize;
+                }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+              // Update storage & reload current playlist view
+              Storage.updatePlaylist(this.currentOpenPlaylist.id, { customCover: compressedDataUrl });
+              this.currentOpenPlaylist.customCover = compressedDataUrl;
+              this.renderPlaylists();
+              this.openPlaylistView(this.currentOpenPlaylist.id);
+              this.showToast('Cover de la playlist modifiée avec succès ! 🖼️');
+            };
+            img.src = loadEvent.target.result;
+          };
+          reader.readAsDataURL(file);
+          // Reset file input
+          this.dom.playlistCoverFileInput.value = '';
         };
       }
     },
@@ -1412,7 +1462,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="row-artist">${this.escapeHtml(track.artist)}</span>
           </div>
           <div class="row-actions">
-            <button class="icon-btn small row-fav-btn" data-id="${track.id}" title="Favori">
+            <button class="icon-btn small row-fav-btn ${Storage.isFavorite(track.id) ? 'favorited' : ''}" data-id="${track.id}" title="${Storage.isFavorite(track.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
               <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             </button>
             <button class="icon-btn small row-add-pl-btn" data-id="${track.id}" title="Ajouter à une playlist">
@@ -1473,6 +1523,8 @@ document.addEventListener('DOMContentLoaded', () => {
           const track = this.findTrackInMemory(id);
           if (track) {
             const isFav = Storage.toggleFavorite(track);
+            btn.classList.toggle('favorited', isFav);
+            btn.title = isFav ? 'Retirer des favoris' : 'Ajouter aux favoris';
             this.showToast(isFav ? 'Ajouté aux favoris' : 'Retiré des favoris');
           }
         });
@@ -1926,11 +1978,11 @@ document.addEventListener('DOMContentLoaded', () => {
       this.dom.playlistsGrid.innerHTML = likedCardHTML + playlists
         .map(
           (p) => {
-            const firstCover = p.tracks && p.tracks[0] ? p.tracks[0].thumbnail : null;
+            const cover = p.customCover || (p.tracks && p.tracks[0] ? p.tracks[0].thumbnail : null);
             return `
             <div class="music-card" data-playlist-id="${p.id}">
               <div class="card-thumb-wrapper" style="background: linear-gradient(135deg, #2b2b2b, #111);">
-                ${firstCover ? `<img src="${firstCover}" alt="" loading="lazy">` : `
+                ${cover ? `<img src="${cover}" alt="${this.escapeHtml(p.name)}" loading="lazy">` : `
                 <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff0033;">
                   <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
                 </div>`}
@@ -1997,6 +2049,16 @@ document.addEventListener('DOMContentLoaded', () => {
           this.dom.playlistPrivacyBadge.className = 'badge-status private';
           this.dom.playlistPrivacyBadge.textContent = '🔒 Privé (Personnel)';
         }
+        if (this.dom.playlistCoverEditBadge) this.dom.playlistCoverEditBadge.classList.add('hidden');
+        if (this.dom.playlistCoverBig) {
+          this.dom.playlistCoverBig.style.background = 'linear-gradient(135deg, #ff0033, #66001a)';
+          this.dom.playlistCoverBig.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ffffff;">
+              <svg viewBox="0 0 24 24" width="72" height="72" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </div>
+          `;
+          this.dom.playlistCoverBig.onclick = null;
+        }
 
         if (favs.length === 0) {
           this.dom.playlistTracksList.innerHTML = '<p class="empty-msg">Vous n\'avez aucun titre liké pour le moment.</p>';
@@ -2054,13 +2116,48 @@ document.addEventListener('DOMContentLoaded', () => {
       this.dom.playlistDetailTitle.textContent = pl.name;
       this.dom.playlistDetailMeta.textContent = `${pl.tracks ? pl.tracks.length : 0} titres${pl.ownerUsername ? ` • Par ${pl.ownerUsername}` : ''}`;
       
-      // Delete btn only visible to owner
+      // Delete btn & cover edit only visible to owner
       if (isOwner) {
         this.dom.playlistDeleteBtn.classList.remove('hidden');
         if (this.dom.playlistPrivacyToggleBtn) this.dom.playlistPrivacyToggleBtn.classList.remove('hidden');
+        if (this.dom.playlistCoverEditBadge) this.dom.playlistCoverEditBadge.classList.remove('hidden');
       } else {
         this.dom.playlistDeleteBtn.classList.add('hidden');
         if (this.dom.playlistPrivacyToggleBtn) this.dom.playlistPrivacyToggleBtn.classList.add('hidden');
+        if (this.dom.playlistCoverEditBadge) this.dom.playlistCoverEditBadge.classList.add('hidden');
+      }
+
+      // Playlist Main Cover: prioritize customCover, then first track thumbnail, then fallback icon
+      if (this.dom.playlistCoverBig) {
+        this.dom.playlistCoverBig.style.background = 'linear-gradient(135deg, #2b2b2b, #111)';
+        const coverUrl = pl.customCover || (pl.tracks && pl.tracks[0] ? pl.tracks[0].thumbnail : null);
+        if (coverUrl) {
+          this.dom.playlistCoverBig.innerHTML = `
+            <img src="${coverUrl}" alt="${this.escapeHtml(pl.name)}" style="width:100%;height:100%;object-fit:cover;display:block;">
+            ${isOwner ? `
+            <div class="playlist-cover-edit-badge" id="playlist-cover-edit-badge" title="Changer l'image de couverture">
+              <svg viewBox="0 0 24 24"><path d="M3 4V1h2v3h3v2H5v3H3V6H0V4h3zm3 6V7h3V4h7l1.83 2H21c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V10h3zm7 9c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-3.2-5c0 1.77 1.43 3.2 3.2 3.2s3.2-1.43 3.2-3.2-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2z"/></svg>
+            </div>` : ''}
+          `;
+        } else {
+          this.dom.playlistCoverBig.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff0033;">
+              <svg viewBox="0 0 24 24" width="72" height="72" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+            </div>
+            ${isOwner ? `
+            <div class="playlist-cover-edit-badge" id="playlist-cover-edit-badge" title="Changer l'image de couverture">
+              <svg viewBox="0 0 24 24"><path d="M3 4V1h2v3h3v2H5v3H3V6H0V4h3zm3 6V7h3V4h7l1.83 2H21c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V10h3zm7 9c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-3.2-5c0 1.77 1.43 3.2 3.2 3.2s3.2-1.43 3.2-3.2-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2z"/></svg>
+            </div>` : ''}
+          `;
+        }
+
+        if (isOwner && this.dom.playlistCoverFileInput) {
+          this.dom.playlistCoverBig.onclick = () => {
+            this.dom.playlistCoverFileInput.click();
+          };
+        } else {
+          this.dom.playlistCoverBig.onclick = null;
+        }
       }
 
       // Privacy Badge & Toggle Button
@@ -3138,14 +3235,66 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentUser = Storage.getUser();
       const owner = this.currentOpenPlaylist.ownerUsername || (currentUser ? currentUser.username : 'user');
       const shareUrl = `${window.location.origin}/user/${encodeURIComponent(owner)}/playlist/${encodeURIComponent(this.currentOpenPlaylist.name)}`;
+      this.openShareModal(this.currentOpenPlaylist.name, shareUrl);
+    },
+
+    openShareModal(title, url) {
+      const modal = document.getElementById('modal-share');
+      const linkInput = document.getElementById('share-link-input');
+      if (!modal) return;
+
+      this.currentShareUrl = url;
+      this.currentShareTitle = title;
+      if (linkInput) linkInput.textContent = url;
+
+      // Bind social buttons
+      const encodedUrl = encodeURIComponent(url);
+      const encodedTitle = encodeURIComponent(`Écoute la playlist "${title}" sur YouTube Music ! 🎶`);
+
+      const linkedinBtn = document.getElementById('share-btn-linkedin');
+      if (linkedinBtn) linkedinBtn.onclick = () => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, '_blank');
+
+      const whatsappBtn = document.getElementById('share-btn-whatsapp');
+      if (whatsappBtn) whatsappBtn.onclick = () => window.open(`https://api.whatsapp.com/send?text=${encodedTitle}%20${encodedUrl}`, '_blank');
+
+      const fbBtn = document.getElementById('share-btn-facebook');
+      if (fbBtn) fbBtn.onclick = () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank');
+
+      const xBtn = document.getElementById('share-btn-x');
+      if (xBtn) xBtn.onclick = () => window.open(`https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`, '_blank');
+
+      const emailBtn = document.getElementById('share-btn-email');
+      if (emailBtn) emailBtn.onclick = () => window.open(`mailto:?subject=${encodedTitle}&body=${encodedUrl}`, '_blank');
+
+      const redditBtn = document.getElementById('share-btn-reddit');
+      if (redditBtn) redditBtn.onclick = () => window.open(`https://reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`, '_blank');
+
+      modal.classList.remove('hidden');
+    },
+
+    copyShareModalUrl() {
+      if (!this.currentShareUrl) return;
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          this.showToast(`Lien de la playlist copié dans le presse-papier ! 📋`);
+        navigator.clipboard.writeText(this.currentShareUrl).then(() => {
+          this.showToast('Lien copié dans le presse-papier ! 📋');
         }).catch(() => {
-          prompt('Lien de la playlist :', shareUrl);
+          prompt('Lien :', this.currentShareUrl);
         });
       } else {
-        prompt('Lien de la playlist :', shareUrl);
+        prompt('Lien :', this.currentShareUrl);
+      }
+    },
+
+    inviteCollaborators() {
+      if (!this.currentShareUrl) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(this.currentShareUrl).then(() => {
+          this.showToast('Lien d\'invitation collaborateur copié ! Partagez-le avec vos amis 👥');
+        }).catch(() => {
+          prompt('Lien d\'invitation :', this.currentShareUrl);
+        });
+      } else {
+        prompt('Lien d\'invitation :', this.currentShareUrl);
       }
     },
 

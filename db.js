@@ -414,8 +414,13 @@ const db = {
         if (validPlIds.length === 0) {
           await neonSql`DELETE FROM playlists WHERE user_id = ${userId}`;
         } else {
-          // Delete playlists no longer present
-          await neonSql`DELETE FROM playlists WHERE user_id = ${userId} AND id NOT IN ${neonSql(validPlIds)}`;
+          // Delete playlists no longer present for this user
+          const existing = await neonSql`SELECT id FROM playlists WHERE user_id = ${userId}`;
+          for (const row of existing) {
+            if (!validPlIds.includes(row.id)) {
+              await neonSql`DELETE FROM playlists WHERE id = ${row.id} AND user_id = ${userId}`;
+            }
+          }
         }
 
         for (const pl of plsArr) {
