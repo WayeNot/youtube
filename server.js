@@ -352,6 +352,7 @@ app.get('/api/suggestions', async (req, res) => {
 const albumCache = new Map();
 
 async function getArtistBio(artistName) {
+  // 1. Try FR Wikipedia direct summary by exact artist name
   try {
     const clean = artistName.replace(/\s+/g, '_');
     const wikiRes = await fetch(`https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`, {
@@ -365,19 +366,33 @@ async function getArtistBio(artistName) {
     }
   } catch (e) {}
 
+  // 2. Try FR Wikipedia search with "${artistName} musicien", then fetch the first result's summary
   try {
-    const clean = artistName.replace(/\s+/g, '_');
-    const wikiEnRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`, {
-      headers: { 'User-Agent': 'YouTubeMusicClone/1.0 (contact@example.com)' },
-    });
-    if (wikiEnRes.ok) {
-      const wikiData = await wikiEnRes.json();
-      if (wikiData.extract && wikiData.type !== 'disambiguation') {
-        return wikiData.extract;
+    const searchTerm = `${artistName} musicien`;
+    const searchRes = await fetch(
+      `https://fr.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&format=json&srlimit=1`,
+      { headers: { 'User-Agent': 'YouTubeMusicClone/1.0 (contact@example.com)' } }
+    );
+    if (searchRes.ok) {
+      const searchData = await searchRes.json();
+      const hits = searchData?.query?.search;
+      if (hits && hits.length > 0) {
+        const pageTitle = hits[0].title;
+        const summaryRes = await fetch(
+          `https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`,
+          { headers: { 'User-Agent': 'YouTubeMusicClone/1.0 (contact@example.com)' } }
+        );
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          if (summaryData.extract && summaryData.type !== 'disambiguation' && !summaryData.extract.includes('peut faire référence à')) {
+            return summaryData.extract;
+          }
+        }
       }
     }
   } catch (e) {}
 
+  // 3. French generic fallback message
   return `${artistName} est un artiste de musique incontournable, réunissant une large communauté d'auditeurs et de nombreux succès populaires.`;
 }
 

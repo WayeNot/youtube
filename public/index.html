@@ -269,26 +269,27 @@
         <section id="view-library" class="view-section">
           <div class="library-header">
             <div>
-              <h1 class="section-title">Votre Bibliothèque</h1>
-              <p class="section-subtitle">Toutes vos playlists, coups de cœur et historique synchronisés sur NeonDB.</p>
+              <h1 class="section-title">📚 Votre Bibliothèque</h1>
+              <p class="section-subtitle">Playlists, favoris et historique synchronisés sur NeonDB.</p>
             </div>
             <div class="library-tabs">
-              <button class="library-tab active" data-tab="playlists">Toutes les Playlists</button>
-              <button class="library-tab" data-tab="favorites">Titres Favoris</button>
-              <button class="library-tab" data-tab="history">Historique</button>
+              <button class="library-tab active" data-tab="playlists">Playlists</button>
+              <button class="library-tab" data-tab="favorites">❤️ Favoris</button>
+              <button class="library-tab" data-tab="history">🕒 Historique</button>
             </div>
           </div>
 
-          <!-- Playlists Tab (Main / Default) -->
+          <!-- Playlists Tab -->
           <div id="library-tab-playlists" class="library-tab-content active">
+            <div class="library-stats-bar" id="library-stats-bar"></div>
             <div class="library-actions-bar">
               <button id="create-playlist-btn-2" class="btn primary" onclick="window.App && window.App.openCreatePlaylistPrompt()">
                 <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                <span>Créer une playlist</span>
+                <span>Créer</span>
               </button>
               <button id="library-import-playlist-btn" class="btn secondary" onclick="window.App && window.App.openImportModal()">
                 <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                <span>Importer une playlist</span>
+                <span>Importer</span>
               </button>
             </div>
             <div id="playlists-grid" class="cards-grid"></div>
@@ -309,6 +310,7 @@
             <div id="favorites-list" class="tracks-list"></div>
           </div>
 
+          <!-- History Tab -->
           <div id="library-tab-history" class="library-tab-content">
             <div class="library-actions-bar">
               <button id="clear-history-btn" class="btn secondary" onclick="if(confirm('Effacer tout l\'historique d\'écoute ?')) { window.Storage && window.Storage.clearHistory(); window.App && window.App.showToast('Historique effacé'); }">Effacer l'historique</button>
@@ -319,37 +321,49 @@
 
         <!-- VIEW 5: SINGLE PLAYLIST VIEW -->
         <section id="view-playlist" class="view-section">
-          <div class="playlist-detail-header">
-            <button id="playlist-back-btn" class="icon-btn" title="Retour">
+          <div class="playlist-hero-banner" id="playlist-hero-banner">
+            <button id="playlist-back-btn" class="playlist-back-float-btn icon-btn" title="Retour">
               <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
             </button>
-            <div class="playlist-detail-info">
-              <h2 id="playlist-detail-title">Nom de Playlist</h2>
-              <p id="playlist-detail-meta">0 titres</p>
+            <div class="playlist-hero-cover-col">
+              <div class="playlist-cover-big" id="playlist-cover-big">
+                <svg viewBox="0 0 24 24" width="72" height="72" fill="rgba(255,255,255,0.4)"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+              </div>
             </div>
-            <div class="playlist-detail-actions">
-              <span id="playlist-privacy-badge" class="badge-status">Public</span>
-              <button id="playlist-privacy-toggle-btn" class="btn secondary" onclick="window.App && window.App.toggleCurrentPlaylistPrivacy()">
-                <span id="playlist-privacy-label">Rendre Privée</span>
-              </button>
-              <button id="playlist-play-all-btn" class="btn primary">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <span>Tout écouter</span>
-              </button>
-              <button id="playlist-share-btn" class="btn secondary" onclick="window.App && window.App.shareCurrentPlaylist()">
-                <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                <span>Partager</span>
-              </button>
-              <button id="playlist-delete-btn" class="btn danger">
-                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                <span>Supprimer</span>
-              </button>
+            <div class="playlist-hero-info">
+              <span class="playlist-hero-badge">Playlist</span>
+              <h1 id="playlist-detail-title" class="playlist-hero-title">Nom de Playlist</h1>
+              <p id="playlist-detail-meta" class="playlist-hero-meta">0 titres</p>
+              <div class="playlist-hero-actions">
+                <button id="playlist-play-all-btn" class="btn primary">
+                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Tout écouter</span>
+                </button>
+                <button id="playlist-shuffle-btn" class="btn secondary" onclick="window.App && window.App.shuffleCurrentPlaylist()">
+                  <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                  <span class="desktop-only-text">Aléatoire</span>
+                </button>
+                <button id="playlist-share-btn" class="btn secondary" onclick="window.App && window.App.shareCurrentPlaylist()">
+                  <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                  <span class="desktop-only-text">Partager</span>
+                </button>
+                <span id="playlist-privacy-badge" class="badge-status">Public</span>
+                <button id="playlist-privacy-toggle-btn" class="btn secondary small" onclick="window.App && window.App.toggleCurrentPlaylistPrivacy()">
+                  <span id="playlist-privacy-label">Rendre Privée</span>
+                </button>
+                <button id="playlist-delete-btn" class="btn danger small">
+                  <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                  <span class="desktop-only-text">Supprimer</span>
+                </button>
+              </div>
             </div>
           </div>
-          <div id="playlist-tracks-list" class="tracks-list"></div>
+          <div class="playlist-tracks-section">
+            <div id="playlist-tracks-list" class="tracks-list"></div>
+          </div>
         </section>
 
-        <!-- VIEW 6: MON PROFIL & PUBLIC USER PROFILES (/user/:username) -->
+                <!-- VIEW 6: MON PROFIL & PUBLIC USER PROFILES (/user/:username) -->
         <section id="view-profile" class="view-section">
           <div class="profile-card-banner">
             <div class="profile-header-content">

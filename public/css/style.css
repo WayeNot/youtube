@@ -3280,3 +3280,347 @@ textarea#import-text-input:focus {
 
 
 
+
+/* ==========================================================================
+   LIBRARY STATS BAR
+   ========================================================================== */
+.library-stats-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.library-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.library-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.library-stat-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.library-stat-icon.red { background: rgba(255, 0, 51, 0.18); color: #ff4d6d; }
+.library-stat-icon.purple { background: rgba(168, 85, 247, 0.18); color: #c084fc; }
+.library-stat-icon.blue { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+
+.library-stat-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.library-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.library-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* ==========================================================================
+   PLAYLIST HERO BANNER (improved playlist detail page)
+   ========================================================================== */
+.playlist-hero-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 36px 32px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(255, 0, 51, 0.2) 0%, rgba(20, 20, 40, 0.85) 100%);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 28px;
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.playlist-hero-banner::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255, 0, 51, 0.28) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(50px);
+}
+
+.playlist-back-float-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  z-index: 2;
+}
+
+.playlist-hero-cover-col {
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.playlist-cover-big {
+  width: 180px;
+  height: 180px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.playlist-cover-big img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.playlist-cover-big.liked-playlist {
+  background: linear-gradient(135deg, #ff0033, #66001a);
+}
+
+.playlist-hero-info {
+  flex: 1;
+  min-width: 220px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.playlist-hero-badge {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--accent-red);
+}
+
+.playlist-hero-title {
+  font-size: 36px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.playlist-hero-meta {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.playlist-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.playlist-tracks-section {
+  padding: 0 4px;
+}
+
+/* Mobile overrides for playlist hero */
+@media (max-width: 640px) {
+  .playlist-hero-banner {
+    padding: 56px 16px 24px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .playlist-cover-big {
+    width: 120px;
+    height: 120px;
+  }
+
+  .playlist-hero-title {
+    font-size: 24px;
+  }
+
+  .playlist-hero-actions {
+    gap: 8px;
+  }
+}
+
+/* ==========================================================================
+   LIBRARY HEADER IMPROVED
+   ========================================================================== */
+.library-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 640px) {
+  .library-header {
+    flex-direction: column;
+  }
+}
+
+/* ==========================================================================
+   LIBRARY PLAYLIST CARD — NICER SIZING
+   ========================================================================== */
+.cards-grid .music-card {
+  max-width: none;
+}
+
+.featured-liked-card .card-thumb-wrapper {
+  aspect-ratio: 1;
+}
+
+/* ==========================================================================
+   GENERAL UI POLISH — Hover animations, transitions, card depth
+   ========================================================================== */
+
+/* Smoother section transitions */
+.view-section {
+  animation: fadeInUp 0.22s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Better track row number hover */
+.track-row:hover .row-index {
+  color: var(--accent-red);
+}
+
+/* Playlist nav item in sidebar — hover pill */
+.playlist-nav-item.featured {
+  border-left: 3px solid var(--accent-red);
+  padding-left: 9px;
+}
+
+/* Library tab transitions */
+.library-tab {
+  transition: all var(--transition-fast);
+}
+
+.library-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+/* Search section title */
+.search-header {
+  margin-bottom: 20px;
+}
+
+.search-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* Section header flex row */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+/* Track row index play indicator */
+.track-row.playing .row-index::before {
+  content: '▶';
+  color: var(--accent-red);
+  font-size: 10px;
+}
+
+/* Dot separator */
+.dot-separator {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* desktop-only-text responsive helper */
+@media (max-width: 640px) {
+  .desktop-only-text {
+    display: none;
+  }
+}
+
+/* Btn ghost style (for playlist privacy) */
+.btn.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-active);
+}
+
+.btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   EXPLORE PAGE SECTION BLOCK MARGINS
+   ========================================================================== */
+.explore-section-block {
+  margin-bottom: 36px;
+}
+
+/* ==========================================================================
+   PROFILE PAGE — Clean up avatar container
+   ========================================================================== */
+.profile-avatar-container {
+  position: relative;
+}
+
+/* ==========================================================================
+   SCROLLBAR styling (webkit)
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
