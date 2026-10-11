@@ -288,14 +288,17 @@ async function performSearch(query, limit = 20) {
 // 1. Search API
 app.get('/api/search', async (req, res) => {
     const query = (req.query.q || '').trim();
-    if (!query) return res.json({ results: [] });
+    if (!query) return res.json({ results: [], artist: null });
 
     try {
-        const results = await performSearch(query);
-        res.json({ results });
+        const [results, artist] = await Promise.all([
+            performSearch(query),
+            findArtistCard(query)
+        ]);
+        res.json({ results, artist });
     } catch (err) {
         console.error('Search endpoint error:', err);
-        res.status(500).json({ error: 'Search failed', results: [] });
+        res.status(500).json({ error: 'Search failed', results: [], artist: null });
     }
 });
 

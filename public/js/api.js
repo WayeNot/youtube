@@ -5,7 +5,9 @@ const API = {
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
-      return data.results || [];
+      const results = Array.isArray(data.results) ? data.results : [];
+      results.artist = data.artist || null;
+      return results;
     } catch (err) {
       console.error('Search error:', err);
       return [];

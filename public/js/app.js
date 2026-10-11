@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const App = {
         currentView: 'home',
         currentFilter: 'all',
+        currentSearchFilter: 'all',
+        currentSearchQuery: '',
+        currentSearchArtist: null,
         selectedTrackForPlaylist: null,
         searchDebounceTimer: null,
 
@@ -488,21 +491,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 const val = e.target.value.trim();
                 this.dom.searchClearBtn.classList.toggle('hidden', !val);
                 clearTimeout(this.searchDebounceTimer);
-                if (val.length >= 2) {
-                    this.searchDebounceTimer = setTimeout(() => this.fetchSuggestions(val), 200);
-                } else if (!val) {
-                    this.showRecentSearchSuggestions();
-                } else {
+                if (!val) {
                     this.dom.suggestionsDropdown.classList.add('hidden');
+                    this.showRecentSearchSuggestions();
+                    return;
                 }
+
+                // Debounce search so typing is smooth and performs dynamic live search
+                this.searchDebounceTimer = setTimeout(async () => {
+                    this.fetchSuggestions(val);
+                    if (this.currentView !== 'search') {
+                        this.switchView('search', false);
+                    }
+                    await this.executeSearch(val, false);
+                }, 280);
             });
 
             this.dom.searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     const val = this.dom.searchInput.value.trim();
                     if (val) {
+                        clearTimeout(this.searchDebounceTimer);
                         this.dom.suggestionsDropdown.classList.add('hidden');
-                        this.executeSearch(val);
+                        this.executeSearch(val, true);
                     }
                 }
             });
@@ -766,6 +777,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (e.target === modal || e.target.closest('.close-modal-btn')) {
                         modal.classList.add('hidden');
                     }
+                });
+            });
+
+            // Search Filter Pills (Tous, Titres, Artistes)
+            document.querySelectorAll('.filter-pill').forEach((pill) => {
+                pill.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+                    pill.classList.add('active');
+                    this.currentSearchFilter = pill.getAttribute('data-type') || 'all';
+                    this.renderSearchResults();
                 });
             });
 
@@ -1751,8 +1772,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.attachTrackClickHandlers(container);
         },
 
-        async executeSearch(query) {
-            this.switchView('search');
+        async executeSearch(query, shouldSwitchView = true) {
+            if (shouldSwitchView && this.currentView !== 'search') {
+                this.switchView('search');
+            }
+            this.currentSearchQuery = query;
             this.dom.searchTitle.textContent = `Résultats pour "${query}"`;
             this.dom.searchResultsList.innerHTML = `
         <div class="home-loading">
@@ -1762,7 +1786,8 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
             const results = await API.search(query);
-            this.currentSearchResults = results;
+            this.currentSearchResults = results || [];
+            this.currentSearchArtist = (results && results.artist) ? results.artist : null;
 
             if (!results || results.length === 0) {
                 this.dom.searchResultsList.innerHTML = '<p class="empty-msg">Aucun résultat trouvé pour cette recherche.</p>';
@@ -1776,9 +1801,94 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             this.renderRecentSearches();
 
-            this.dom.searchResultsList.innerHTML = results
-                .map((track, idx) => this.createTrackRowHTML(track, idx))
-                .join('');
+            this.renderSearchResults();
+        },
+
+        renderSearchResults() {
+            const results = this.currentSearchResults || [];
+            const artist = this.currentSearchArtist;
+            const filter = this.currentSearchFilter || 'all';
+
+            if (!results || results.length === 0) {
+                this.dom.searchResultsList.innerHTML = '<p class="empty-msg">Aucun résultat trouvé pour cette recherche.</p>';
+                return;
+            }
+
+            let html = '';
+
+            if (filter === 'artists') {
+                // Collect main artist + distinct artists from track results
+                const artistsList = [];
+                if (artist && artist.name) {
+                    artistsList.push({
+                        name: artist.name,
+                        avatar: artist.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(artist.name)}`,
+                        subscribers: artist.subscribers || 'Artiste officiel'
+                    });
+                }
+
+                const seenNames = new Set(artistsList.map(a => a.name.toLowerCase()));
+                results.forEach(t => {
+                    if (t.artist && !seenNames.has(t.artist.toLowerCase())) {
+                        seenNames.add(t.artist.toLowerCase());
+                        artistsList.push({
+                            name: t.artist,
+                            avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(t.artist)}`,
+                            subscribers: 'Artiste'
+                        });
+                    }
+                });
+
+                html = `
+                    <div class="search-artists-grid">
+                        ${artistsList.map(a => `
+                            <div class="search-artist-card" data-artist-name="${this.escapeHtml(a.name)}">
+                                <img src="${a.avatar}" alt="${this.escapeHtml(a.name)}" class="search-artist-avatar" loading="lazy">
+                                <span class="search-artist-name">${this.escapeHtml(a.name)}</span>
+                                <span class="search-artist-badge">${this.escapeHtml(a.subscribers)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                this.dom.searchResultsList.innerHTML = html;
+
+                this.dom.searchResultsList.querySelectorAll('.search-artist-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const artistName = card.getAttribute('data-artist-name');
+                        this.openArtistView(artistName);
+                    });
+                });
+                return;
+            }
+
+            // 'all' or 'songs'
+            if (filter === 'all' && artist && artist.name) {
+                html += `
+                    <div class="search-top-artist-banner" data-artist-name="${this.escapeHtml(artist.name)}">
+                        <img src="${artist.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(artist.name)}" alt="${this.escapeHtml(artist.name)}" class="search-top-artist-avatar">
+                        <div class="search-top-artist-info">
+                            <span class="search-top-artist-badge">Meilleur résultat</span>
+                            <h3 class="search-top-artist-name">${this.escapeHtml(artist.name)}</h3>
+                            <span class="search-top-artist-sub">Artiste ${artist.subscribers ? '• ' + this.escapeHtml(artist.subscribers) : ''}</span>
+                        </div>
+                        <button class="search-top-artist-action-btn">Voir l'artiste</button>
+                    </div>
+                `;
+            }
+
+            // Render track rows
+            html += results.map((track, idx) => this.createTrackRowHTML(track, idx)).join('');
+
+            this.dom.searchResultsList.innerHTML = html;
+
+            if (filter === 'all' && artist && artist.name) {
+                const banner = this.dom.searchResultsList.querySelector('.search-top-artist-banner');
+                if (banner) {
+                    banner.addEventListener('click', () => {
+                        this.openArtistView(artist.name);
+                    });
+                }
+            }
 
             this.attachTrackClickHandlers(this.dom.searchResultsList);
         },
