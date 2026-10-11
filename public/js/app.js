@@ -1198,7 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // If switching away from playlist view, clear active playlist highlight
-            if (viewName !== 'single-playlist') {
+            if (viewName !== 'playlist') {
                 this.currentActivePlaylistId = null;
                 if (this.dom.sidebarPlaylists) {
                     this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach(el => {
@@ -2224,6 +2224,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 this.switchView('playlist', false);
+                this.currentActivePlaylistId = 'liked_tracks';
+                if (this.dom.sidebarPlaylists) {
+                    this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
+                        item.classList.toggle('active', item.getAttribute('data-playlist-id') === 'liked_tracks');
+                    });
+                }
                 this.updateURL('/library/liked');
                 return;
             }
@@ -2347,6 +2353,12 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             this.switchView('playlist', false);
+            this.currentActivePlaylistId = pl.id;
+            if (this.dom.sidebarPlaylists) {
+                this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
+                    item.classList.toggle('active', item.getAttribute('data-playlist-id') === String(pl.id));
+                });
+            }
             const ownerName = pl.ownerUsername || (currentUser ? currentUser.username : 'user');
             this.updateURL(`/user/${encodeURIComponent(ownerName)}/playlist/${encodeURIComponent(pl.name)}`);
         },

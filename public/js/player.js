@@ -129,8 +129,9 @@ class PlayerEngine {
     this.audio.addEventListener('error', (e) => {
       console.warn('Audio element error, attempting recovery:', e);
       this.isLoading = false;
-      // Retry stream via proxy with cache-buster if proxy had an issue
-      if (this.currentTrack && !this.audio.src.includes('retry=1')) {
+      // Guarantee only ONE fallback attempt per track to prevent infinite loops
+      if (this.currentTrack && !this._recoveryAttempted) {
+        this._recoveryAttempted = true;
         this.fallbackDirectStream(this.currentTrack);
       } else {
         this.emit('error', { message: 'Impossible de lire ce titre' });
@@ -272,6 +273,7 @@ class PlayerEngine {
 
     this.isLoading = true;
     this.prefetchedNext = false;
+    this._recoveryAttempted = false;
     this.currentTrack = track;
 
     // Check if new queue provided
@@ -357,27 +359,11 @@ class PlayerEngine {
   async fallbackDirectStream(track) {
     if (!track || !track.id) return;
     try {
-      // 1. Try public streaming mirror
-      const mirrors = [
-        `https://invidious.nerdvpn.de/latest_version?id=${track.id}&itag=140`,
-        `https://inv.nadeko.net/latest_version?id=${track.id}&itag=140`
-      ];
-
-      for (const mirrorUrl of mirrors) {
-        try {
-          this.audio.src = mirrorUrl;
-          await this.audio.play();
-          this.isPlaying = true;
-          this.emit('play', { track: this.currentTrack });
-          return;
-        } catch (e) {}
-      }
-
-      // 2. Guaranteed zero-fail fallback: High-availability embedded engine
+      // Direct high-availability fallback via YouTube Embedded Player
       this.playViaYouTubeEmbed(track);
     } catch (e) {
-      console.warn('Fallback recovery attempting embed fallback:', e);
-      this.playViaYouTubeEmbed(track);
+      console.warn('Fallback recovery error:', e);
+      this.emit('error', { message: 'Impossible de lire ce titre' });
     }
   }
 

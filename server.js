@@ -81,6 +81,31 @@ function syncCookiesFile() {
     return fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
 }
 
+// Simple concurrency limiter for yt-dlp to protect server CPU/RAM
+const ytDlpQueue = {
+    running: 0,
+    maxConcurrent: 2,
+    queue: [],
+    run(task) {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ task, resolve, reject });
+            this.next();
+        });
+    },
+    next() {
+        if (this.running >= this.maxConcurrent || this.queue.length === 0) return;
+        this.running++;
+        const { task, resolve, reject } = this.queue.shift();
+        Promise.resolve(task())
+            .then(resolve)
+            .catch(reject)
+            .finally(() => {
+                this.running--;
+                this.next();
+            });
+    }
+};
+
 // In-flight extraction promises map to avoid duplicate concurrent yt-dlp processes
 const inFlightStreams = new Map();
 
@@ -112,37 +137,39 @@ async function getAudioStreamUrl(videoId) {
 
     const fs = require('fs');
     const cookiesPath = path.join(__dirname, 'cookies.txt');
-    const cacheDir = path.join(__dirname, '.yt-dlp-cache');
 
+    // Concurrency queue for yt-dlp to avoid CPU starvation / 500 on Render
     const runYtDlp = (extraArgs = [], format = '140/251/ba/b') => {
-        return new Promise((resolve, reject) => {
-            const args = [
-                '-g',
-                '-f', format,
-                '--no-playlist',
-                '--no-warnings',
-                '--cache-dir', cacheDir,
-                ...extraArgs,
-                '--',
-                `https://www.youtube.com/watch?v=${videoId}`
-            ];
-            execFile(
-                YTDLP_PATH,
-                args,
-                { timeout: 7000 },
-                (err, stdout, stderr) => {
-                    if (err) {
-                        const errMsg = (stderr || stdout || err.message || '').trim();
-                        return reject(new Error(errMsg));
+        return ytDlpQueue.run(() => {
+            return new Promise((resolve, reject) => {
+                const args = [
+                    '-g',
+                    '-f', format,
+                    '--no-playlist',
+                    '--no-warnings',
+                    '--no-cache-dir',
+                    ...extraArgs,
+                    '--',
+                    `https://www.youtube.com/watch?v=${videoId}`
+                ];
+                execFile(
+                    YTDLP_PATH,
+                    args,
+                    { timeout: 15000 },
+                    (err, stdout, stderr) => {
+                        if (err) {
+                            const errMsg = (stderr || stdout || err.message || '').trim();
+                            return reject(new Error(errMsg));
+                        }
+                        const lines = stdout.trim().split('\n');
+                        const streamUrl = lines[0]?.trim();
+                        if (!streamUrl || !streamUrl.startsWith('http')) {
+                            return reject(new Error('Invalid audio stream URL returned'));
+                        }
+                        resolve(streamUrl);
                     }
-                    const lines = stdout.trim().split('\n');
-                    const streamUrl = lines[0]?.trim();
-                    if (!streamUrl || !streamUrl.startsWith('http')) {
-                        return reject(new Error('Invalid audio stream URL returned'));
-                    }
-                    resolve(streamUrl);
-                }
-            );
+                );
+            });
         });
     };
 
@@ -865,11 +892,13 @@ app.post('/api/prefetch', (req, res) => {
     if (!Array.isArray(ids) || ids.length === 0) {
         return res.json({ success: true, count: 0 });
     }
-    const cleanIds = ids.filter(id => typeof id === 'string' && /^[\w-]{11}$/.test(id)).slice(0, 5);
-    // Asynchronously resolve in background without blocking response
-    cleanIds.forEach(id => {
-        getAudioStreamUrl(id).catch(() => {});
-    });
+    // Limit to 1 track max and only enqueue if server has low load
+    const cleanIds = ids.filter(id => typeof id === 'string' && /^[\w-]{11}$/.test(id)).slice(0, 1);
+    if (ytDlpQueue.running < 1 && ytDlpQueue.queue.length === 0) {
+        cleanIds.forEach(id => {
+            getAudioStreamUrl(id).catch(() => {});
+        });
+    }
     res.json({ success: true, count: cleanIds.length });
 });
 
