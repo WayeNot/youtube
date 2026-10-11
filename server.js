@@ -77,19 +77,38 @@ async function getAudioStreamUrl(videoId) {
         }
     } catch (e) { }
 
+    // Check for cookies file or environment variable
+    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    if (process.env.YTDLP_COOKIES && process.env.YTDLP_COOKIES.trim()) {
+        try {
+            const fs = require('fs');
+            fs.writeFileSync(cookiesPath, process.env.YTDLP_COOKIES.trim(), 'utf-8');
+        } catch (e) { }
+    }
+
+    const fs = require('fs');
+    const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
+
+    const ytdlpArgs = [
+        '-g',
+        '-f', 'ba/b',
+        '--no-playlist',
+        '--no-warnings'
+    ];
+
+    if (hasCookies) {
+        ytdlpArgs.push('--cookies', cookiesPath);
+    } else {
+        ytdlpArgs.push('--extractor-args', 'youtube:player_client=android_embedded');
+    }
+
+    ytdlpArgs.push('--', `https://www.youtube.com/watch?v=${videoId}`);
+
     // 3. Fallback to yt-dlp with optimized flags for instant extraction
     return new Promise((resolve, reject) => {
         execFile(
             YTDLP_PATH,
-            [
-                '-g',
-                '-f', 'ba/b',
-                '--no-playlist',
-                '--no-warnings',
-                '--extractor-args', 'youtube:player_client=android_embedded',
-                '--',
-                `https://www.youtube.com/watch?v=${videoId}`
-            ],
+            ytdlpArgs,
             { timeout: 20000 },
             async (err, stdout, stderr) => {
                 if (err) {
@@ -627,12 +646,15 @@ app.get('/api/debug', (req, res) => {
     if (exists) {
         try { size = fs.statSync(YTDLP_PATH).size; } catch (e) { }
     }
+    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
     const { execFile } = require('child_process');
     execFile(YTDLP_PATH, ['--version'], { timeout: 4000 }, (err, stdout, stderr) => {
         res.json({
             ytdlpPath: YTDLP_PATH,
             exists,
             size,
+            hasCookies,
             version: stdout ? stdout.trim() : null,
             err: err ? err.message : null,
             stderr: stderr ? stderr.trim() : null,

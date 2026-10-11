@@ -4,3 +4,4 @@ data/*.db
 bin/
 *.db
 .DS_Store
+cookies.txt
