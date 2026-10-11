@@ -230,9 +230,15 @@ class PlayerEngine {
       this.compressor.attack.setValueAtTime(0.003, this.audioCtx.currentTime);
       this.compressor.release.setValueAtTime(0.25, this.audioCtx.currentTime);
 
-      // Connect filters through compressor to destination
+      // GainNode for universal volume & mute control (required on iOS/Mobile & Web Audio graph)
+      this.gainNode = this.audioCtx.createGain();
+      const currentVol = this.audio.muted ? 0 : (this.audio.volume ?? 1);
+      this.gainNode.gain.setValueAtTime(currentVol, this.audioCtx.currentTime);
+
+      // Connect filters through compressor and gainNode to destination
       prevNode.connect(this.compressor);
-      this.compressor.connect(this.audioCtx.destination);
+      this.compressor.connect(this.gainNode);
+      this.gainNode.connect(this.audioCtx.destination);
       this.isEqInitialized = true;
     } catch (e) {
       console.warn('Equalizer/Normalizer initialization error:', e);
@@ -338,16 +344,31 @@ class PlayerEngine {
       this.audio.src = streamUrl;
     }
 
-    try {
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        await this.audioCtx.resume();
+    // Start audio playback
+    const startPlayback = async () => {
+      try {
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+          await this.audioCtx.resume();
+        }
+        await this.audio.play();
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Audio play request failed:', err);
+          // Auto-retry once on user gesture
+          const unlock = async () => {
+            document.removeEventListener('click', unlock);
+            document.removeEventListener('touchend', unlock);
+            try {
+              if (this.audioCtx) await this.audioCtx.resume();
+              await this.audio.play();
+            } catch (e) {}
+          };
+          document.addEventListener('click', unlock, { once: true });
+          document.addEventListener('touchend', unlock, { once: true });
+        }
       }
-      await this.audio.play();
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.warn('Audio play request failed:', err);
-      }
-    }
+    };
+    startPlayback();
 
     // Proactive background pre-warming of next upcoming tracks in queue
     if (this._prefetchTimer) clearTimeout(this._prefetchTimer);
@@ -729,6 +750,27 @@ class PlayerEngine {
     const val = Math.max(0, Math.min(1, vol));
     this.audio.volume = val;
     this.audio.muted = false;
+
+    // Sync Web Audio GainNode
+    if (this.gainNode && this.audioCtx) {
+      try {
+        this.gainNode.gain.setValueAtTime(val, this.audioCtx.currentTime);
+      } catch (e) {}
+    }
+
+    // Sync YouTube Embed if active
+    if (this._usingYtEmbed) {
+      const iframe = document.getElementById('yt-fallback-iframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'setVolume',
+          args: [Math.round(val * 100)]
+        }), '*');
+        iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+      }
+    }
+
     try {
       localStorage.setItem('ytm_volume', val.toString());
       localStorage.setItem('ytm_muted', 'false');
@@ -740,12 +782,34 @@ class PlayerEngine {
 
   toggleMute() {
     this.audio.muted = !this.audio.muted;
+    const isMuted = this.audio.muted;
+
+    // Sync Web Audio GainNode
+    if (this.gainNode && this.audioCtx) {
+      try {
+        const targetGain = isMuted ? 0 : (this.audio.volume ?? 1);
+        this.gainNode.gain.setValueAtTime(targetGain, this.audioCtx.currentTime);
+      } catch (e) {}
+    }
+
+    // Sync YouTube Embed if active
+    if (this._usingYtEmbed) {
+      const iframe = document.getElementById('yt-fallback-iframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: isMuted ? 'mute' : 'unMute',
+          args: ''
+        }), '*');
+      }
+    }
+
     try {
-      localStorage.setItem('ytm_muted', this.audio.muted ? 'true' : 'false');
+      localStorage.setItem('ytm_muted', isMuted ? 'true' : 'false');
     } catch (e) {}
-    Storage.saveSetting('muted', this.audio.muted);
-    this.emit('volume_change', { volume: this.audio.volume, muted: this.audio.muted });
-    return this.audio.muted;
+    Storage.saveSetting('muted', isMuted);
+    this.emit('volume_change', { volume: this.audio.volume, muted: isMuted });
+    return isMuted;
   }
 
   setPlaybackRate(rate) {

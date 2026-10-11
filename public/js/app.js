@@ -1039,6 +1039,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.updateProgressUI(currentTime, duration);
             });
 
+            // Volume change
+            window.addEventListener('player_volume_change', (e) => {
+                const { volume, muted } = e.detail;
+                this.updateVolumeUI(volume, muted);
+            });
+
             // Queue change
             window.addEventListener('player_queue_change', () => {
                 this.renderQueueUI();
