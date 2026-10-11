@@ -1364,9 +1364,29 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Ensure yt-dlp binary is present (auto-download on cloud deploy like Render if missing)
+async function ensureYtDlp() {
+  const fs = require('fs');
+  const binDir = path.dirname(YTDLP_PATH);
+  if (!fs.existsSync(binDir)) {
+    fs.mkdirSync(binDir, { recursive: true });
+  }
+  if (!fs.existsSync(YTDLP_PATH)) {
+    console.log('⬇️ yt-dlp introuvable, téléchargement automatique en cours...');
+    try {
+      const { execSync } = require('child_process');
+      execSync(`curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "${YTDLP_PATH}" && chmod a+rx "${YTDLP_PATH}"`);
+      console.log('✅ yt-dlp installé avec succès !');
+    } catch (e) {
+      console.error('❌ Échec du téléchargement de yt-dlp:', e.message);
+    }
+  }
+}
+
 // Initialize Database schema and start server
 (async () => {
   try {
+    await ensureYtDlp();
     await db.initSchema();
   } catch (e) {
     console.error('Erreur initialisation DB:', e);

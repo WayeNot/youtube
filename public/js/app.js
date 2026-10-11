@@ -1159,18 +1159,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
 
       const rapHits = [
-        { id: '7z49B60WJj4', title: 'Ninho - Lettre à une femme', artist: 'Ninho', duration: '2:38', thumbnail: 'https://i.ytimg.com/vi/7z49B60WJj4/hqdefault.jpg' },
-        { id: 'l2qS7mYh52w', title: 'Ninho - Tout en Guerilla', artist: 'Ninho', duration: '3:45', thumbnail: 'https://i.ytimg.com/vi/l2qS7mYh52w/hqdefault.jpg' },
-        { id: 'qY6_iL9v8yU', title: 'SDM - Bolide Allemand', artist: 'SDM', duration: '2:56', thumbnail: 'https://i.ytimg.com/vi/qY6_iL9v8yU/hqdefault.jpg' },
-        { id: 'k2a5rW2xL10', title: 'Gazo - DIE', artist: 'Gazo', duration: '3:01', thumbnail: 'https://i.ytimg.com/vi/k2a5rW2xL10/hqdefault.jpg' },
-        { id: 'm4X8qR_T8uA', title: 'Tiakola - Meuda', artist: 'Tiakola', duration: '3:15', thumbnail: 'https://i.ytimg.com/vi/m4X8qR_T8uA/hqdefault.jpg' }
+        { id: 'ifNfpzkoY9s', title: 'Ninho - Lettre à une femme', artist: 'Ninho', duration: '2:38', thumbnail: 'https://i.ytimg.com/vi/ifNfpzkoY9s/hqdefault.jpg' },
+        { id: 'HqJ1qP05Si0', title: 'Ninho - Tout en Guerilla', artist: 'Ninho', duration: '3:45', thumbnail: 'https://i.ytimg.com/vi/HqJ1qP05Si0/hqdefault.jpg' },
+        { id: 'iv03LRtztJU', title: 'SDM - Bolide Allemand', artist: 'SDM', duration: '2:56', thumbnail: 'https://i.ytimg.com/vi/iv03LRtztJU/hqdefault.jpg' },
+        { id: '6SasSMzZeao', title: 'Gazo - DIE', artist: 'Gazo', duration: '3:01', thumbnail: 'https://i.ytimg.com/vi/6SasSMzZeao/hqdefault.jpg' },
+        { id: 'Qq7Q6CLCfvs', title: 'Tiakola - Meuda', artist: 'Tiakola', duration: '3:15', thumbnail: 'https://i.ytimg.com/vi/Qq7Q6CLCfvs/hqdefault.jpg' }
       ];
 
       const chillHits = [
-        { id: 'jfKfPfyJRdk', title: 'lofi hip hop radio - beats to relax/study to', artist: 'Lofi Girl', duration: 'Live', thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg' },
+        { id: 'rFZHOHl-L8A', title: 'lofi hip hop radio - beats to relax/study to', artist: 'Lofi Girl', duration: 'Live', thumbnail: 'https://i.ytimg.com/vi/rFZHOHl-L8A/hqdefault.jpg' },
         { id: '5qap5aO4i9A', title: 'Lofi Hip Hop - Chill Beats', artist: 'ChilledCow', duration: '3:20', thumbnail: 'https://i.ytimg.com/vi/5qap5aO4i9A/hqdefault.jpg' },
         { id: 'DWcJFNfaw9c', title: 'C418 - Sweden (Minecraft Music)', artist: 'C418', duration: '3:35', thumbnail: 'https://i.ytimg.com/vi/DWcJFNfaw9c/hqdefault.jpg' },
-        { id: 'r2z8Q30_JjY', title: 'Yiruma - River Flows in You', artist: 'Yiruma', duration: '3:08', thumbnail: 'https://i.ytimg.com/vi/r2z8Q30_JjY/hqdefault.jpg' }
+        { id: '7maJOI3QMu0', title: 'Yiruma - River Flows in You', artist: 'Yiruma', duration: '3:08', thumbnail: 'https://i.ytimg.com/vi/7maJOI3QMu0/hqdefault.jpg' }
       ];
 
       const history = Storage.getHistory();
@@ -1769,21 +1769,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const exploreTrendingTracks = [
         { id: 'dQw4w9WgXcQ', title: 'Rick Astley - Never Gonna Give You Up', artist: 'Rick Astley', duration: '3:33', thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg' },
-        { id: '7z49B60WJj4', title: 'Ninho - Lettre à une femme', artist: 'Ninho', duration: '2:38', thumbnail: 'https://i.ytimg.com/vi/7z49B60WJj4/hqdefault.jpg' },
+        { id: 'ifNfpzkoY9s', title: 'Ninho - Lettre à une femme', artist: 'Ninho', duration: '2:38', thumbnail: 'https://i.ytimg.com/vi/ifNfpzkoY9s/hqdefault.jpg' },
         { id: 'XXYlFuWEuKI', title: 'The Weeknd - Save Your Tears', artist: 'The Weeknd', duration: '4:09', thumbnail: 'https://i.ytimg.com/vi/XXYlFuWEuKI/hqdefault.jpg' },
-        { id: 'qY6_iL9v8yU', title: 'SDM - Bolide Allemand', artist: 'SDM', duration: '2:56', thumbnail: 'https://i.ytimg.com/vi/qY6_iL9v8yU/hqdefault.jpg' },
+        { id: 'iv03LRtztJU', title: 'SDM - Bolide Allemand', artist: 'SDM', duration: '2:56', thumbnail: 'https://i.ytimg.com/vi/iv03LRtztJU/hqdefault.jpg' },
         { id: 'JGwWNGJdvx8', title: 'Ed Sheeran - Shape of You', artist: 'Ed Sheeran', duration: '4:23', thumbnail: 'https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg' },
         { id: 'kJQP7kiw5Fk', title: 'Luis Fonsi - Despacito ft. Daddy Yankee', artist: 'Luis Fonsi', duration: '4:41', thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/hqdefault.jpg' },
         { id: 'FGBhQbmPwH8', title: 'Daft Punk - One More Time', artist: 'Daft Punk', duration: '5:22', thumbnail: 'https://i.ytimg.com/vi/FGBhQbmPwH8/hqdefault.jpg' },
-        { id: 'k2a5rW2xL10', title: 'Gazo - DIE', artist: 'Gazo', duration: '3:01', thumbnail: 'https://i.ytimg.com/vi/k2a5rW2xL10/hqdefault.jpg' }
+        { id: '6SasSMzZeao', title: 'Gazo - DIE', artist: 'Gazo', duration: '3:01', thumbnail: 'https://i.ytimg.com/vi/6SasSMzZeao/hqdefault.jpg' }
       ];
 
       const exploreAlbums = [
-        { title: 'GOAT', artist: 'Ninho', year: '2024', thumbnail: 'https://i.ytimg.com/vi/7z49B60WJj4/hqdefault.jpg' },
+        { title: 'GOAT', artist: 'Ninho', year: '2024', thumbnail: 'https://i.ytimg.com/vi/ifNfpzkoY9s/hqdefault.jpg' },
         { title: 'After Hours', artist: 'The Weeknd', year: '2020', thumbnail: 'https://i.ytimg.com/vi/XXYlFuWEuKI/hqdefault.jpg' },
         { title: 'Discovery', artist: 'Daft Punk', year: '2001', thumbnail: 'https://i.ytimg.com/vi/FGBhQbmPwH8/hqdefault.jpg' },
-        { title: 'Liens du 100', artist: 'SDM', year: '2022', thumbnail: 'https://i.ytimg.com/vi/qY6_iL9v8yU/hqdefault.jpg' },
-        { title: 'KMT', artist: 'Gazo', year: '2022', thumbnail: 'https://i.ytimg.com/vi/k2a5rW2xL10/hqdefault.jpg' },
+        { title: 'Liens du 100', artist: 'SDM', year: '2022', thumbnail: 'https://i.ytimg.com/vi/iv03LRtztJU/hqdefault.jpg' },
+        { title: 'KMT', artist: 'Gazo', year: '2022', thumbnail: 'https://i.ytimg.com/vi/6SasSMzZeao/hqdefault.jpg' },
         { title: 'Divide (÷)', artist: 'Ed Sheeran', year: '2017', thumbnail: 'https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg' }
       ];
 

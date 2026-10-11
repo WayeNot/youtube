@@ -260,7 +260,9 @@ class PlayerEngine {
       }
       await this.audio.play();
     } catch (err) {
-      console.warn('Audio play request failed or interrupted:', err);
+      if (err.name !== 'AbortError') {
+        console.warn('Audio play request failed:', err);
+      }
     }
   }
 
