@@ -113,12 +113,12 @@ async function getAudioStreamUrl(videoId) {
 
     ytdlpArgs.push('--', `https://www.youtube.com/watch?v=${videoId}`);
 
-    // 3. Extract stream with yt-dlp
+    // 3. Extract stream with yt-dlp (allow up to 60s for cloud CPU JS solver)
     return new Promise((resolve, reject) => {
         execFile(
             YTDLP_PATH,
             ytdlpArgs,
-            { timeout: 20000 },
+            { timeout: 60000 },
             async (err, stdout, stderr) => {
                 if (err) {
                     const errMsg = stderr ? stderr.trim() : err.message;
@@ -685,7 +685,7 @@ app.get('/api/test-formats/:id', (req, res) => {
     args.push('--', `https://www.youtube.com/watch?v=${videoId}`);
 
     const { execFile } = require('child_process');
-    execFile(YTDLP_PATH, args, { timeout: 20000 }, (err, stdout, stderr) => {
+    execFile(YTDLP_PATH, args, { timeout: 60000 }, (err, stdout, stderr) => {
         res.type('text/plain').send((stdout || '') + '\n' + (stderr || '') + (err ? '\nError: ' + err.message : ''));
     });
 });
