@@ -582,17 +582,19 @@ document.addEventListener('DOMContentLoaded', () => {
             let isScrubbing = false;
             this.dom.scrubberWrapper.addEventListener('click', (e) => {
                 const rect = this.dom.scrubberWrapper.getBoundingClientRect();
-                const pos = (e.clientX - rect.left) / rect.width;
-                if (Player.audio.duration) {
-                    Player.seek(pos * Player.audio.duration);
+                const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const totalDur = Player.audio.duration || Player._currentDuration || Player.currentTrack?.durationSec || 0;
+                if (totalDur > 0) {
+                    Player.seek(pos * totalDur);
                 }
             });
 
             this.dom.scrubberWrapper.addEventListener('mousemove', (e) => {
                 const rect = this.dom.scrubberWrapper.getBoundingClientRect();
                 const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                if (Player.audio.duration) {
-                    const previewSec = pos * Player.audio.duration;
+                const totalDur = Player.audio.duration || Player._currentDuration || Player.currentTrack?.durationSec || 0;
+                if (totalDur > 0) {
+                    const previewSec = pos * totalDur;
                     this.dom.scrubTooltip.textContent = this.formatTime(previewSec);
                     this.dom.scrubTooltip.style.left = `${pos * 100}%`;
                     this.dom.scrubTooltip.classList.remove('hidden');
@@ -605,14 +607,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Mobile Seek Slider
             this.dom.mobileSeekSlider.addEventListener('input', (e) => {
-                if (Player.audio.duration) {
-                    const sec = (parseFloat(e.target.value) / 100) * Player.audio.duration;
+                const totalDur = Player.audio.duration || Player._currentDuration || Player.currentTrack?.durationSec || 0;
+                if (totalDur > 0) {
+                    const sec = (parseFloat(e.target.value) / 100) * totalDur;
                     this.dom.mobileCurrentTime.textContent = this.formatTime(sec);
                 }
             });
             this.dom.mobileSeekSlider.addEventListener('change', (e) => {
-                if (Player.audio.duration) {
-                    const sec = (parseFloat(e.target.value) / 100) * Player.audio.duration;
+                const totalDur = Player.audio.duration || Player._currentDuration || Player.currentTrack?.durationSec || 0;
+                if (totalDur > 0) {
+                    const sec = (parseFloat(e.target.value) / 100) * totalDur;
                     Player.seek(sec);
                 }
             });
