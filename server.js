@@ -114,15 +114,14 @@ async function getAudioStreamUrl(videoId) {
     const cookiesPath = path.join(__dirname, 'cookies.txt');
     const cacheDir = path.join(__dirname, '.yt-dlp-cache');
 
-    const runYtDlp = (extraArgs = []) => {
+    const runYtDlp = (extraArgs = [], format = '140/251/ba/b') => {
         return new Promise((resolve, reject) => {
             const args = [
                 '-g',
-                '-f', '251/140/250/ba/b/bestaudio/best',
+                '-f', format,
                 '--no-playlist',
                 '--no-warnings',
                 '--cache-dir', cacheDir,
-                '--js-runtimes', `node:${process.execPath}`,
                 ...extraArgs,
                 '--',
                 `https://www.youtube.com/watch?v=${videoId}`
@@ -130,7 +129,7 @@ async function getAudioStreamUrl(videoId) {
             execFile(
                 YTDLP_PATH,
                 args,
-                { timeout: 35000 },
+                { timeout: 12000 },
                 (err, stdout, stderr) => {
                     if (err) {
                         const errMsg = (stderr || stdout || err.message || '').trim();
@@ -147,30 +146,39 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp and deduplicate concurrent calls
+    // 5. Extract stream with yt-dlp: Fast Android client first (no JS challenge required, < 2s response)
     const streamPromise = (async () => {
         let lastErr = null;
-        // Attempt 1: with cookies if available
+
+        // Attempt 1: Ultra-fast Android client (instant direct streaming without n-sig JS challenges)
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=android'], '140/251/ba/b');
+        } catch (err) {
+            console.warn(`yt-dlp fast android attempt failed for ${videoId}: ${err.message}. Retrying with android,web...`);
+            lastErr = err;
+        }
+
+        // Attempt 2: Hybrid android,web client
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=android,web'], '251/140/ba/b');
+        } catch (err) {
+            console.warn(`yt-dlp hybrid attempt failed for ${videoId}: ${err.message}. Trying cookies/web fallback...`);
+            lastErr = err;
+        }
+
+        // Attempt 3: With cookies if present
         if (hasCookies) {
             try {
-                return await runYtDlp(['--cookies', cookiesPath]);
+                return await runYtDlp(['--cookies', cookiesPath], '251/140/ba/b');
             } catch (err) {
-                console.warn(`yt-dlp attempt with cookies failed for ${videoId}: ${err.message}. Retrying without cookies...`);
+                console.warn(`yt-dlp cookies attempt failed for ${videoId}: ${err.message}`);
                 lastErr = err;
             }
         }
 
-        // Attempt 2: standard without cookies
+        // Attempt 4: Standard default
         try {
-            return await runYtDlp([]);
-        } catch (err) {
-            console.warn(`yt-dlp standard attempt failed for ${videoId}: ${err.message}. Retrying with android client...`);
-            lastErr = err;
-        }
-
-        // Attempt 3: with android extractor client fallback (bypasses datacenter blocks)
-        try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=android,web']);
+            return await runYtDlp([], 'ba/b');
         } catch (err) {
             console.error(`yt-dlp all attempts failed for ${videoId}: ${err.message}`);
             throw lastErr || err;

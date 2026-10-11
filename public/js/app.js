@@ -1197,6 +1197,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.classList.toggle('active', el.getAttribute('data-view') === viewName);
             });
 
+            // If switching away from playlist view, clear active playlist highlight
+            if (viewName !== 'single-playlist') {
+                this.currentActivePlaylistId = null;
+                if (this.dom.sidebarPlaylists) {
+                    this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                }
+            }
+
             // Update View sections
             document.querySelectorAll('.view-section').forEach(sec => {
                 sec.classList.remove('active');
@@ -1271,14 +1281,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const history = Storage.getHistory();
             const hasHistory = Array.isArray(history) && history.length > 0;
 
-            // 1. History Shelf (Titres déjà écoutés) - displayed if user has listening history
+            // 1. History Shelf (Titres dernièrement écoutés) - Exactement les 10 derniers titres en carrousel
             let historyShelfHTML = '';
             if (hasHistory) {
-                const recentTracks = history.slice(0, 15);
+                const recentTracks = history.slice(0, 10);
                 historyShelfHTML = `
           <div class="home-shelf" data-shelf-id="recent-history">
             <div class="shelf-header">
-              <h2 class="shelf-title">🕒 Titres déjà écoutés</h2>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <h2 class="shelf-title">🕒 Titres dernièrement écoutés</h2>
+                <div class="shelf-nav-arrows">
+                  <button type="button" class="shelf-arrow-btn" title="Précédent" onclick="const c = document.getElementById('home-history-carousel'); if(c) c.scrollBy({left: -360, behavior: 'smooth'});">
+                    <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                  </button>
+                  <button type="button" class="shelf-arrow-btn" title="Suivant" onclick="const c = document.getElementById('home-history-carousel'); if(c) c.scrollBy({left: 360, behavior: 'smooth'});">
+                    <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                  </button>
+                </div>
+              </div>
               <div class="shelf-actions">
                 <button class="btn primary small" id="home-play-all-recent-btn">
                   <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1286,7 +1306,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
               </div>
             </div>
-            <div class="shelf-carousel" id="home-history-carousel">
+            <div class="shelf-carousel horizontal-shelf-carousel" id="home-history-carousel">
               ${recentTracks.map(item => this.createMusicCardHTML(item)).join('')}
             </div>
           </div>
@@ -2054,18 +2074,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const favs = Storage.getFavorites();
 
             // Sidebar list (Includes Titres likés + Custom/Imported Playlists)
+            const isLikedActive = this.currentActivePlaylistId === 'liked_tracks';
             const likedSidebarItem = `
-        <div class="playlist-nav-item featured" data-playlist-id="liked_tracks" title="Titres likés">
+        <div class="playlist-nav-item featured ${isLikedActive ? 'active' : ''}" data-playlist-id="liked_tracks" title="Titres likés">
           <span style="color:var(--accent-red);">❤️ Titres likés (${favs.length})</span>
         </div>
       `;
             this.dom.sidebarPlaylists.innerHTML = likedSidebarItem + playlists
                 .map(
-                    (p) => `
-            <div class="playlist-nav-item" data-playlist-id="${p.id}" title="${this.escapeHtml(p.name)}">
+                    (p) => {
+                        const isActive = String(this.currentActivePlaylistId) === String(p.id);
+                        return `
+            <div class="playlist-nav-item ${isActive ? 'active' : ''}" data-playlist-id="${p.id}" title="${this.escapeHtml(p.name)}">
               <span>${this.escapeHtml(p.name)} (${p.tracks ? p.tracks.length : 0})</span>
             </div>
-          `
+          `;
+                    }
                 )
                 .join('');
 
@@ -2147,6 +2171,13 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         async openPlaylistView(playlistId, username = null) {
+            this.currentActivePlaylistId = playlistId;
+            if (this.dom.sidebarPlaylists) {
+                this.dom.sidebarPlaylists.querySelectorAll('.playlist-nav-item').forEach((item) => {
+                    item.classList.toggle('active', item.getAttribute('data-playlist-id') === String(playlistId));
+                });
+            }
+
             if (playlistId === 'liked_tracks') {
                 const favs = Storage.getFavorites();
                 this.currentOpenPlaylist = {
@@ -2985,9 +3016,83 @@ document.addEventListener('DOMContentLoaded', () => {
             this.openCreatePlaylistModal();
         },
 
+        newPlaylistCustomCover: null,
+
+        handleNewPlaylistFileUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                this.showToast('⚠️ Veuillez sélectionner un fichier image valide.');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                this.showToast('⚠️ Image trop volumineuse (max 5 Mo).');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64 = e.target?.result;
+                if (base64) {
+                    this.newPlaylistCustomCover = base64;
+                    this.updateNewPlaylistCoverPreview(base64);
+                    const urlInput = document.getElementById('new-playlist-cover-url-input');
+                    if (urlInput) urlInput.value = '';
+                }
+            };
+            reader.readAsDataURL(file);
+        },
+
+        handleNewPlaylistUrlInput(url) {
+            const clean = (url || '').trim();
+            if (!clean) {
+                if (!this.newPlaylistCustomCover || this.newPlaylistCustomCover.startsWith('http')) {
+                    this.clearNewPlaylistCover();
+                }
+                return;
+            }
+            if (/^https?:\/\/.+/i.test(clean)) {
+                this.newPlaylistCustomCover = clean;
+                this.updateNewPlaylistCoverPreview(clean);
+                const fileInput = document.getElementById('new-playlist-file-input');
+                if (fileInput) fileInput.value = '';
+            }
+        },
+
+        updateNewPlaylistCoverPreview(imgSrc) {
+            const imgEl = document.getElementById('new-playlist-cover-img');
+            const placeholderEl = document.getElementById('new-playlist-cover-placeholder');
+            const removeBtn = document.getElementById('new-playlist-cover-remove-btn');
+            if (imgEl && placeholderEl) {
+                imgEl.src = imgSrc;
+                imgEl.classList.remove('hidden');
+                placeholderEl.classList.add('hidden');
+            }
+            if (removeBtn) removeBtn.classList.remove('hidden');
+        },
+
+        clearNewPlaylistCover() {
+            this.newPlaylistCustomCover = null;
+            const imgEl = document.getElementById('new-playlist-cover-img');
+            const placeholderEl = document.getElementById('new-playlist-cover-placeholder');
+            const removeBtn = document.getElementById('new-playlist-cover-remove-btn');
+            const fileInput = document.getElementById('new-playlist-file-input');
+            const urlInput = document.getElementById('new-playlist-cover-url-input');
+
+            if (imgEl) {
+                imgEl.src = '';
+                imgEl.classList.add('hidden');
+            }
+            if (placeholderEl) placeholderEl.classList.remove('hidden');
+            if (removeBtn) removeBtn.classList.add('hidden');
+            if (fileInput) fileInput.value = '';
+            if (urlInput) urlInput.value = '';
+        },
+
         openCreatePlaylistModal() {
             const modal = document.getElementById('modal-create-playlist');
             const input = document.getElementById('new-playlist-modal-name');
+            this.clearNewPlaylistCover();
             if (!modal) return;
             if (input) input.value = '';
             modal.classList.remove('hidden');
@@ -2999,6 +3104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeCreatePlaylistModal() {
             const modal = document.getElementById('modal-create-playlist');
             if (modal) modal.classList.add('hidden');
+            this.clearNewPlaylistCover();
         },
 
         submitCreatePlaylist() {
@@ -3013,11 +3119,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.showToast('⚠️ Veuillez entrer un nom pour la playlist');
                 return;
             }
-            const pl = Storage.createPlaylist(name);
+            const pl = Storage.createPlaylist(name, true, this.newPlaylistCustomCover);
             this.closeCreatePlaylistModal();
             this.showToast(`✨ Playlist "${pl.name}" créée !`);
             this.renderPlaylists();
             this.openPlaylistView(pl.id);
+        },
+
+        // -------------------------------------------------------------
+        // CAROUSEL AIDE IMPORT TITRES LIKES (Spotify / Deezer / YouTube)
+        // -------------------------------------------------------------
+        likedHelpCurrentSlide: 0,
+
+        setLikedHelpSlide(index) {
+            this.likedHelpCurrentSlide = Math.max(0, Math.min(2, index));
+            const track = document.getElementById('liked-help-track');
+            if (track) {
+                track.style.transform = `translateX(-${this.likedHelpCurrentSlide * (100 / 3)}%)`;
+            }
+
+            // Update pills
+            document.querySelectorAll('.liked-help-pill').forEach((pill, idx) => {
+                pill.classList.toggle('active', idx === this.likedHelpCurrentSlide);
+            });
+
+            // Update dots
+            document.querySelectorAll('.liked-dot').forEach((dot, idx) => {
+                dot.classList.toggle('active', idx === this.likedHelpCurrentSlide);
+            });
+        },
+
+        prevLikedHelpSlide() {
+            const nextIdx = (this.likedHelpCurrentSlide - 1 + 3) % 3;
+            this.setLikedHelpSlide(nextIdx);
+        },
+
+        nextLikedHelpSlide() {
+            const nextIdx = (this.likedHelpCurrentSlide + 1) % 3;
+            this.setLikedHelpSlide(nextIdx);
         },
 
         async playTrackById(id) {

@@ -317,12 +317,13 @@ const Storage = {
     }
   },
 
-  createPlaylist(name, isPublic = true) {
+  createPlaylist(name, isPublic = true, customCover = null) {
     const playlists = this.getPlaylists();
     const newPl = {
       id: 'pl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       name: name.trim() || 'Ma Playlist',
       isPublic: isPublic !== false,
+      customCover: customCover || null,
       createdAt: Date.now(),
       tracks: []
     };

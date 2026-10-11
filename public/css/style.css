@@ -5447,3 +5447,322 @@ textarea#import-text-input:focus {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Sidebar Playlist Active State (Identique à Titres likés) */
+.playlist-nav-item.active {
+  border-left: 3px solid var(--accent-red) !important;
+  padding-left: 9px !important;
+  background: var(--accent-subtle) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.playlist-nav-item.active span {
+  color: var(--accent-red) !important;
+  font-weight: 600;
+}
+
+/* Playlist Creation Cover Upload Section */
+.create-pl-cover-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.create-pl-cover-preview-box {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  min-width: 90px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.create-pl-cover-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-align: center;
+  padding: 4px;
+}
+
+.create-pl-cover-placeholder svg {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+  opacity: 0.6;
+}
+
+.create-pl-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.create-pl-cover-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: none;
+  color: #ff4d4d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease;
+}
+
+.create-pl-cover-remove-btn:hover {
+  transform: scale(1.15);
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.create-pl-cover-remove-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.create-pl-cover-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.create-pl-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12.5px;
+  padding: 7px 12px;
+}
+
+.create-pl-upload-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.create-pl-url-wrap input.modern-input.small {
+  padding: 7px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  width: 100%;
+}
+
+/* Horizontal Shelf Carousel for Recently Played (10 Derniers Titres) */
+.horizontal-shelf-carousel {
+  display: flex !important;
+  overflow-x: auto !important;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  gap: 16px !important;
+  padding: 8px 4px 16px 4px !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scroll-behavior: smooth;
+}
+
+.horizontal-shelf-carousel::-webkit-scrollbar {
+  height: 6px;
+}
+
+.horizontal-shelf-carousel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.horizontal-shelf-carousel .music-card {
+  flex: 0 0 170px !important;
+  width: 170px !important;
+  min-width: 170px !important;
+  scroll-snap-align: start;
+}
+
+.shelf-nav-arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.shelf-arrow-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shelf-arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.05);
+}
+
+.shelf-arrow-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+/* Liked Help Carousel Modal */
+.liked-help-modal-card {
+  max-width: 580px;
+  width: 94%;
+}
+
+.liked-help-pills-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.liked-help-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.liked-help-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.liked-help-pill.active {
+  background: var(--accent-subtle);
+  border-color: var(--accent-red);
+  color: #ffffff;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.platform-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.platform-dot.spotify { background: #1ed760; }
+.platform-dot.deezer { background: #a238ff; }
+.platform-dot.youtube { background: #ff0033; }
+
+.liked-help-carousel-outer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.liked-help-arrow {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.liked-help-arrow:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.08);
+}
+
+.liked-help-arrow svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.liked-help-viewport {
+  flex: 1;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.liked-help-track {
+  display: flex;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  width: 300%;
+}
+
+.liked-help-slide {
+  width: 33.333333%;
+  flex-shrink: 0;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.liked-help-slide .liked-import-step-block {
+  margin-bottom: 0;
+}
+
+.liked-help-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.liked-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.liked-dot.active {
+  background: var(--accent-red);
+  transform: scale(1.3);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+
