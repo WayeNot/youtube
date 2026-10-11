@@ -1,7 +1,6 @@
 // Main Application Controller
-document.addEventListener('DOMContentLoaded', () => {
-    const App = {
-        currentView: 'home',
+const App = {
+    currentView: 'home',
         currentFilter: 'all',
         currentSearchFilter: 'all',
         currentSearchQuery: '',
@@ -915,6 +914,46 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             if (this.dom.createPlaylistBtn) this.dom.createPlaylistBtn.addEventListener('click', openCreatePl);
             if (this.dom.createPlaylistBtn2) this.dom.createPlaylistBtn2.addEventListener('click', openCreatePl);
+
+            const playlistShareBtn = document.getElementById('playlist-share-btn');
+            if (playlistShareBtn) {
+                playlistShareBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.shareCurrentPlaylist();
+                });
+            }
+
+            const libImportBtn = document.getElementById('library-import-playlist-btn');
+            if (libImportBtn) {
+                libImportBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.openImportModal();
+                });
+            }
+
+            const heroImportBtn = document.getElementById('hero-import-btn');
+            if (heroImportBtn) {
+                heroImportBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.openImportModal();
+                });
+            }
+
+            const headerImportBtn = document.getElementById('header-import-btn');
+            if (headerImportBtn) {
+                headerImportBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.openImportModal();
+                });
+            }
+
+            const sidebarImportBtn = document.getElementById('sidebar-import-btn');
+            if (sidebarImportBtn) {
+                sidebarImportBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.openImportModal();
+                });
+            }
 
             // Modal Create Playlist Enter key support
             const createPlInput = document.getElementById('new-playlist-modal-name');
@@ -4633,21 +4672,43 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         shareCurrentPlaylist() {
-            if (!this.currentOpenPlaylist) return;
+            if (!this.currentOpenPlaylist) {
+                const plId = this.currentActivePlaylistId;
+                if (plId) {
+                    const pl = Storage.getPlaylists().find(p => String(p.id) === String(plId));
+                    if (pl) this.currentOpenPlaylist = pl;
+                }
+            }
+            const pl = this.currentOpenPlaylist;
+            const plName = pl?.name || document.getElementById('playlist-detail-title')?.textContent || 'Playlist';
             const currentUser = Storage.getUser();
-            const owner = this.currentOpenPlaylist.ownerUsername || (currentUser ? currentUser.username : 'user');
-            const shareUrl = `${window.location.origin}/user/${encodeURIComponent(owner)}/playlist/${encodeURIComponent(this.currentOpenPlaylist.name)}`;
-            this.openShareModal(this.currentOpenPlaylist.name, shareUrl);
+            const owner = pl?.ownerUsername || (currentUser ? currentUser.username : 'user');
+            const shareUrl = pl?.id ? `${window.location.origin}/playlist/${encodeURIComponent(pl.id)}` : `${window.location.origin}/user/${encodeURIComponent(owner)}/playlist/${encodeURIComponent(plName)}`;
+
+            if (navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
+                navigator.share({
+                    title: plName,
+                    text: `Écoute la playlist "${plName}" sur YouTube Music ! 🎶`,
+                    url: shareUrl
+                }).catch(() => {
+                    this.openShareModal(plName, shareUrl);
+                });
+            } else {
+                this.openShareModal(plName, shareUrl);
+            }
         },
 
         openShareModal(title, url) {
             const modal = document.getElementById('modal-share');
-            const linkInput = document.getElementById('share-link-input');
             if (!modal) return;
+            const linkInput = document.getElementById('share-link-input');
 
             this.currentShareUrl = url;
             this.currentShareTitle = title;
-            if (linkInput) linkInput.textContent = url;
+            if (linkInput) {
+                linkInput.textContent = url;
+                if ('value' in linkInput) linkInput.value = url;
+            }
 
             // Bind social buttons
             const encodedUrl = encodeURIComponent(url);
@@ -5109,6 +5170,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.App = App;
+window.App = App;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => App.init());
+} else {
     App.init();
-});
+}

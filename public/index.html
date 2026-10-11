@@ -125,7 +125,7 @@
 
             <div class="header-right">
                 <button id="header-import-btn" class="btn secondary small" title="Importer une playlist"
-                    onclick="window.App && window.App.openImportModal()">
+                    onclick="window.App ? window.App.openImportModal() : document.getElementById('modal-import-playlist')?.classList.remove('hidden')">
                     <svg viewBox="0 0 24 24">
                         <path
                             d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
@@ -224,14 +224,14 @@
                         <span>Playlists</span>
                         <div style="display:flex; gap: 4px;">
                             <button id="sidebar-import-btn" class="icon-btn small" title="Importer une playlist"
-                                onclick="window.App && window.App.openImportModal()">
+                                onclick="window.App ? window.App.openImportModal() : document.getElementById('modal-import-playlist')?.classList.remove('hidden')">
                                 <svg viewBox="0 0 24 24">
                                     <path
                                         d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
                                 </svg>
                             </button>
                             <button id="create-playlist-btn" class="icon-btn small" title="Nouvelle playlist"
-                                onclick="window.App && window.App.openCreatePlaylistPrompt()">
+                                onclick="window.App ? window.App.openCreatePlaylistPrompt() : document.getElementById('modal-create-playlist')?.classList.remove('hidden')">
                                 <svg viewBox="0 0 24 24">
                                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                                 </svg>
@@ -392,14 +392,14 @@
                         <div class="library-stats-bar" id="library-stats-bar"></div>
                         <div class="library-actions-bar">
                             <button id="create-playlist-btn-2" class="btn primary"
-                                onclick="window.App && window.App.openCreatePlaylistPrompt()">
+                                onclick="window.App ? window.App.openCreatePlaylistPrompt() : document.getElementById('modal-create-playlist')?.classList.remove('hidden')">
                                 <svg viewBox="0 0 24 24">
                                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                                 </svg>
                                 <span>Créer</span>
                             </button>
                             <button id="library-import-playlist-btn" class="btn secondary"
-                                onclick="window.App && window.App.openImportModal()">
+                                onclick="window.App ? window.App.openImportModal() : document.getElementById('modal-import-playlist')?.classList.remove('hidden')">
                                 <svg viewBox="0 0 24 24">
                                     <path
                                         d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
@@ -494,7 +494,7 @@
                                     <span>Aléatoire</span>
                                 </button>
                                 <button id="playlist-share-btn" class="btn secondary"
-                                    onclick="window.App && window.App.shareCurrentPlaylist()">
+                                    onclick="window.App ? window.App.shareCurrentPlaylist() : document.getElementById('modal-share')?.classList.remove('hidden')">
                                     <svg viewBox="0 0 24 24">
                                         <path
                                             d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
