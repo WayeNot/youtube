@@ -271,6 +271,27 @@
 
                 <!-- VIEW 2: SEARCH RESULTS -->
                 <section id="view-search" class="view-section">
+                    <!-- Mobile / In-View Dedicated Search Input -->
+                    <div class="search-view-input-box" id="search-view-input-box">
+                        <div class="search-box">
+                            <span class="search-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                                </svg>
+                            </span>
+                            <input type="text" id="mobile-search-input" placeholder="Rechercher des titres, artistes, albums..."
+                                autocomplete="off">
+                            <button id="mobile-search-clear-btn" class="icon-btn search-clear-btn hidden" title="Effacer">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="mobile-suggestions-dropdown" class="suggestions-dropdown hidden"></div>
+                    </div>
+
                     <div class="search-header">
                         <h2 id="search-title">Résultats de recherche</h2>
                         <div class="search-filter-pills">

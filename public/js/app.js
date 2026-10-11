@@ -127,6 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchInput: document.getElementById('search-input'),
                 searchClearBtn: document.getElementById('search-clear-btn'),
                 suggestionsDropdown: document.getElementById('suggestions-dropdown'),
+                mobileSearchInput: document.getElementById('mobile-search-input'),
+                mobileSearchClearBtn: document.getElementById('mobile-search-clear-btn'),
+                mobileSuggestionsDropdown: document.getElementById('mobile-suggestions-dropdown'),
                 searchResultsList: document.getElementById('search-results-list'),
                 searchTitle: document.getElementById('search-title'),
 
@@ -360,9 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bindImportListeners() {
             // Open import modal
             const openImportModal = () => {
-                if (this.dom.modalImportPlaylist) {
-                    this.dom.modalImportPlaylist.classList.remove('hidden');
-                }
+                this.dom.modalImportPlaylist && this.dom.modalImportPlaylist.classList.remove('hidden');
             };
 
             if (this.dom.headerImportBtn) this.dom.headerImportBtn.onclick = openImportModal;
@@ -579,14 +580,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.dom.searchClearBtn.addEventListener('click', () => {
                 this.dom.searchInput.value = '';
+                if (this.dom.mobileSearchInput) this.dom.mobileSearchInput.value = '';
                 this.dom.searchClearBtn.classList.add('hidden');
                 this.dom.suggestionsDropdown.classList.add('hidden');
             });
 
+            // Mobile in-view search input listeners
+            if (this.dom.mobileSearchInput) {
+                this.dom.mobileSearchInput.addEventListener('input', (e) => {
+                    const val = e.target.value.trim();
+                    this.dom.searchInput.value = e.target.value;
+                    if (this.dom.mobileSearchClearBtn) {
+                        this.dom.mobileSearchClearBtn.classList.toggle('hidden', !val);
+                    }
+                    clearTimeout(this.searchDebounceTimer);
+                    if (!val) {
+                        if (this.dom.mobileSuggestionsDropdown) this.dom.mobileSuggestionsDropdown.classList.add('hidden');
+                        return;
+                    }
+                    this.searchDebounceTimer = setTimeout(async () => {
+                        this.fetchSuggestions(val, this.dom.mobileSuggestionsDropdown);
+                        await this.executeSearch(val, false);
+                    }, 280);
+                });
+
+                this.dom.mobileSearchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const val = this.dom.mobileSearchInput.value.trim();
+                        if (val) {
+                            clearTimeout(this.searchDebounceTimer);
+                            if (this.dom.mobileSuggestionsDropdown) this.dom.mobileSuggestionsDropdown.classList.add('hidden');
+                            this.executeSearch(val, true);
+                        }
+                    }
+                });
+
+                if (this.dom.mobileSearchClearBtn) {
+                    this.dom.mobileSearchClearBtn.addEventListener('click', () => {
+                        this.dom.mobileSearchInput.value = '';
+                        this.dom.searchInput.value = '';
+                        this.dom.mobileSearchClearBtn.classList.add('hidden');
+                        if (this.dom.mobileSuggestionsDropdown) this.dom.mobileSuggestionsDropdown.classList.add('hidden');
+                    });
+                }
+            }
+
             // Close dropdowns on outside click
             document.addEventListener('click', (e) => {
-                if (!e.target.closest('.search-box-wrapper')) {
+                if (!e.target.closest('.search-box-wrapper') && !e.target.closest('.search-view-input-box')) {
                     this.dom.suggestionsDropdown.classList.add('hidden');
+                    if (this.dom.mobileSuggestionsDropdown) this.dom.mobileSuggestionsDropdown.classList.add('hidden');
                 }
                 if (!e.target.closest('.user-menu-wrapper')) {
                     this.closeUserDropdown();
@@ -1308,6 +1351,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderFavorites();
                 this.renderHistory();
             }
+
+            if (viewName === 'search') {
+                if (this.dom.mobileSearchInput && this.dom.searchInput) {
+                    this.dom.mobileSearchInput.value = this.dom.searchInput.value;
+                }
+                if (window.innerWidth <= 768 && this.dom.mobileSearchInput) {
+                    setTimeout(() => { this.dom.mobileSearchInput.focus(); }, 150);
+                }
+            }
         },
 
         showErrorView(title = 'Page introuvable', message = 'Cet utilisateur ou cette playlist n\'existe pas ou a été supprimée.') {
@@ -1800,50 +1852,61 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
             }
 
-            this.dom.suggestionsDropdown.innerHTML = html;
-            this.dom.suggestionsDropdown.classList.remove('hidden');
+            const dropdowns = targetDropdown
+                ? [targetDropdown]
+                : [this.dom.suggestionsDropdown, this.dom.mobileSuggestionsDropdown].filter(Boolean);
 
-            // Bind events
-            this.dom.suggestionsDropdown.querySelectorAll('.suggestion-delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const delId = btn.getAttribute('data-delete-id');
-                    Storage.removeRecentSearch(delId);
-                    this.showRecentSearchSuggestions();
-                    this.renderRecentSearches();
+            dropdowns.forEach(dd => {
+                dd.innerHTML = html;
+                dd.classList.remove('hidden');
+
+                // Bind events
+                dd.querySelectorAll('.suggestion-delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const delId = btn.getAttribute('data-delete-id');
+                        Storage.removeRecentSearch(delId);
+                        this.showRecentSearchSuggestions(targetDropdown);
+                        this.renderRecentSearches();
+                    });
                 });
-            });
 
-            this.dom.suggestionsDropdown.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const q = item.getAttribute('data-query');
-                    this.dom.searchInput.value = q;
-                    this.dom.suggestionsDropdown.classList.add('hidden');
-                    this.executeSearch(q);
+                dd.querySelectorAll('.suggestion-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const q = item.getAttribute('data-query');
+                        this.dom.searchInput.value = q;
+                        if (this.dom.mobileSearchInput) this.dom.mobileSearchInput.value = q;
+                        dropdowns.forEach(d => d.classList.add('hidden'));
+                        this.executeSearch(q);
+                    });
                 });
-            });
 
-            this.dom.suggestionsDropdown.querySelectorAll('.suggestion-track-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    if (e.target.closest('.suggestion-delete-btn')) return;
-                    const trackId = item.getAttribute('data-track-id');
-                    const track = this.findTrackInMemory(trackId) || trackItems.find(t => t.id === trackId);
-                    if (track) {
-                        Player.playTrack(track);
-                        this.dom.suggestionsDropdown.classList.add('hidden');
-                    }
+                dd.querySelectorAll('.suggestion-track-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        if (e.target.closest('.suggestion-delete-btn')) return;
+                        const trackId = item.getAttribute('data-track-id');
+                        const track = this.findTrackInMemory(trackId) || trackItems.find(t => t.id === trackId);
+                        if (track) {
+                            Player.playTrack(track);
+                            dropdowns.forEach(d => d.classList.add('hidden'));
+                        }
+                    });
                 });
             });
         },
 
-        async fetchSuggestions(query) {
+        async fetchSuggestions(query, targetDropdown = null) {
             const data = await API.getSuggestions(query);
             const suggestions = (data && data.suggestions) ? data.suggestions : [];
             const artist = (data && data.artist) ? data.artist : null;
             const directTracks = (data && Array.isArray(data.tracks)) ? data.tracks : [];
 
+            const dropdowns = targetDropdown
+                ? [targetDropdown]
+                : [this.dom.suggestionsDropdown, this.dom.mobileSuggestionsDropdown].filter(Boolean);
+
             if ((!suggestions || suggestions.length === 0) && !artist && directTracks.length === 0) {
-                this.dom.suggestionsDropdown.classList.add('hidden');
+                dropdowns.forEach(d => d.classList.add('hidden'));
                 return;
             }
 
@@ -1859,7 +1922,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let html = '';
 
-            // 1. Text Query suggestions with magnifying glass (Exact YouTube Music design, Image 1 top)
+            // 1. Text Query suggestions with magnifying glass
             if (suggestions && suggestions.length > 0) {
                 html += suggestions.slice(0, 6).map(s => `
           <div class="suggestion-item ytm-suggestion-row" data-query="${this.escapeHtml(s)}">
@@ -1884,7 +1947,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
             }
 
-            // 3. Direct song results at bottom (Image 1 bottom: Square cover + Title + Explicit badge + Artist + Views/Year)
+            // 3. Direct song results at bottom
             if (directTracks.length > 0) {
                 html += directTracks.slice(0, 4).map(t => `
           <div class="suggestion-track-item ytm-track-preview-row" data-track-id="${t.id}">
@@ -1899,38 +1962,42 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
             }
 
-            this.dom.suggestionsDropdown.innerHTML = html;
-            this.dom.suggestionsDropdown.classList.remove('hidden');
+            dropdowns.forEach(dd => {
+                dd.innerHTML = html;
+                dd.classList.remove('hidden');
 
-            // Click on Artist Suggestion
-            this.dom.suggestionsDropdown.querySelectorAll('.suggestion-artist-item').forEach((item) => {
-                item.addEventListener('click', () => {
-                    const artistName = item.getAttribute('data-artist-name');
-                    this.dom.suggestionsDropdown.classList.add('hidden');
-                    this.dom.searchInput.value = artistName;
-                    this.openArtistView(artistName);
+                // Click on Artist Suggestion
+                dd.querySelectorAll('.suggestion-artist-item').forEach((item) => {
+                    item.addEventListener('click', () => {
+                        const artistName = item.getAttribute('data-artist-name');
+                        dropdowns.forEach(d => d.classList.add('hidden'));
+                        this.dom.searchInput.value = artistName;
+                        if (this.dom.mobileSearchInput) this.dom.mobileSearchInput.value = artistName;
+                        this.openArtistView(artistName);
+                    });
                 });
-            });
 
-            // Click on Query Suggestion
-            this.dom.suggestionsDropdown.querySelectorAll('.suggestion-item').forEach((item) => {
-                item.addEventListener('click', () => {
-                    const q = item.getAttribute('data-query');
-                    this.dom.searchInput.value = q;
-                    this.dom.suggestionsDropdown.classList.add('hidden');
-                    this.executeSearch(q);
+                // Click on Query Suggestion
+                dd.querySelectorAll('.suggestion-item').forEach((item) => {
+                    item.addEventListener('click', () => {
+                        const q = item.getAttribute('data-query');
+                        this.dom.searchInput.value = q;
+                        if (this.dom.mobileSearchInput) this.dom.mobileSearchInput.value = q;
+                        dropdowns.forEach(d => d.classList.add('hidden'));
+                        this.executeSearch(q);
+                    });
                 });
-            });
 
-            // Click on Direct Track Preview (instant play)
-            this.dom.suggestionsDropdown.querySelectorAll('.suggestion-track-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const trackId = item.getAttribute('data-track-id');
-                    const track = directTracks.find(t => t.id === trackId) || this.findTrackInMemory(trackId);
-                    if (track) {
-                        Player.playTrack(track);
-                        this.dom.suggestionsDropdown.classList.add('hidden');
-                    }
+                // Click on Direct Track Preview (instant play)
+                dd.querySelectorAll('.suggestion-track-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const trackId = item.getAttribute('data-track-id');
+                        const track = directTracks.find(t => t.id === trackId) || this.findTrackInMemory(trackId);
+                        if (track) {
+                            Player.playTrack(track);
+                            dropdowns.forEach(d => d.classList.add('hidden'));
+                        }
+                    });
                 });
             });
         },

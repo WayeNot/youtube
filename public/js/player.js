@@ -36,6 +36,17 @@ class PlayerEngine {
     this.initAudioListeners();
     this.initMediaSession();
     this.loadSavedSettings();
+
+    // Global mobile audio unlock on first user interaction (unlocks Web Audio & mobile audio pipeline)
+    const unlockUserGesture = () => {
+      this.initEqualizer();
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+    };
+    window.addEventListener('touchstart', unlockUserGesture, { once: true, passive: true });
+    window.addEventListener('touchend', unlockUserGesture, { once: true, passive: true });
+    window.addEventListener('click', unlockUserGesture, { once: true, passive: true });
   }
 
   loadSavedSettings() {
@@ -336,8 +347,18 @@ class PlayerEngine {
     Storage.saveSetting('eqPreset', presetName);
   }
 
+  parseDurationSec(dur) {
+    if (typeof dur === 'number' && !isNaN(dur) && dur > 0) return dur;
+    if (typeof dur === 'string') {
+      const parts = dur.split(':').map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts[0] * 60 + parts[1];
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return 210;
+  }
+
   // Playback Methods
-  async playTrack(track, newQueue = null, explicitIndex = null) {
+  playTrack(track, newQueue = null, explicitIndex = null) {
     if (!track || !track.id) return;
 
     if (this._crossfadeTimeout) {
@@ -396,48 +417,65 @@ class PlayerEngine {
       if (iframe) iframe.src = 'about:blank';
     }
 
-    // Check if track is cached in IndexedDB offline vault
-    try {
-      const offlineItem = await Storage.getTrackOffline(track.id);
-      if (offlineItem && offlineItem.audioBlob) {
-        const blobUrl = URL.createObjectURL(offlineItem.audioBlob);
-        this.audio.src = blobUrl;
-      } else {
-        const streamUrl = API.getStreamUrl(track.id);
-        this.audio.preload = 'auto';
-        this.audio.src = streamUrl;
-      }
-    } catch (e) {
-      const streamUrl = API.getStreamUrl(track.id);
+    // Immediately reset progress & timeline synchronously so scrubber resets to 0:00 without delay
+    const initialDuration = this.parseDurationSec(track.durationSec || track.duration);
+    this._currentDuration = initialDuration;
+    this.emit('time_update', { currentTime: 0, duration: initialDuration });
+
+    // Set audio source synchronously (from memory cache if offline, else stream URL)
+    const offlineItem = Storage.getTrackOfflineSync ? Storage.getTrackOfflineSync(track.id) : null;
+    if (offlineItem && offlineItem.audioBlob) {
+      this.audio.src = URL.createObjectURL(offlineItem.audioBlob);
+    } else {
       this.audio.preload = 'auto';
-      this.audio.src = streamUrl;
+      this.audio.src = API.getStreamUrl(track.id);
+    }
+    this.audio.currentTime = 0;
+
+    // Synchronously unlock and resume Web Audio in the user gesture tick
+    this.initEqualizer();
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
     }
 
-    // Start audio playback
-    const startPlayback = async () => {
-      try {
-        if (this.audioCtx && this.audioCtx.state === 'suspended') {
-          await this.audioCtx.resume();
+    // Play immediately in the synchronous user gesture tick (vital for Mobile Safari & Android Chrome)
+    const playPromise = this.audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          this.isPlaying = true;
+          this.isLoading = false;
+          this.emit('playback_change', { isPlaying: true, isLoading: false });
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.warn('Audio play request failed, arming gesture retry:', err);
+            const unlockAndPlay = () => {
+              window.removeEventListener('click', unlockAndPlay);
+              window.removeEventListener('touchend', unlockAndPlay);
+              if (this.audioCtx && this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume().catch(() => {});
+              }
+              this.audio.play().catch(() => {});
+            };
+            window.addEventListener('click', unlockAndPlay, { once: true });
+            window.addEventListener('touchend', unlockAndPlay, { once: true });
+          }
+        });
+    }
+
+    // Background check in case offline cache needs async fetch
+    if (!offlineItem && Storage.getTrackOffline) {
+      Storage.getTrackOffline(track.id).then(item => {
+        if (item && item.audioBlob && this.currentTrack?.id === track.id) {
+          const currentCur = this.audio.currentTime;
+          const wasPlaying = !this.audio.paused;
+          this.audio.src = URL.createObjectURL(item.audioBlob);
+          this.audio.currentTime = currentCur;
+          if (wasPlaying) this.audio.play().catch(() => {});
         }
-        await this.audio.play();
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.warn('Audio play request failed:', err);
-          // Auto-retry once on user gesture
-          const unlock = async () => {
-            document.removeEventListener('click', unlock);
-            document.removeEventListener('touchend', unlock);
-            try {
-              if (this.audioCtx) await this.audioCtx.resume();
-              await this.audio.play();
-            } catch (e) {}
-          };
-          document.addEventListener('click', unlock, { once: true });
-          document.addEventListener('touchend', unlock, { once: true });
-        }
-      }
-    };
-    startPlayback();
+      }).catch(() => {});
+    }
 
     // Proactive background pre-warming of next upcoming tracks in queue
     if (this._prefetchTimer) clearTimeout(this._prefetchTimer);

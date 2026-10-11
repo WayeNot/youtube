@@ -330,6 +330,10 @@ html, body {
   overflow-y: auto;
 }
 
+.search-view-input-box {
+  display: none;
+}
+
 .suggestion-item {
   display: flex;
   align-items: center;
@@ -393,15 +397,47 @@ html, body {
 
 .app-sidebar.collapsed {
   width: 72px;
+  padding: 12px 6px;
 }
 .app-sidebar.collapsed .sidebar-nav span,
-.app-sidebar.collapsed .sidebar-section,
+.app-sidebar.collapsed .sidebar-section-header,
+.app-sidebar.collapsed .sidebar-empty-playlists,
+.app-sidebar.collapsed .sidebar-item-text,
 .app-sidebar.collapsed .sidebar-footer {
-  display: none;
+  display: none !important;
 }
 .app-sidebar.collapsed .nav-item {
   justify-content: center;
   padding: 12px 0;
+}
+.app-sidebar.collapsed .sidebar-divider {
+  width: 36px;
+  margin: 10px auto;
+}
+.app-sidebar.collapsed .playlist-nav-item {
+  justify-content: center;
+  padding: 6px 0;
+  margin: 3px 0;
+  border-left: none !important;
+  border-radius: 10px;
+}
+.app-sidebar.collapsed .playlist-nav-item:hover {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.08);
+}
+.app-sidebar.collapsed .playlist-nav-item.active {
+  background: rgba(255, 0, 51, 0.15) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 51, 0.25);
+}
+.app-sidebar.collapsed .sidebar-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+}
+.app-sidebar.collapsed .sidebar-pl-thumb {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
 }
 
 .sidebar-nav {
@@ -2482,8 +2518,8 @@ textarea#import-text-input:focus {
 
   .app-header {
     height: 56px;
-    padding: 0 10px;
-    gap: 8px;
+    padding: 0 16px;
+    justify-content: space-between;
   }
 
   .header-left {
@@ -2491,17 +2527,103 @@ textarea#import-text-input:focus {
   }
 
   .header-center {
-    margin: 0;
-    flex: 1;
+    display: none !important;
   }
 
-  .search-box {
-    height: 38px;
-    padding: 0 10px;
+  /* Dedicated In-View Search Input on Mobile */
+  .search-view-input-box {
+    display: block;
+    margin-bottom: 20px;
+    position: relative;
+    width: 100%;
   }
 
-  .search-box input {
-    font-size: 13.5px;
+  .search-view-input-box .search-box {
+    height: 48px;
+    border-radius: 24px;
+    padding: 0 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    transition: all 0.25s ease;
+  }
+
+  .search-view-input-box .search-box:focus-within {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--accent-red);
+    box-shadow: 0 0 15px rgba(255, 0, 51, 0.25);
+  }
+
+  .search-view-input-box input {
+    font-size: 15px;
+  }
+
+  .search-view-input-box .suggestions-dropdown {
+    position: absolute;
+    top: 54px;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    max-height: 60vh;
+    overflow-y: auto;
+    border-radius: 16px;
+  }
+
+  /* Library Page Responsive on Mobile */
+  .library-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+  .library-header .section-title {
+    font-size: 22px !important;
+  }
+  .library-header .section-subtitle {
+    font-size: 13px !important;
+    margin-top: 4px;
+  }
+  .library-tabs {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px !important;
+    margin-bottom: 16px !important;
+  }
+  .library-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .library-tab {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 7px 15px !important;
+    font-size: 13px !important;
+  }
+  .library-actions-bar {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    margin-bottom: 14px !important;
+  }
+  .library-actions-bar .btn {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+  }
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .cards-grid .music-card {
+    max-width: 100% !important;
+  }
+  .cards-grid .music-card .card-title {
+    font-size: 13px !important;
+  }
+  .cards-grid .music-card .card-artist {
+    font-size: 11.5px !important;
   }
 
   /* Hide non-essential desktop buttons on mobile header to let search breathe */

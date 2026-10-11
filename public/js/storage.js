@@ -528,6 +528,31 @@ const Storage = {
   // ==========================================================================
   // Offline PWA Mode (IndexedDB Audio & Blob Storage)
   // ==========================================================================
+  // INDEXEDDB OFFLINE VAULT (Synchronous Memory Cache + Async Storage)
+  // ==========================================================================
+  _offlineMemoryCache: new Map(),
+
+  async initOfflineCache() {
+    try {
+      const tracks = await this.getAllOfflineTracks();
+      if (Array.isArray(tracks)) {
+        tracks.forEach(t => {
+          if (t && t.id) this._offlineMemoryCache.set(t.id, t);
+        });
+      }
+    } catch (e) {
+      console.warn('Could not initialize offline memory cache:', e);
+    }
+  },
+
+  isOffline(trackId) {
+    return this._offlineMemoryCache.has(trackId);
+  },
+
+  getTrackOfflineSync(trackId) {
+    return this._offlineMemoryCache.get(trackId) || null;
+  },
+
   async getDb() {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open('ytm_offline_vault', 1);
@@ -557,19 +582,29 @@ const Storage = {
         savedAt: Date.now()
       };
       const req = store.put(item);
-      req.onsuccess = () => resolve(item);
+      req.onsuccess = () => {
+        this._offlineMemoryCache.set(track.id, item);
+        resolve(item);
+      };
       req.onerror = () => reject(req.error);
     });
   },
 
   async getTrackOffline(trackId) {
+    if (this._offlineMemoryCache.has(trackId)) {
+      return this._offlineMemoryCache.get(trackId);
+    }
     try {
       const db = await this.getDb();
       return new Promise((resolve) => {
         const tx = db.transaction('tracks', 'readonly');
         const store = tx.objectStore('tracks');
         const req = store.get(trackId);
-        req.onsuccess = () => resolve(req.result || null);
+        req.onsuccess = () => {
+          const res = req.result || null;
+          if (res) this._offlineMemoryCache.set(trackId, res);
+          resolve(res);
+        };
         req.onerror = () => resolve(null);
       });
     } catch (e) {
@@ -584,7 +619,11 @@ const Storage = {
         const tx = db.transaction('tracks', 'readonly');
         const store = tx.objectStore('tracks');
         const req = store.getAll();
-        req.onsuccess = () => resolve(req.result || []);
+        req.onsuccess = () => {
+          const res = req.result || [];
+          res.forEach(t => { if (t && t.id) this._offlineMemoryCache.set(t.id, t); });
+          resolve(res);
+        };
         req.onerror = () => resolve([]);
       });
     } catch (e) {
@@ -593,6 +632,7 @@ const Storage = {
   },
 
   async deleteTrackOffline(trackId) {
+    this._offlineMemoryCache.delete(trackId);
     const db = await this.getDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('tracks', 'readwrite');
@@ -603,6 +643,11 @@ const Storage = {
     });
   }
 };
+
+// Initialize offline cache immediately
+try {
+  Storage.initOfflineCache();
+} catch (e) {}
 
 // Automatic reconnect recovery: Push pending changes when coming back online
 window.addEventListener('online', () => {
