@@ -304,6 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 profileBioText: document.getElementById('profile-bio-text'),
                 profileStatLikes: document.getElementById('profile-stat-likes'),
                 profileStatPlaylists: document.getElementById('profile-stat-playlists'),
+                profileStatHistory: document.getElementById('profile-stat-history'),
+                profileBadgesRow: document.getElementById('profile-badges-row'),
+                profileBannerBg: document.getElementById('profile-banner-bg'),
+                profileTopArtistsGrid: document.getElementById('profile-top-artists-grid'),
                 profilePlaylistsGrid: document.getElementById('profile-playlists-grid'),
                 settingsAvatarInput: document.getElementById('settings-avatar-input'),
                 settingsBioInput: document.getElementById('settings-bio-input'),
@@ -3161,11 +3165,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.dom.profileBioText.textContent = profile.bio || 'Passionné de musique sur YouTube Music Maison.';
                 this.dom.profileStatLikes.textContent = profile.stats ? profile.stats.likesCount : 0;
                 this.dom.profileStatPlaylists.textContent = profile.stats ? profile.stats.playlistsCount : 0;
+                if (this.dom.profileStatHistory) {
+                    this.dom.profileStatHistory.textContent = profile.stats ? (profile.stats.historyCount || 0) : 0;
+                }
 
                 if (profile.avatar) {
                     this.dom.profileAvatarImg.src = profile.avatar;
+                    if (this.dom.profileBannerBg) {
+                        this.dom.profileBannerBg.style.backgroundImage = `url('${profile.avatar}')`;
+                    }
                 } else {
-                    this.dom.profileAvatarImg.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(profile.username)}`;
+                    const fallbackAvatar = `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(profile.username)}`;
+                    this.dom.profileAvatarImg.src = fallbackAvatar;
+                    if (this.dom.profileBannerBg) {
+                        this.dom.profileBannerBg.style.backgroundImage = `url('${fallbackAvatar}')`;
+                    }
+                }
+
+                // Render Badges
+                if (this.dom.profileBadgesRow) {
+                    const badges = profile.badges || [];
+                    this.dom.profileBadgesRow.innerHTML = badges.map(b => `
+                        <div class="loyalty-badge-pill" title="${this.escapeHtml(b.desc)}">
+                            <span class="badge-icon">${b.icon}</span>
+                            <span class="badge-title">${this.escapeHtml(b.title)}</span>
+                        </div>
+                    `).join('');
+                }
+
+                // Render Top Artists of the user
+                const topArtistsSec = document.getElementById('profile-top-artists-section');
+                if (this.dom.profileTopArtistsGrid) {
+                    const topArtists = profile.topArtists || [];
+                    if (topArtists.length === 0) {
+                        if (topArtistsSec) topArtistsSec.classList.add('hidden');
+                        this.dom.profileTopArtistsGrid.innerHTML = '';
+                    } else {
+                        if (topArtistsSec) topArtistsSec.classList.remove('hidden');
+                        this.dom.profileTopArtistsGrid.innerHTML = topArtists.map((a, i) => `
+                            <div class="profile-artist-card" data-artist-name="${this.escapeHtml(a.name)}">
+                                <img src="${a.avatar}" alt="${this.escapeHtml(a.name)}" class="profile-artist-avatar" loading="lazy">
+                                <span class="profile-artist-name">${this.escapeHtml(a.name)}</span>
+                                <span class="profile-artist-rank">#${i + 1} • ${a.plays} titre${a.plays > 1 ? 's' : ''}</span>
+                            </div>
+                        `).join('');
+
+                        this.dom.profileTopArtistsGrid.querySelectorAll('.profile-artist-card').forEach(card => {
+                            card.addEventListener('click', () => {
+                                const name = card.getAttribute('data-artist-name');
+                                this.openArtistView(name);
+                            });
+                        });
+                    }
                 }
 
                 // Toggle edit profile button depending on whether viewer is owner
@@ -3821,6 +3872,263 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 prompt('Lien d\'invitation :', this.currentShareUrl);
             }
+        },
+
+        // ==========================================================================
+        // Visual Story / Instagram Share Generator (Canvas 9:16)
+        // ==========================================================================
+        openStoryGenerator() {
+            const track = Player.currentTrack || (this.currentSearchResults && this.currentSearchResults[0]) || (Storage.getFavorites()[0]);
+            this.storyTrack = track || {
+                id: 'default',
+                title: 'YouTube Music Maison',
+                artist: this.currentProfileUser ? this.currentProfileUser.username : 'Vibe du moment',
+                thumbnail: this.currentProfileUser ? this.currentProfileUser.avatar : '/icons/icon.svg'
+            };
+
+            const modal = document.getElementById('modal-story-generator');
+            if (!modal) return;
+
+            // Default lyric or quote
+            const lyricsInput = document.getElementById('story-lyrics-input');
+            if (lyricsInput) {
+                // If synced lyrics line exists from LyricsManager, prefill it!
+                let activeLyric = '';
+                const activeEl = document.querySelector('.lyric-line.active');
+                if (activeEl) {
+                    activeLyric = `"${activeEl.textContent.trim()}"`;
+                }
+                if (activeLyric) {
+                    lyricsInput.value = activeLyric;
+                } else if (this.storyTrack.title) {
+                    lyricsInput.value = `En boucle sur "${this.storyTrack.title}" 🎶`;
+                }
+            }
+
+            this.storyTheme = 'gradient-dark';
+
+            // Bind theme buttons
+            document.querySelectorAll('.story-theme-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.story-theme-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.storyTheme = btn.getAttribute('data-theme') || 'gradient-dark';
+                    this.renderStoryCanvas();
+                };
+            });
+
+            if (lyricsInput) {
+                lyricsInput.oninput = () => this.renderStoryCanvas();
+            }
+
+            modal.classList.remove('hidden');
+            this.renderStoryCanvas();
+        },
+
+        renderStoryCanvas() {
+            const canvas = document.getElementById('story-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width; // 720
+            const h = canvas.height; // 1280
+
+            // 1. Background Theme Gradients
+            let grad;
+            switch (this.storyTheme) {
+                case 'gradient-red':
+                    grad = ctx.createLinearGradient(0, 0, w, h);
+                    grad.addColorStop(0, '#ff0033');
+                    grad.addColorStop(0.5, '#7b001a');
+                    grad.addColorStop(1, '#110508');
+                    break;
+                case 'gradient-purple':
+                    grad = ctx.createLinearGradient(0, 0, w, h);
+                    grad.addColorStop(0, '#8a2387');
+                    grad.addColorStop(0.5, '#e94057');
+                    grad.addColorStop(1, '#1a0526');
+                    break;
+                case 'gradient-cyan':
+                    grad = ctx.createLinearGradient(0, 0, w, h);
+                    grad.addColorStop(0, '#00f2fe');
+                    grad.addColorStop(0.5, '#4facfe');
+                    grad.addColorStop(1, '#051329');
+                    break;
+                case 'gradient-dark':
+                default:
+                    grad = ctx.createLinearGradient(0, 0, 0, h);
+                    grad.addColorStop(0, '#26262c');
+                    grad.addColorStop(0.4, '#151518');
+                    grad.addColorStop(1, '#09090b');
+                    break;
+            }
+
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            // Ambient background particles/glow
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            ctx.beginPath();
+            ctx.arc(w / 2, h * 0.35, 260, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Brand Header at top
+            ctx.save();
+            ctx.fillStyle = '#ff0033';
+            ctx.beginPath();
+            ctx.arc(w / 2 - 110, 95, 14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 26px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('YouTube Music', w / 2 - 85, 104);
+            ctx.restore();
+
+            // Cover Image
+            const track = this.storyTrack || { title: 'Titre', artist: 'Artiste' };
+            const coverImg = new Image();
+            coverImg.crossOrigin = 'anonymous';
+            const coverSrc = track.thumbnail || (track.cover) || '/icons/icon.svg';
+
+            const drawContent = () => {
+                // Drop shadow for cover
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                ctx.shadowBlur = 40;
+                ctx.shadowOffsetY = 20;
+
+                const coverSize = 420;
+                const coverX = (w - coverSize) / 2;
+                const coverY = 170;
+                const radius = 24;
+
+                // Rounded Rect clipping
+                ctx.beginPath();
+                ctx.moveTo(coverX + radius, coverY);
+                ctx.lineTo(coverX + coverSize - radius, coverY);
+                ctx.quadraticCurveTo(coverX + coverSize, coverY, coverX + coverSize, coverY + radius);
+                ctx.lineTo(coverX + coverSize, coverY + coverSize - radius);
+                ctx.quadraticCurveTo(coverX + coverSize, coverY + coverSize, coverX + coverSize - radius, coverY + coverSize);
+                ctx.lineTo(coverX + radius, coverY + coverSize);
+                ctx.quadraticCurveTo(coverX, coverY + coverSize, coverX, coverY + coverSize - radius);
+                ctx.lineTo(coverX, coverY + radius);
+                ctx.quadraticCurveTo(coverX, coverY, coverX + radius, coverY);
+                ctx.closePath();
+                ctx.clip();
+
+                try {
+                    ctx.drawImage(coverImg, coverX, coverY, coverSize, coverSize);
+                } catch (e) {
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(coverX, coverY, coverSize, coverSize);
+                }
+                ctx.restore();
+
+                // Track Title & Artist
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 36px sans-serif';
+                const titleStr = track.title.length > 32 ? track.title.substring(0, 30) + '...' : track.title;
+                ctx.fillText(titleStr, w / 2, 650);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                ctx.font = '500 24px sans-serif';
+                ctx.fillText(track.artist || 'Artiste', w / 2, 695);
+                ctx.restore();
+
+                // Lyrics / Quote Bubble Card
+                const lyricsInput = document.getElementById('story-lyrics-input');
+                const lyricText = lyricsInput && lyricsInput.value ? lyricsInput.value.trim() : '';
+                if (lyricText) {
+                    ctx.save();
+                    const cardW = 560;
+                    const cardH = 200;
+                    const cardX = (w - cardW) / 2;
+                    const cardY = 770;
+                    const cardR = 24;
+
+                    // Glassmorphism card
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                    ctx.beginPath();
+                    ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
+                    ctx.fill();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.stroke();
+
+                    // Music quote icon
+                    ctx.fillStyle = '#ff0033';
+                    ctx.font = 'bold 40px serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('“', cardX + 30, cardY + 60);
+
+                    // Lyric text with word wrap
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'italic 600 26px sans-serif';
+                    ctx.textAlign = 'center';
+
+                    // Simple word wrap
+                    const words = lyricText.split(' ');
+                    let line = '';
+                    let lineY = cardY + 95;
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        const metrics = ctx.measureText(testLine);
+                        if (metrics.width > cardW - 80 && n > 0) {
+                            ctx.fillText(line, w / 2, lineY);
+                            line = words[n] + ' ';
+                            lineY += 38;
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    ctx.fillText(line, w / 2, lineY);
+
+                    ctx.restore();
+                }
+
+                // Waveform / Audio bars indicator at bottom
+                ctx.save();
+                ctx.fillStyle = '#ff0033';
+                const totalBars = 32;
+                const barW = 6;
+                const gap = 8;
+                const startX = (w - (totalBars * (barW + gap))) / 2;
+                for (let i = 0; i < totalBars; i++) {
+                    const hBar = Math.sin(i * 0.4) * 20 + 28;
+                    ctx.beginPath();
+                    ctx.roundRect(startX + i * (barW + gap), 1080 - hBar / 2, barW, hBar, 3);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                // User tag / Watermark
+                const currentUser = this.currentProfileUser || Storage.getUser();
+                const userName = currentUser ? currentUser.username : 'Écouté sur l\'app';
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.font = '500 20px sans-serif';
+                ctx.fillText(`Partagé par @${userName} ⚡`, w / 2, 1160);
+                ctx.restore();
+            };
+
+            coverImg.onload = drawContent;
+            coverImg.onerror = drawContent;
+            coverImg.src = coverSrc;
+        },
+
+        downloadStoryImage() {
+            const canvas = document.getElementById('story-canvas');
+            if (!canvas) return;
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `story-${this.storyTrack ? this.storyTrack.title.replace(/[^a-zA-Z0-9]/g, '_') : 'music'}.png`;
+            link.href = dataUrl;
+            link.click();
+            this.showToast('Image Story téléchargée ! Prête pour Instagram / TikTok 📸');
         },
 
         shareUserProfile() {

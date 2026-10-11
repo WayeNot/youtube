@@ -478,14 +478,18 @@
 
                 <!-- VIEW 6: MON PROFIL & PUBLIC USER PROFILES (/user/:username) -->
                 <section id="view-profile" class="view-section">
-                    <div class="profile-card-banner">
+                    <div class="profile-card-banner" id="profile-card-banner">
+                        <div class="profile-banner-bg" id="profile-banner-bg"></div>
                         <div class="profile-header-content">
                             <div class="profile-avatar-container">
                                 <img id="profile-avatar-img" src="/icons/icon.svg" alt="Avatar"
                                     class="profile-avatar-big">
                             </div>
                             <div class="profile-info-block">
-                                <h1 id="profile-display-username" class="profile-username-title">Utilisateur</h1>
+                                <div class="profile-title-row">
+                                    <h1 id="profile-display-username" class="profile-username-title">Utilisateur</h1>
+                                    <div class="profile-badges-row" id="profile-badges-row"></div>
+                                </div>
                                 <p id="profile-bio-text" class="profile-bio-text">Passionné de musique sur YouTube Music
                                     Maison.</p>
                                 <div class="profile-stats-row">
@@ -496,6 +500,10 @@
                                     <div class="profile-stat-item">
                                         <span id="profile-stat-playlists" class="profile-stat-value">0</span>
                                         <span class="profile-stat-label">Playlists</span>
+                                    </div>
+                                    <div class="profile-stat-item">
+                                        <span id="profile-stat-history" class="profile-stat-value">0</span>
+                                        <span class="profile-stat-label">Écoutes</span>
                                     </div>
                                 </div>
                             </div>
@@ -516,11 +524,24 @@
                                     </svg>
                                     <span>Partager le profil</span>
                                 </button>
+                                <button class="btn primary small profile-story-btn"
+                                    onclick="window.App && window.App.openStoryGenerator()">
+                                    <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                                    <span>Partager en Story</span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <h3 class="section-title" style="margin-top: 24px;">Playlists de l'utilisateur</h3>
+                    <!-- Top Artistes du Mois -->
+                    <div class="profile-shelf-section" id="profile-top-artists-section">
+                        <div class="shelf-header">
+                            <h2 class="shelf-title">🔥 Top artistes les plus écoutés</h2>
+                        </div>
+                        <div id="profile-top-artists-grid" class="profile-top-artists-grid"></div>
+                    </div>
+
+                    <h3 class="section-title" style="margin-top: 32px;">Playlists de l'utilisateur</h3>
                     <div id="profile-playlists-grid" class="cards-grid"></div>
                 </section>
 
@@ -1698,6 +1719,50 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Modal: Générateur de Story Instagram / Visual Share -->
+        <div id="modal-story-generator" class="modal-overlay hidden">
+            <div class="modal-card story-modal-card">
+                <div class="modal-header">
+                    <h3>✨ Partager en Story</h3>
+                    <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-story-generator').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body story-modal-body">
+                    <p class="story-modal-subtitle">Générez une carte visuelle 9:16 prête pour vos Stories Instagram, TikTok ou Snapchat avec extrait de paroles synchronisées.</p>
+                    
+                    <div class="story-preview-container">
+                        <canvas id="story-canvas" width="720" height="1280" class="story-canvas"></canvas>
+                    </div>
+
+                    <div class="story-customizer">
+                        <div class="story-option-group">
+                            <label class="story-label">Extrait de paroles :</label>
+                            <input type="text" id="story-lyrics-input" class="story-input" placeholder="Ajouter une phrase ou citation marquante..." value="J'écoute ce chef-d'œuvre en boucle 🎧">
+                        </div>
+                        <div class="story-option-group">
+                            <label class="story-label">Style visuel :</label>
+                            <div class="story-themes-selector">
+                                <button class="story-theme-btn active" data-theme="gradient-dark">Nuit</button>
+                                <button class="story-theme-btn" data-theme="gradient-red">Vibrant</button>
+                                <button class="story-theme-btn" data-theme="gradient-purple">Aura</button>
+                                <button class="story-theme-btn" data-theme="gradient-cyan">Cyber</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="story-actions-footer">
+                        <button id="story-download-btn" class="btn primary full-width" onclick="window.App && window.App.downloadStoryImage()">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            <span>Télécharger l'image de la Story</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal: Modifier la Cover de la Playlist (Upload Fichier OU Lien URL) -->
         <div id="modal-playlist-cover" class="modal-overlay hidden">
             <div class="modal-card">

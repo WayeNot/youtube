@@ -261,20 +261,71 @@ const db = {
     const user = await this.findUserByUsername(username);
     if (!user) return null;
     const isOwner = viewerUserId && String(viewerUserId) === String(user.id);
-    const data = (await this.getUserData(user.id)) || { favorites: [], playlists: [] };
+    const data = (await this.getUserData(user.id)) || { favorites: [], playlists: [], history: [] };
     const allPlaylists = data.playlists || [];
     const visiblePlaylists = allPlaylists.filter(p => isOwner || p.isPublic !== false);
+    const favorites = data.favorites || [];
+    const history = data.history || [];
+
+    // Calculate Top Artists from history & favorites
+    const artistCounts = {};
+    const artistAvatars = {};
+    const tracksPool = [...history, ...favorites];
+
+    tracksPool.forEach(track => {
+      const art = track.artist ? track.artist.trim() : null;
+      if (art && art !== 'Artiste' && art.length > 1) {
+        artistCounts[art] = (artistCounts[art] || 0) + 1;
+        if (!artistAvatars[art] && track.thumbnail) {
+          artistAvatars[art] = track.thumbnail;
+        }
+      }
+    });
+
+    const topArtists = Object.keys(artistCounts)
+      .sort((a, b) => artistCounts[b] - artistCounts[a])
+      .slice(0, 6)
+      .map(name => ({
+        name,
+        plays: artistCounts[name],
+        avatar: artistAvatars[name] || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name)}`
+      }));
+
+    // Badges calculation
+    const badges = [];
+    const createdAtMs = Number(user.created_at) || Date.now();
+    const ageDays = Math.floor((Date.now() - createdAtMs) / (1000 * 60 * 60 * 24));
+
+    if (ageDays >= 1) {
+      badges.push({ id: 'pioneer', icon: '🏆', title: 'Pionnier', desc: 'Membre actif de la communauté' });
+    }
+    if (favorites.length >= 1) {
+      badges.push({ id: 'melophile', icon: '❤️', title: 'Mélomane', desc: `${favorites.length} titres favoris` });
+    }
+    if (visiblePlaylists.length >= 1) {
+      badges.push({ id: 'curator', icon: '🎧', title: 'Curateur', desc: `${visiblePlaylists.length} playlists créées` });
+    }
+    if (history.length >= 5) {
+      badges.push({ id: 'explorer', icon: '⚡', title: 'Auditeur Passionné', desc: `${history.length} titres écoutés` });
+    }
+    if (badges.length === 0) {
+      badges.push({ id: 'newbie', icon: '✨', title: 'Nouvel Arrivant', desc: 'Prêt à découvrir de nouvelles vibes' });
+    }
 
     return {
       id: user.id,
       username: user.username,
       avatar: user.avatar || '',
+      banner: user.banner || '',
       bio: user.bio || '',
-      createdAt: Number(user.created_at),
+      createdAt: createdAtMs,
       stats: {
-        likesCount: data.favorites ? data.favorites.length : 0,
-        playlistsCount: visiblePlaylists.length
+        likesCount: favorites.length,
+        playlistsCount: visiblePlaylists.length,
+        historyCount: history.length
       },
+      topArtists,
+      badges,
       playlists: visiblePlaylists.map(p => ({
         id: p.id,
         name: p.name,

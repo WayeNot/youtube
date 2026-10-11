@@ -2805,45 +2805,100 @@ textarea#import-text-input:focus {
 
 /* Profile View Styling */
 .profile-card-banner {
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.18) 0%, rgba(30, 20, 50, 0.6) 100%);
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 0, 51, 0.22) 0%, rgba(35, 20, 60, 0.7) 100%);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 28px;
+  padding: 32px;
   margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.profile-banner-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.25;
+  filter: blur(20px);
+  transform: scale(1.1);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .profile-header-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 26px;
   flex-wrap: wrap;
 }
 
 .profile-avatar-big {
-  width: 96px;
-  height: 96px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid rgba(255, 255, 255, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.25);
   background: #111;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .profile-info-block {
   flex: 1;
-  min-width: 220px;
+  min-width: 240px;
+}
+
+.profile-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
 }
 
 .profile-username-title {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
-  margin-bottom: 6px;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.profile-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.loyalty-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fff;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+.loyalty-badge-pill:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+.loyalty-badge-pill .badge-icon {
+  font-size: 13px;
 }
 
 .profile-bio-text {
   font-size: 14.5px;
   color: var(--text-secondary);
-  margin-bottom: 14px;
-  max-width: 650px;
+  margin-bottom: 16px;
+  max-width: 680px;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
@@ -2851,7 +2906,7 @@ textarea#import-text-input:focus {
 
 .profile-stats-row {
   display: flex;
-  gap: 24px;
+  gap: 28px;
 }
 
 .profile-stat-item {
@@ -2860,8 +2915,8 @@ textarea#import-text-input:focus {
 }
 
 .profile-stat-value {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
@@ -2869,12 +2924,180 @@ textarea#import-text-input:focus {
   font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .profile-actions-block {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-story-btn {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(220, 39, 67, 0.35) !important;
+  font-weight: 700 !important;
+}
+.profile-story-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(220, 39, 67, 0.5) !important;
+}
+
+/* Top Artists Grid in Profile */
+.profile-shelf-section {
+  margin-top: 24px;
+}
+.profile-top-artists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+.profile-artist-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.profile-artist-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.profile-artist-avatar {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 10px;
+}
+.profile-artist-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.profile-artist-rank {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Story / Instagram Generator Modal Styling
+   ========================================================================== */
+.story-modal-card {
+  max-width: 520px !important;
+  width: 95%;
+  background: #121214 !important;
+}
+.story-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.story-modal-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+  line-height: 1.45;
+}
+.story-preview-container {
+  width: 240px;
+  height: 426px; /* 9:16 aspect ratio preview */
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.story-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.story-customizer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.story-option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.story-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.story-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.story-input:focus {
+  border-color: #ff0033;
+}
+.story-themes-selector {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+.story-theme-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.story-theme-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.story-theme-btn.active {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+  font-weight: 700;
+}
+.story-actions-footer {
+  width: 100%;
+  margin-top: 4px;
 }
 
 /* Settings View Styling */
