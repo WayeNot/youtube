@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchDebounceTimer: null,
 
         init() {
+            window.App = this;
             this.bindDOM();
             this.bindPlayerEvents();
             this.bindStorageEvents();
@@ -194,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 playlistBackBtn: document.getElementById('playlist-back-btn'),
                 playlistPrivacyBadge: document.getElementById('playlist-privacy-badge'),
                 playlistPrivacyToggleBtn: document.getElementById('playlist-privacy-toggle-btn'),
+                playlistPrivacyIcon: document.getElementById('playlist-privacy-icon'),
                 playlistPrivacyLabel: document.getElementById('playlist-privacy-label'),
                 playlistCoverBig: document.getElementById('playlist-cover-big'),
                 playlistCoverFileInput: document.getElementById('playlist-cover-file-input'),
@@ -1120,6 +1122,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.updateNowPlayingUI(track);
                 this.renderQueueUI();
                 this.updateAmbientGlow(track.thumbnail);
+                if (window.LyricsManager) {
+                    window.LyricsManager.loadLyrics(track.title, track.artist);
+                }
             });
 
             // Playback state
@@ -2395,39 +2400,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Library grid: Show Titres likés card first + all user/imported playlists
-            const likedCardHTML = `
-        <div class="music-card featured-liked-card" data-playlist-id="liked_tracks">
-          <div class="card-thumb-wrapper" style="background: var(--accent-gradient-liked, linear-gradient(135deg, var(--accent-red), rgba(0,0,0,0.6)));">
-            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ffffff;">
-              <svg viewBox="0 0 24 24" width="56" height="56" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            </div>
-          </div>
-          <span class="card-title">❤️ Titres likés</span>
-          <span class="card-artist">${favs.length} titres sauvegardés</span>
-        </div>
-      `;
+            // Library view: Render clean list of playlists in column
+            const likedRowHTML = `
+                <div class="playlist-column-row featured-liked-row" data-playlist-id="liked_tracks">
+                    <div class="playlist-row-thumb liked-thumb">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                    </div>
+                    <div class="playlist-row-info">
+                        <span class="playlist-row-name">❤️ Titres likés</span>
+                        <span class="playlist-row-meta">${favs.length} titre${favs.length > 1 ? 's' : ''} sauvegardé${favs.length > 1 ? 's' : ''} • Playlist automatique</span>
+                    </div>
+                    <div class="playlist-row-arrow">
+                        <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                    </div>
+                </div>
+            `;
 
-            this.dom.playlistsGrid.innerHTML = likedCardHTML + playlists
-                .map(
-                    (p) => {
-                        const cover = p.customCover || (p.tracks && p.tracks[0] ? p.tracks[0].thumbnail : null);
-                        return `
-            <div class="music-card" data-playlist-id="${p.id}">
-              <div class="card-thumb-wrapper" style="background: linear-gradient(135deg, #2b2b2b, #111);">
-                ${cover ? `<img src="${cover}" alt="${this.escapeHtml(p.name)}" loading="lazy">` : `
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">
-                  <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
-                </div>`}
-                <div class="card-play-overlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
-              </div>
-              <span class="card-title">${this.escapeHtml(p.name)}</span>
-              <span class="card-artist">${p.tracks ? p.tracks.length : 0} titres</span>
-            </div>
-          `;
-                    }
-                )
-                .join('');
+            const playlistRowsHTML = playlists.map((p) => {
+                const cover = p.customCover || (p.tracks && p.tracks[0] ? p.tracks[0].thumbnail : null);
+                const count = p.tracks ? p.tracks.length : 0;
+                const isPub = p.isPublic !== false;
+                return `
+                    <div class="playlist-column-row" data-playlist-id="${p.id}">
+                        <div class="playlist-row-thumb">
+                            ${cover ? `<img src="${this.escapeHtml(cover)}" alt="${this.escapeHtml(p.name)}" loading="lazy">` : `
+                            <div class="playlist-row-fallback-icon">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                            </div>`}
+                        </div>
+                        <div class="playlist-row-info">
+                            <div class="playlist-row-title-line">
+                                <span class="playlist-row-name">${this.escapeHtml(p.name)}</span>
+                                <span class="playlist-row-privacy-pill ${isPub ? 'public' : 'private'}">${isPub ? 'Public' : 'Privé'}</span>
+                            </div>
+                            <span class="playlist-row-meta">${count} titre${count > 1 ? 's' : ''}${p.ownerUsername ? ` • Par ${this.escapeHtml(p.ownerUsername)}` : ''}</span>
+                        </div>
+                        <div class="playlist-row-arrow">
+                            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            this.dom.playlistsGrid.innerHTML = likedRowHTML + playlistRowsHTML;
 
             this.dom.playlistsGrid.querySelectorAll('[data-playlist-id]').forEach((el) => {
                 el.addEventListener('click', () => {
@@ -2661,14 +2678,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Privacy Badge & Toggle Button
+            // Unified Privacy Button
             const isPub = pl.isPublic !== false;
-            if (this.dom.playlistPrivacyBadge) {
-                this.dom.playlistPrivacyBadge.className = `badge-status ${isPub ? 'public' : 'private'}`;
-                this.dom.playlistPrivacyBadge.textContent = isPub ? '🌐 Public' : '🔒 Privé';
+            if (this.dom.playlistPrivacyToggleBtn) {
+                this.dom.playlistPrivacyToggleBtn.className = `btn secondary playlist-privacy-btn ${isPub ? 'public' : 'private'}`;
+            }
+            if (this.dom.playlistPrivacyIcon) {
+                this.dom.playlistPrivacyIcon.textContent = isPub ? '🌐' : '🔒';
             }
             if (this.dom.playlistPrivacyLabel) {
-                this.dom.playlistPrivacyLabel.textContent = isPub ? 'Rendre Privée' : 'Rendre Publique';
+                this.dom.playlistPrivacyLabel.textContent = isPub ? 'Public' : 'Privé';
             }
 
             if (!pl.tracks || pl.tracks.length === 0) {
@@ -2708,14 +2727,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!this.currentOpenPlaylist || this.currentOpenPlaylist.id === 'liked_tracks') return;
             const isPub = Storage.togglePlaylistPrivacy(this.currentOpenPlaylist.id);
             this.currentOpenPlaylist.isPublic = isPub;
-            if (this.dom.playlistPrivacyBadge) {
-                this.dom.playlistPrivacyBadge.className = `badge-status ${isPub ? 'public' : 'private'}`;
-                this.dom.playlistPrivacyBadge.textContent = isPub ? '🌐 Public' : '🔒 Privé';
+            if (this.dom.playlistPrivacyToggleBtn) {
+                this.dom.playlistPrivacyToggleBtn.className = `btn secondary playlist-privacy-btn ${isPub ? 'public' : 'private'}`;
+            }
+            if (this.dom.playlistPrivacyIcon) {
+                this.dom.playlistPrivacyIcon.textContent = isPub ? '🌐' : '🔒';
             }
             if (this.dom.playlistPrivacyLabel) {
-                this.dom.playlistPrivacyLabel.textContent = isPub ? 'Rendre Privée' : 'Rendre Publique';
+                this.dom.playlistPrivacyLabel.textContent = isPub ? 'Public' : 'Privé';
             }
-            this.showToast(isPub ? 'Playlist maintenant Publique (accessible via le lien) 🌐' : 'Playlist maintenant Privée (visible uniquement par vous) 🔒');
+            this.showToast(isPub ? 'Playlist maintenant Publique (partageable avec tout le monde) 🌐' : 'Playlist maintenant Privée (visible uniquement par vous) 🔒');
         },
 
         async openDownloadModal(track) {
@@ -2872,11 +2893,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.dom.currentTimeText) {
                 this.dom.currentTimeText.textContent = '0:00';
             }
+            if (this.dom.playerProgress) {
+                this.dom.playerProgress.style.width = '0%';
+            }
+            if (this.dom.playerScrubberThumb) {
+                this.dom.playerScrubberThumb.style.left = '0%';
+            }
 
             // Mobile mini player
             this.dom.miniCover.src = track.thumbnail;
             this.dom.miniTitle.textContent = track.title;
             this.dom.miniArtist.textContent = track.artist;
+            if (this.dom.miniProgressFill) {
+                this.dom.miniProgressFill.style.width = '0%';
+            }
 
             // Mobile fullscreen player
             this.dom.mobileBigCover.src = track.thumbnail;
@@ -2887,6 +2917,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (this.dom.mobileCurrentTime) {
                 this.dom.mobileCurrentTime.textContent = '0:00';
+            }
+            if (this.dom.mobileSeekSlider) {
+                this.dom.mobileSeekSlider.value = 0;
             }
 
             // Favorite state
@@ -5035,7 +5068,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 const val = Math.max(0, Math.min(8, parseInt(input, 10) || 0));
                 if (window.Player) window.Player.crossfadeDuration = val;
                 Storage.saveSetting('crossfade', val);
-                this.showToast(val > 0 ? `Fondu enchaîné réglé à ${val}s (transitions fluides) ⏳` : 'Fondu enchaîné désactivé');
+            }
+        },
+
+        openLibraryTab(tabName) {
+            this.switchView('library');
+            const targetTab = document.querySelector(`.library-tab[data-tab="${tabName}"]`);
+            if (targetTab) {
+                targetTab.click();
+            } else if (tabName === 'downloads') {
+                this.openPlaylistView('downloaded_tracks');
+            }
+        },
+
+        shuffleCurrentPlaylist() {
+            if (!this.currentOpenPlaylist || !this.currentOpenPlaylist.tracks || this.currentOpenPlaylist.tracks.length === 0) {
+                this.showToast('Aucun titre à jouer en mode aléatoire dans cette playlist');
+                return;
+            }
+            const tracks = [...this.currentOpenPlaylist.tracks];
+            // Fisher-Yates shuffle
+            for (let i = tracks.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+            }
+            if (window.Player) {
+                window.Player.isShuffle = true;
+                window.Player.playTrack(tracks[0], tracks);
+                this.showToast('Lecture aléatoire lancée 🔀');
             }
         },
 

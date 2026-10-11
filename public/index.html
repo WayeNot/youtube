@@ -371,11 +371,19 @@
                             <h1 class="section-title">📚 Votre Bibliothèque</h1>
                             <p class="section-subtitle">Playlists, favoris et historique synchronisés sur NeonDB.</p>
                         </div>
-                        <div class="library-tabs">
-                            <button class="library-tab active" data-tab="playlists">Playlists</button>
-                            <button class="library-tab" data-tab="favorites">❤️ Favoris</button>
-                            <button class="library-tab" data-tab="subscriptions">👥 Abonnements</button>
-                            <button class="library-tab" data-tab="history">🕒 Historique</button>
+                        <div class="library-tabs-carousel-wrapper">
+                            <button id="lib-tabs-prev-btn" class="icon-btn carousel-arrow-btn prev hidden" title="Défiler à gauche" onclick="document.querySelector('.library-tabs')?.scrollBy({left: -180, behavior: 'smooth'})">
+                                <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                            </button>
+                            <div class="library-tabs">
+                                <button class="library-tab active" data-tab="playlists">🎵 Playlists</button>
+                                <button class="library-tab" data-tab="favorites">❤️ Favoris</button>
+                                <button class="library-tab" data-tab="subscriptions">👥 Abonnements</button>
+                                <button class="library-tab" data-tab="history">🕒 Historique</button>
+                            </div>
+                            <button id="lib-tabs-next-btn" class="icon-btn carousel-arrow-btn next" title="Défiler à droite" onclick="document.querySelector('.library-tabs')?.scrollBy({left: 180, behavior: 'smooth'})">
+                                <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                            </button>
                         </div>
                     </div>
 
@@ -399,7 +407,7 @@
                                 <span>Importer</span>
                             </button>
                         </div>
-                        <div id="playlists-grid" class="cards-grid"></div>
+                        <div id="playlists-grid" class="playlists-column-list"></div>
                     </div>
 
                     <!-- Favorites Tab -->
@@ -483,7 +491,7 @@
                                         <path
                                             d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
                                     </svg>
-                                    <span class="desktop-only-text">Aléatoire</span>
+                                    <span>Aléatoire</span>
                                 </button>
                                 <button id="playlist-share-btn" class="btn secondary"
                                     onclick="window.App && window.App.shareCurrentPlaylist()">
@@ -491,19 +499,19 @@
                                         <path
                                             d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
                                     </svg>
-                                    <span class="desktop-only-text">Partager</span>
+                                    <span>Partager</span>
                                 </button>
-                                <span id="playlist-privacy-badge" class="badge-status">Public</span>
-                                <button id="playlist-privacy-toggle-btn" class="btn secondary small"
-                                    onclick="window.App && window.App.toggleCurrentPlaylistPrivacy()">
-                                    <span id="playlist-privacy-label">Rendre Privée</span>
+                                <button id="playlist-privacy-toggle-btn" class="btn secondary playlist-privacy-btn"
+                                    onclick="window.App && window.App.toggleCurrentPlaylistPrivacy()" title="Modifier la visibilité (Public / Privé)">
+                                    <span id="playlist-privacy-icon">🌐</span>
+                                    <span id="playlist-privacy-label">Public</span>
                                 </button>
-                                <button id="playlist-delete-btn" class="btn danger small">
+                                <button id="playlist-delete-btn" class="btn danger" title="Supprimer la playlist">
                                     <svg viewBox="0 0 24 24">
                                         <path
                                             d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                                     </svg>
-                                    <span class="desktop-only-text">Supprimer</span>
+                                    <span>Supprimer</span>
                                 </button>
                             </div>
                         </div>
@@ -1011,6 +1019,7 @@
                 <div class="side-panel-header">
                     <div class="side-panel-tabs">
                         <button class="side-tab active" data-panel="queue">File d'attente</button>
+                        <button class="side-tab" data-panel="lyrics">Paroles</button>
                     </div>
                     <button id="close-side-panel-btn" class="icon-btn small"
                         onclick="document.getElementById('side-panel').classList.add('hidden')">
@@ -1041,6 +1050,9 @@
                             </div>
                         </div>
                         <div id="side-queue-list" class="queue-list"></div>
+                    </div>
+                    <div id="panel-lyrics-content" class="panel-tab-content">
+                        <div id="side-lyrics-container" class="lyrics-container"></div>
                     </div>
                 </div>
             </aside>
@@ -1194,8 +1206,13 @@
                     </div>
                 </div>
 
-                <!-- Right: Queue, Download, Volume -->
+                <!-- Right: Lyrics, Queue, Download, Volume -->
                 <div class="player-right-tools">
+                    <button id="toggle-lyrics-btn" class="icon-btn toggle-btn" title="Paroles (Karaoké)">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                        </svg>
+                    </button>
                     <button id="toggle-queue-btn" class="icon-btn toggle-btn" title="File d'attente">
                         <svg viewBox="0 0 24 24">
                             <path

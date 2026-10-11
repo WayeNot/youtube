@@ -74,7 +74,6 @@ class PlayerEngine {
     this.audio.addEventListener('play', () => {
       this.isPlaying = true;
       this.isLoading = false;
-      this.initEqualizer();
       this.updateMediaSessionState();
       this.emit('playback_change', { isPlaying: true, isLoading: false });
     });
@@ -83,6 +82,14 @@ class PlayerEngine {
       this.isPlaying = false;
       this.updateMediaSessionState();
       this.emit('playback_change', { isPlaying: false, isLoading: false });
+    });
+
+    this.audio.addEventListener('loadedmetadata', () => {
+      const dur = this.audio.duration;
+      if (dur && !isNaN(dur) && dur > 0) {
+        this._currentDuration = dur;
+        this.emit('time_update', { currentTime: this.audio.currentTime || 0, duration: dur });
+      }
     });
 
     this.audio.addEventListener('waiting', () => {
@@ -268,6 +275,15 @@ class PlayerEngine {
       this.convolverGain.connect(this.gainNode);
       this.gainNode.connect(this.audioCtx.destination);
 
+      const unlockAudioCtx = () => {
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume().catch(() => {});
+        }
+      };
+      document.addEventListener('touchstart', unlockAudioCtx, { passive: true });
+      document.addEventListener('touchend', unlockAudioCtx, { passive: true });
+      document.addEventListener('click', unlockAudioCtx, { passive: true });
+
       this.isEqInitialized = true;
     } catch (e) {
       console.warn('Equalizer/Normalizer initialization error:', e);
@@ -430,11 +446,12 @@ class PlayerEngine {
       this.audio.preload = 'auto';
       this.audio.src = API.getStreamUrl(track.id);
     }
-    this.audio.currentTime = 0;
+    try {
+      this.audio.currentTime = 0;
+    } catch (e) {}
 
-    // Synchronously unlock and resume Web Audio in the user gesture tick
-    this.initEqualizer();
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+    // Unlock Web Audio only if equalizer was already initialized
+    if (this.isEqInitialized && this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume().catch(() => {});
     }
 
