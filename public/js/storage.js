@@ -467,6 +467,84 @@ const Storage = {
       console.error('Import failed:', e);
       return false;
     }
+  },
+
+  // ==========================================================================
+  // Offline PWA Mode (IndexedDB Audio & Blob Storage)
+  // ==========================================================================
+  async getDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('ytm_offline_vault', 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('tracks')) {
+          db.createObjectStore('tracks', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async saveTrackOffline(track, blob) {
+    const db = await this.getDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('tracks', 'readwrite');
+      const store = tx.objectStore('tracks');
+      const item = {
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        duration: track.duration,
+        thumbnail: track.thumbnail,
+        audioBlob: blob,
+        savedAt: Date.now()
+      };
+      const req = store.put(item);
+      req.onsuccess = () => resolve(item);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async getTrackOffline(trackId) {
+    try {
+      const db = await this.getDb();
+      return new Promise((resolve) => {
+        const tx = db.transaction('tracks', 'readonly');
+        const store = tx.objectStore('tracks');
+        const req = store.get(trackId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+    } catch (e) {
+      return null;
+    }
+  },
+
+  async getAllOfflineTracks() {
+    try {
+      const db = await this.getDb();
+      return new Promise((resolve) => {
+        const tx = db.transaction('tracks', 'readonly');
+        const store = tx.objectStore('tracks');
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async deleteTrackOffline(trackId) {
+    const db = await this.getDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('tracks', 'readwrite');
+      const store = tx.objectStore('tracks');
+      const req = store.delete(trackId);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => reject(req.error);
+    });
   }
 };
 

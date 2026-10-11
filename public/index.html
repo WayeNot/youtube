@@ -1,1221 +1,1681 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>YouTube Music</title>
-  <meta name="description" content="Lecteur YouTube Music responsive, lecture audio en arrière-plan, paroles synchronisées et mode vidéo">
-  <meta name="theme-color" content="#030303">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="YT Music">
-  <link rel="manifest" href="/manifest.json?v=3.1">
-  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-  <link rel="stylesheet" href="/css/style.css?v=3.1">
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-  <script>
-    (function() {
-      try {
-        var c = localStorage.getItem('ytm_accent_color');
-        var h = localStorage.getItem('ytm_accent_hover');
-        if (c) {
-          document.documentElement.style.setProperty('--accent-red', c);
-          document.documentElement.style.setProperty('--primary-red', c);
-          if (h) document.documentElement.style.setProperty('--accent-red-hover', h);
-        }
-        var u = JSON.parse(localStorage.getItem('ytm_auth_user'));
-        var token = localStorage.getItem('ytm_auth_token');
-        if ((!u || !u.username) && token) {
-          var parts = token.split('.');
-          if (parts.length === 3) {
-            var p = JSON.parse(atob(parts[1]));
-            if (p && p.username) u = { username: p.username };
-          }
-        }
-        if (u && u.username) {
-          document.addEventListener('DOMContentLoaded', function() {
-            var l = document.getElementById('auth-btn-label');
-            var d = document.getElementById('dropdown-username-display');
-            var b = document.getElementById('auth-btn');
-            var a = document.getElementById('auth-dropdown-arrow');
-            if (l) l.textContent = u.username;
-            if (d) d.textContent = u.username;
-            if (b) b.classList.add('logged-in');
-            if (a) a.classList.remove('hidden');
-          });
-        }
-      } catch(e) {}
-    })();
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>YouTube Music</title>
+    <meta name="description"
+        content="Lecteur YouTube Music responsive, lecture audio en arrière-plan, paroles synchronisées et mode vidéo">
+    <meta name="theme-color" content="#030303">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YT Music">
+    <link rel="manifest" href="/manifest.json?v=3.1">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="stylesheet" href="/css/style.css?v=3.1">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            try {
+                var c = localStorage.getItem('ytm_accent_color');
+                var h = localStorage.getItem('ytm_accent_hover');
+                if (c) {
+                    document.documentElement.style.setProperty('--accent-red', c);
+                    document.documentElement.style.setProperty('--primary-red', c);
+                    if (h) document.documentElement.style.setProperty('--accent-red-hover', h);
+                }
+                var u = JSON.parse(localStorage.getItem('ytm_auth_user'));
+                var token = localStorage.getItem('ytm_auth_token');
+                if ((!u || !u.username) && token) {
+                    var parts = token.split('.');
+                    if (parts.length === 3) {
+                        var p = JSON.parse(atob(parts[1]));
+                        if (p && p.username) u = { username: p.username };
+                    }
+                }
+                if (u && u.username) {
+                    document.addEventListener('DOMContentLoaded', function () {
+                        var l = document.getElementById('auth-btn-label');
+                        var d = document.getElementById('dropdown-username-display');
+                        var b = document.getElementById('auth-btn');
+                        var a = document.getElementById('auth-dropdown-arrow');
+                        if (l) l.textContent = u.username;
+                        if (d) d.textContent = u.username;
+                        if (b) b.classList.add('logged-in');
+                        if (a) a.classList.remove('hidden');
+                    });
+                }
+            } catch (e) { }
+        })();
+    </script>
 </head>
+
 <body class="theme-dark">
-  <!-- Dynamic Ambient Glow Background -->
-  <div id="ambient-glow" class="ambient-glow"></div>
+    <!-- Dynamic Ambient Glow Background -->
+    <div id="ambient-glow" class="ambient-glow"></div>
 
-  <!-- Global Top Progress Loading Bar (YouTube Red style) -->
-  <div id="global-progress-bar" class="global-progress-bar">
-    <div id="global-progress-fill" class="global-progress-fill"></div>
-  </div>
+    <!-- Global Top Progress Loading Bar (YouTube Red style) -->
+    <div id="global-progress-bar" class="global-progress-bar">
+        <div id="global-progress-fill" class="global-progress-fill"></div>
+    </div>
 
-  <!-- App Wrapper -->
-  <div class="app-container">
-    <!-- Top Header (Desktop & Tablet) -->
-    <header class="app-header">
-      <div class="header-left">
-        <button id="sidebar-toggle-btn" class="icon-btn" title="Menu" aria-label="Menu">
-          <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-        </button>
-        <a href="#" class="brand-logo" id="brand-home-btn">
-          <div class="brand-icon">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-          </div>
-          <span class="brand-name">Music</span>
-          <span class="brand-badge">PRO</span>
-        </a>
-      </div>
-
-      <div class="header-center">
-        <div class="search-box-wrapper">
-          <div class="search-box">
-            <span class="search-icon">
-              <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            </span>
-            <input type="text" id="search-input" placeholder="Rechercher des titres, artistes, albums..." autocomplete="off">
-            <button id="search-clear-btn" class="icon-btn search-clear-btn hidden" title="Effacer">
-              <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-            </button>
-          </div>
-          <!-- Auto-suggestions dropdown -->
-          <div id="suggestions-dropdown" class="suggestions-dropdown hidden"></div>
-        </div>
-      </div>
-
-      <div class="header-right">
-        <button id="header-import-btn" class="btn secondary small" title="Importer une playlist" onclick="window.App && window.App.openImportModal()">
-          <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-          <span class="desktop-only-text">Importer</span>
-        </button>
-        <button id="crossfade-settings-btn" class="icon-btn" title="Réglage Fondu enchaîné (Crossfade)" onclick="window.App && window.App.openCrossfadePrompt()">
-          <svg viewBox="0 0 24 24"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2-3.5-4.66L14 3v3zm-4 12l3.75-5-2.85-3.8 1.6-1.2 3.5 4.66L10 21v-3z"/></svg>
-        </button>
-        <button id="eq-btn" class="icon-btn" title="Égaliseur Audio" aria-label="Égaliseur" onclick="window.App && window.App.openEqualizerModal()">
-          <svg viewBox="0 0 24 24"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"/></svg>
-        </button>
-        <button id="sleep-timer-btn" class="icon-btn" title="Minuterie de veille" aria-label="Minuterie" onclick="window.App && window.App.openSleepModal()">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
-          <span id="sleep-timer-badge" class="badge hidden"></span>
-        </button>
-        <button id="fullscreen-btn" class="icon-btn" title="Plein écran" aria-label="Plein écran" onclick="!document.fullscreenElement ? document.documentElement.requestFullscreen().catch(()=>{}) : document.exitFullscreen().catch(()=>{})">
-          <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-        </button>
-        <div class="user-menu-wrapper" id="user-menu-wrapper">
-          <button id="auth-btn" class="btn secondary small auth-pill-btn" title="Compte utilisateur" onclick="window.App && window.App.handleAuthBtnClick(event)">
-            <img id="auth-btn-avatar" src="/icons/icon.svg" class="user-avatar-mini hidden" alt="Avatar">
-            <svg id="auth-btn-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            <span id="auth-btn-label">Connexion</span>
-            <svg id="auth-dropdown-arrow" class="dropdown-arrow-icon hidden" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-          </button>
-
-          <!-- User Dropdown Menu -->
-          <div id="user-dropdown-menu" class="user-dropdown-menu hidden">
-            <div class="user-dropdown-header">
-              <span class="user-dropdown-username" id="dropdown-username-display">Pseudo</span>
-              <span class="user-dropdown-badge">Membre Cloud</span>
+    <!-- App Wrapper -->
+    <div class="app-container">
+        <!-- Top Header (Desktop & Tablet) -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="sidebar-toggle-btn" class="icon-btn" title="Menu" aria-label="Menu">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+                    </svg>
+                </button>
+                <a href="#" class="brand-logo" id="brand-home-btn">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
+                        </svg>
+                    </div>
+                    <span class="brand-name">Music</span>
+                    <span class="brand-badge">PRO</span>
+                </a>
             </div>
-            <div class="dropdown-divider"></div>
-            <a href="/profile" class="dropdown-item" onclick="window.App && window.App.openMyProfile(event)">
-              <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-              <span>Mon Profil</span>
-            </a>
-            <a href="/settings" class="dropdown-item" onclick="window.App && window.App.openSettings(event)">
-              <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
-              <span>Paramètres</span>
-            </a>
-            <div class="dropdown-divider"></div>
-            <button class="dropdown-item danger" onclick="window.App && window.App.logoutUser()">
-              <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-              <span>Se déconnecter</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
 
-    <!-- Main Layout (Sidebar + Content) -->
-    <div class="app-body">
-      <!-- Desktop Sidebar -->
-      <aside class="app-sidebar" id="app-sidebar">
-        <nav class="sidebar-nav">
-          <a href="/" class="nav-item active" data-view="home">
-            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            <span>Accueil</span>
-          </a>
-          <a href="/explore" class="nav-item" data-view="explore">
-            <svg viewBox="0 0 24 24"><path d="M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z"/></svg>
-            <span>Explorer</span>
-          </a>
-          <a href="/library" class="nav-item" data-view="library">
-            <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10l-2.5-1.5L13 12V6h5v6z"/></svg>
-            <span>Bibliothèque</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-divider"></div>
-
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <span>Playlists</span>
-            <div style="display:flex; gap: 4px;">
-              <button id="sidebar-import-btn" class="icon-btn small" title="Importer une playlist" onclick="window.App && window.App.openImportModal()">
-                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-              </button>
-              <button id="create-playlist-btn" class="icon-btn small" title="Nouvelle playlist" onclick="window.App && window.App.openCreatePlaylistPrompt()">
-                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-              </button>
-            </div>
-          </div>
-          <div id="sidebar-playlists" class="sidebar-playlists-list"></div>
-        </div>
-
-        <div class="sidebar-footer">
-          <button id="export-data-btn" class="text-link-btn" onclick="window.Storage && window.Storage.exportData()">Sauvegarder données</button>
-          <button id="import-data-btn" class="text-link-btn" onclick="document.getElementById('import-file-input').click()">Restaurer données</button>
-          <input type="file" id="import-file-input" accept=".json" style="display: none;">
-        </div>
-      </aside>
-
-      <!-- Main Content Scroll Area -->
-      <main class="app-main" id="app-main">
-        <!-- Filter Mood Chips Bar -->
-        <div class="chips-container" id="chips-container">
-          <button class="chip active" data-filter="all">Tout</button>
-          <button class="chip" data-filter="rap">Rap Français</button>
-          <button class="chip" data-filter="pop">Pop</button>
-          <button class="chip" data-filter="electro">Électro</button>
-          <button class="chip" data-filter="chill">Détente & Lofi</button>
-          <button class="chip" data-filter="rock">Rock</button>
-          <button class="chip" data-filter="workout">Entraînement</button>
-          <button class="chip" data-filter="focus">Concentration</button>
-        </div>
-
-        <!-- VIEW 1: HOME -->
-        <section id="view-home" class="view-section active">
-          <div id="home-sections-container"></div>
-        </section>
-
-        <!-- VIEW 2: SEARCH RESULTS -->
-        <section id="view-search" class="view-section">
-          <div class="search-header">
-            <h2 id="search-title">Résultats de recherche</h2>
-            <div class="search-filter-pills">
-              <button class="filter-pill active" data-type="all">Tous</button>
-              <button class="filter-pill" data-type="songs">Titres</button>
-              <button class="filter-pill" data-type="artists">Artistes</button>
-            </div>
-          </div>
-          <div id="search-results-list" class="tracks-list"></div>
-        </section>
-
-        <!-- VIEW 3: EXPLORE -->
-        <section id="view-explore" class="view-section">
-          <div class="explore-hero-header">
-            <h1 class="section-title">Explorer la Musique</h1>
-            <p class="section-subtitle">Découvrez de nouveaux artistes, genres musicaux et classements tendances en temps réel.</p>
-          </div>
-
-          <div class="explore-charts-row">
-            <div class="explore-chart-card" onclick="window.App && window.App.executeSearch('top hits france 2026')">
-              <div class="chart-badge">🏆 TOP 50</div>
-              <div class="chart-title">Hits France</div>
-              <div class="chart-desc">Les morceaux les plus écoutés en France</div>
-            </div>
-            <div class="explore-chart-card viral" onclick="window.App && window.App.executeSearch('tiktok viral songs hits')">
-              <div class="chart-badge">⚡ VIRAL</div>
-              <div class="chart-title">Tendances Virales</div>
-              <div class="chart-desc">Les titres qui cartonnent sur les réseaux</div>
-            </div>
-            <div class="explore-chart-card global" onclick="window.App && window.App.executeSearch('top global hits billboard')">
-              <div class="chart-badge">🌍 MONDE</div>
-              <div class="chart-title">Top Monde</div>
-              <div class="chart-desc">Les plus grands hits internationaux</div>
-            </div>
-          </div>
-
-          <!-- Section: Titres Tendances -->
-          <div class="explore-section-block">
-            <div class="section-header">
-              <h2 class="section-title">🔥 Titres en Tendance Aujourd'hui</h2>
-              <button class="btn secondary small" id="explore-play-trends-btn">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <span>Tout écouter</span>
-              </button>
-            </div>
-            <div id="explore-trending-tracks" class="tracks-list"></div>
-          </div>
-
-          <!-- Section: Nouveaux Albums & Sorties -->
-          <div class="explore-section-block" style="margin-top: 36px;">
-            <div class="section-header">
-              <h2 class="section-title">💿 Nouveautés & Albums Recommandés</h2>
-            </div>
-            <div id="explore-albums-grid" class="cards-grid"></div>
-          </div>
-
-          <!-- Section: Genres & Ambiances -->
-          <div class="explore-section-block" style="margin-top: 36px;">
-            <div class="section-header">
-              <h2 class="section-title">🎨 Genres & Ambiances</h2>
-            </div>
-            <div class="genre-grid" id="genre-grid"></div>
-          </div>
-        </section>
-
-        <!-- VIEW 4: LIBRARY -->
-        <section id="view-library" class="view-section">
-          <div class="library-header">
-            <div>
-              <h1 class="section-title">📚 Votre Bibliothèque</h1>
-              <p class="section-subtitle">Playlists, favoris et historique synchronisés sur NeonDB.</p>
-            </div>
-            <div class="library-tabs">
-              <button class="library-tab active" data-tab="playlists">Playlists</button>
-              <button class="library-tab" data-tab="favorites">❤️ Favoris</button>
-              <button class="library-tab" data-tab="history">🕒 Historique</button>
-            </div>
-          </div>
-
-          <!-- Playlists Tab -->
-          <div id="library-tab-playlists" class="library-tab-content active">
-            <div class="library-stats-bar" id="library-stats-bar"></div>
-            <div class="library-actions-bar">
-              <button id="create-playlist-btn-2" class="btn primary" onclick="window.App && window.App.openCreatePlaylistPrompt()">
-                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                <span>Créer</span>
-              </button>
-              <button id="library-import-playlist-btn" class="btn secondary" onclick="window.App && window.App.openImportModal()">
-                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                <span>Importer</span>
-              </button>
-            </div>
-            <div id="playlists-grid" class="cards-grid"></div>
-          </div>
-
-          <!-- Favorites Tab -->
-          <div id="library-tab-favorites" class="library-tab-content">
-            <div class="library-actions-bar">
-              <button id="play-all-favorites-btn" class="btn primary">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <span>Tout écouter</span>
-              </button>
-              <button id="shuffle-favorites-btn" class="btn secondary">
-                <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-                <span>Aléatoire</span>
-              </button>
-            </div>
-            <div id="favorites-list" class="tracks-list"></div>
-          </div>
-
-          <!-- History Tab -->
-          <div id="library-tab-history" class="library-tab-content">
-            <div class="library-actions-bar">
-              <button id="clear-history-btn" class="btn secondary" onclick="if(confirm('Effacer tout l\'historique d\'écoute ?')) { window.Storage && window.Storage.clearHistory(); window.App && window.App.showToast('Historique effacé'); }">Effacer l'historique</button>
-            </div>
-            <div id="history-list" class="tracks-list"></div>
-          </div>
-        </section>
-
-        <!-- VIEW 5: SINGLE PLAYLIST VIEW -->
-        <section id="view-playlist" class="view-section">
-          <div class="playlist-hero-banner" id="playlist-hero-banner">
-            <button id="playlist-back-btn" class="playlist-back-float-btn icon-btn" title="Retour">
-              <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-            </button>
-            <div class="playlist-hero-cover-col">
-              <div class="playlist-cover-big" id="playlist-cover-big" title="Changer la couverture de la playlist">
-                <svg viewBox="0 0 24 24" width="72" height="72" fill="rgba(255,255,255,0.4)"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
-                <div class="playlist-cover-edit-badge" id="playlist-cover-edit-badge" title="Changer l'image de couverture">
-                  <svg viewBox="0 0 24 24"><path d="M3 4V1h2v3h3v2H5v3H3V6H0V4h3zm3 6V7h3V4h7l1.83 2H21c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V10h3zm7 9c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-3.2-5c0 1.77 1.43 3.2 3.2 3.2s3.2-1.43 3.2-3.2-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2z"/></svg>
+            <div class="header-center">
+                <div class="search-box-wrapper">
+                    <div class="search-box">
+                        <span class="search-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                            </svg>
+                        </span>
+                        <input type="text" id="search-input" placeholder="Rechercher des titres, artistes, albums..."
+                            autocomplete="off">
+                        <button id="search-clear-btn" class="icon-btn search-clear-btn hidden" title="Effacer">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Auto-suggestions dropdown -->
+                    <div id="suggestions-dropdown" class="suggestions-dropdown hidden"></div>
                 </div>
-              </div>
-              <input type="file" id="playlist-cover-file-input" accept="image/*" style="display: none;">
             </div>
-            <div class="playlist-hero-info">
-              <span class="playlist-hero-badge">Playlist</span>
-              <h1 id="playlist-detail-title" class="playlist-hero-title">Nom de Playlist</h1>
-              <p id="playlist-detail-meta" class="playlist-hero-meta">0 titres</p>
-              <div class="playlist-hero-actions">
-                <button id="playlist-play-all-btn" class="btn primary">
-                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                  <span>Tout écouter</span>
+
+            <div class="header-right">
+                <button id="header-import-btn" class="btn secondary small" title="Importer une playlist"
+                    onclick="window.App && window.App.openImportModal()">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+                    </svg>
+                    <span class="desktop-only-text">Importer</span>
                 </button>
-                <button id="playlist-shuffle-btn" class="btn secondary" onclick="window.App && window.App.shuffleCurrentPlaylist()">
-                  <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-                  <span class="desktop-only-text">Aléatoire</span>
+                <button id="crossfade-settings-btn" class="icon-btn" title="Réglage Fondu enchaîné (Crossfade)"
+                    onclick="window.App && window.App.openCrossfadePrompt()">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M14 6l-3.75 5 2.85 3.8-1.6 1.2-3.5-4.66L14 3v3zm-4 12l3.75-5-2.85-3.8 1.6-1.2 3.5 4.66L10 21v-3z" />
+                    </svg>
                 </button>
-                <button id="playlist-share-btn" class="btn secondary" onclick="window.App && window.App.shareCurrentPlaylist()">
-                  <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                  <span class="desktop-only-text">Partager</span>
+                <button id="eq-btn" class="icon-btn" title="Égaliseur Audio" aria-label="Égaliseur"
+                    onclick="window.App && window.App.openEqualizerModal()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z" />
+                    </svg>
                 </button>
-                <span id="playlist-privacy-badge" class="badge-status">Public</span>
-                <button id="playlist-privacy-toggle-btn" class="btn secondary small" onclick="window.App && window.App.toggleCurrentPlaylistPrivacy()">
-                  <span id="playlist-privacy-label">Rendre Privée</span>
+                <button id="sleep-timer-btn" class="icon-btn" title="Minuterie de veille" aria-label="Minuterie"
+                    onclick="window.App && window.App.openSleepModal()">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" />
+                    </svg>
+                    <span id="sleep-timer-badge" class="badge hidden"></span>
                 </button>
-                <button id="playlist-delete-btn" class="btn danger small">
-                  <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                  <span class="desktop-only-text">Supprimer</span>
+                <button id="fullscreen-btn" class="icon-btn" title="Plein écran" aria-label="Plein écran"
+                    onclick="!document.fullscreenElement ? document.documentElement.requestFullscreen().catch(()=>{}) : document.exitFullscreen().catch(()=>{})">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                    </svg>
                 </button>
-              </div>
+                <div class="user-menu-wrapper" id="user-menu-wrapper">
+                    <button id="auth-btn" class="btn secondary small auth-pill-btn" title="Compte utilisateur"
+                        onclick="window.App && window.App.handleAuthBtnClick(event)">
+                        <img id="auth-btn-avatar" src="/icons/icon.svg" class="user-avatar-mini hidden" alt="Avatar">
+                        <svg id="auth-btn-icon" viewBox="0 0 24 24">
+                            <path
+                                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                        </svg>
+                        <span id="auth-btn-label">Connexion</span>
+                        <svg id="auth-dropdown-arrow" class="dropdown-arrow-icon hidden" viewBox="0 0 24 24">
+                            <path d="M7 10l5 5 5-5z" />
+                        </svg>
+                    </button>
+
+                    <!-- User Dropdown Menu -->
+                    <div id="user-dropdown-menu" class="user-dropdown-menu hidden">
+                        <div class="user-dropdown-header">
+                            <span class="user-dropdown-username" id="dropdown-username-display">Pseudo</span>
+                            <span class="user-dropdown-badge">Membre Cloud</span>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="/profile" class="dropdown-item"
+                            onclick="window.App && window.App.openMyProfile(event)">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                            </svg>
+                            <span>Mon Profil</span>
+                        </a>
+                        <a href="/settings" class="dropdown-item"
+                            onclick="window.App && window.App.openSettings(event)">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                            </svg>
+                            <span>Paramètres</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item danger" onclick="window.App && window.App.logoutUser()">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+                            </svg>
+                            <span>Se déconnecter</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div class="playlist-tracks-section">
-            <div id="playlist-tracks-list" class="tracks-list"></div>
-          </div>
-        </section>
+        </header>
+
+        <!-- Main Layout (Sidebar + Content) -->
+        <div class="app-body">
+            <!-- Desktop Sidebar -->
+            <aside class="app-sidebar" id="app-sidebar">
+                <nav class="sidebar-nav">
+                    <a href="/" class="nav-item active" data-view="home">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                        </svg>
+                        <span>Accueil</span>
+                    </a>
+                    <a href="/explore" class="nav-item" data-view="explore">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z" />
+                        </svg>
+                        <span>Explorer</span>
+                    </a>
+                    <a href="/library" class="nav-item" data-view="library">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10l-2.5-1.5L13 12V6h5v6z" />
+                        </svg>
+                        <span>Bibliothèque</span>
+                    </a>
+                </nav>
+
+                <div class="sidebar-divider"></div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header">
+                        <span>Playlists</span>
+                        <div style="display:flex; gap: 4px;">
+                            <button id="sidebar-import-btn" class="icon-btn small" title="Importer une playlist"
+                                onclick="window.App && window.App.openImportModal()">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+                                </svg>
+                            </button>
+                            <button id="create-playlist-btn" class="icon-btn small" title="Nouvelle playlist"
+                                onclick="window.App && window.App.openCreatePlaylistPrompt()">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="sidebar-playlists" class="sidebar-playlists-list"></div>
+                </div>
+
+                <div class="sidebar-footer">
+                    <button id="export-data-btn" class="text-link-btn"
+                        onclick="window.Storage && window.Storage.exportData()">Sauvegarder données</button>
+                    <button id="import-data-btn" class="text-link-btn"
+                        onclick="document.getElementById('import-file-input').click()">Restaurer données</button>
+                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                </div>
+            </aside>
+
+            <!-- Main Content Scroll Area -->
+            <main class="app-main" id="app-main">
+                <!-- Filter Mood Chips Bar -->
+                <div class="chips-container" id="chips-container">
+                    <button class="chip active" data-filter="all">Tout</button>
+                    <button class="chip" data-filter="rap">Rap Français</button>
+                    <button class="chip" data-filter="pop">Pop</button>
+                    <button class="chip" data-filter="electro">Électro</button>
+                    <button class="chip" data-filter="chill">Détente & Lofi</button>
+                    <button class="chip" data-filter="rock">Rock</button>
+                    <button class="chip" data-filter="workout">Entraînement</button>
+                    <button class="chip" data-filter="focus">Concentration</button>
+                </div>
+
+                <!-- VIEW 1: HOME -->
+                <section id="view-home" class="view-section active">
+                    <div id="home-sections-container"></div>
+                </section>
+
+                <!-- VIEW 2: SEARCH RESULTS -->
+                <section id="view-search" class="view-section">
+                    <div class="search-header">
+                        <h2 id="search-title">Résultats de recherche</h2>
+                        <div class="search-filter-pills">
+                            <button class="filter-pill active" data-type="all">Tous</button>
+                            <button class="filter-pill" data-type="songs">Titres</button>
+                            <button class="filter-pill" data-type="artists">Artistes</button>
+                        </div>
+                    </div>
+                    <div id="search-results-list" class="tracks-list"></div>
+                </section>
+
+                <!-- VIEW 3: EXPLORE -->
+                <section id="view-explore" class="view-section">
+                    <div class="explore-hero-header">
+                        <h1 class="section-title">Explorer la Musique</h1>
+                        <p class="section-subtitle">Découvrez de nouveaux artistes, genres musicaux et classements
+                            tendances en temps réel.</p>
+                    </div>
+
+                    <div class="explore-charts-row">
+                        <div class="explore-chart-card"
+                            onclick="window.App && window.App.executeSearch('top hits france 2026')">
+                            <div class="chart-badge">🏆 TOP 50</div>
+                            <div class="chart-title">Hits France</div>
+                            <div class="chart-desc">Les morceaux les plus écoutés en France</div>
+                        </div>
+                        <div class="explore-chart-card viral"
+                            onclick="window.App && window.App.executeSearch('tiktok viral songs hits')">
+                            <div class="chart-badge">⚡ VIRAL</div>
+                            <div class="chart-title">Tendances Virales</div>
+                            <div class="chart-desc">Les titres qui cartonnent sur les réseaux</div>
+                        </div>
+                        <div class="explore-chart-card global"
+                            onclick="window.App && window.App.executeSearch('top global hits billboard')">
+                            <div class="chart-badge">🌍 MONDE</div>
+                            <div class="chart-title">Top Monde</div>
+                            <div class="chart-desc">Les plus grands hits internationaux</div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Titres Tendances -->
+                    <div class="explore-section-block">
+                        <div class="section-header">
+                            <h2 class="section-title">🔥 Titres en Tendance Aujourd'hui</h2>
+                            <button class="btn secondary small" id="explore-play-trends-btn">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                                <span>Tout écouter</span>
+                            </button>
+                        </div>
+                        <div id="explore-trending-tracks" class="tracks-list"></div>
+                    </div>
+
+                    <!-- Section: Nouveaux Albums & Sorties -->
+                    <div class="explore-section-block" style="margin-top: 36px;">
+                        <div class="section-header">
+                            <h2 class="section-title">💿 Nouveautés & Albums Recommandés</h2>
+                        </div>
+                        <div id="explore-albums-grid" class="cards-grid"></div>
+                    </div>
+
+                    <!-- Section: Genres & Ambiances -->
+                    <div class="explore-section-block" style="margin-top: 36px;">
+                        <div class="section-header">
+                            <h2 class="section-title">🎨 Genres & Ambiances</h2>
+                        </div>
+                        <div class="genre-grid" id="genre-grid"></div>
+                    </div>
+                </section>
+
+                <!-- VIEW 4: LIBRARY -->
+                <section id="view-library" class="view-section">
+                    <div class="library-header">
+                        <div>
+                            <h1 class="section-title">📚 Votre Bibliothèque</h1>
+                            <p class="section-subtitle">Playlists, favoris et historique synchronisés sur NeonDB.</p>
+                        </div>
+                        <div class="library-tabs">
+                            <button class="library-tab active" data-tab="playlists">Playlists</button>
+                            <button class="library-tab" data-tab="favorites">❤️ Favoris</button>
+                            <button class="library-tab" data-tab="history">🕒 Historique</button>
+                        </div>
+                    </div>
+
+                    <!-- Playlists Tab -->
+                    <div id="library-tab-playlists" class="library-tab-content active">
+                        <div class="library-stats-bar" id="library-stats-bar"></div>
+                        <div class="library-actions-bar">
+                            <button id="create-playlist-btn-2" class="btn primary"
+                                onclick="window.App && window.App.openCreatePlaylistPrompt()">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                                </svg>
+                                <span>Créer</span>
+                            </button>
+                            <button id="library-import-playlist-btn" class="btn secondary"
+                                onclick="window.App && window.App.openImportModal()">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+                                </svg>
+                                <span>Importer</span>
+                            </button>
+                        </div>
+                        <div id="playlists-grid" class="cards-grid"></div>
+                    </div>
+
+                    <!-- Favorites Tab -->
+                    <div id="library-tab-favorites" class="library-tab-content">
+                        <div class="library-actions-bar">
+                            <button id="play-all-favorites-btn" class="btn primary">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                                <span>Tout écouter</span>
+                            </button>
+                            <button id="shuffle-favorites-btn" class="btn secondary">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                                </svg>
+                                <span>Aléatoire</span>
+                            </button>
+                        </div>
+                        <div id="favorites-list" class="tracks-list"></div>
+                    </div>
+
+                    <!-- History Tab -->
+                    <div id="library-tab-history" class="library-tab-content">
+                        <div class="library-actions-bar">
+                            <button id="clear-history-btn" class="btn secondary"
+                                onclick="if(confirm('Effacer tout l\'historique d\'écoute ?')) { window.Storage && window.Storage.clearHistory(); window.App && window.App.showToast('Historique effacé'); }">Effacer
+                                l'historique</button>
+                        </div>
+                        <div id="history-list" class="tracks-list"></div>
+                    </div>
+                </section>
+
+                <!-- VIEW 5: SINGLE PLAYLIST VIEW -->
+                <section id="view-playlist" class="view-section">
+                    <div class="playlist-hero-banner" id="playlist-hero-banner">
+                        <button id="playlist-back-btn" class="playlist-back-float-btn icon-btn" title="Retour">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                            </svg>
+                        </button>
+                        <div class="playlist-hero-cover-col">
+                            <div class="playlist-cover-big" id="playlist-cover-big"
+                                title="Changer la couverture de la playlist">
+                                <svg viewBox="0 0 24 24" width="72" height="72" fill="rgba(255,255,255,0.4)">
+                                    <path
+                                        d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
+                                </svg>
+                                <div class="playlist-cover-edit-badge" id="playlist-cover-edit-badge"
+                                    title="Changer l'image de couverture">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M3 4V1h2v3h3v2H5v3H3V6H0V4h3zm3 6V7h3V4h7l1.83 2H21c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V10h3zm7 9c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-3.2-5c0 1.77 1.43 3.2 3.2 3.2s3.2-1.43 3.2-3.2-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <input type="file" id="playlist-cover-file-input" accept="image/*" style="display: none;">
+                        </div>
+                        <div class="playlist-hero-info">
+                            <span class="playlist-hero-badge">Playlist</span>
+                            <h1 id="playlist-detail-title" class="playlist-hero-title">Nom de Playlist</h1>
+                            <p id="playlist-detail-meta" class="playlist-hero-meta">0 titres</p>
+                            <div class="playlist-hero-actions">
+                                <button id="playlist-play-all-btn" class="btn primary">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                    <span>Tout écouter</span>
+                                </button>
+                                <button id="playlist-shuffle-btn" class="btn secondary"
+                                    onclick="window.App && window.App.shuffleCurrentPlaylist()">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                                    </svg>
+                                    <span class="desktop-only-text">Aléatoire</span>
+                                </button>
+                                <button id="playlist-share-btn" class="btn secondary"
+                                    onclick="window.App && window.App.shareCurrentPlaylist()">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
+                                    </svg>
+                                    <span class="desktop-only-text">Partager</span>
+                                </button>
+                                <span id="playlist-privacy-badge" class="badge-status">Public</span>
+                                <button id="playlist-privacy-toggle-btn" class="btn secondary small"
+                                    onclick="window.App && window.App.toggleCurrentPlaylistPrivacy()">
+                                    <span id="playlist-privacy-label">Rendre Privée</span>
+                                </button>
+                                <button id="playlist-delete-btn" class="btn danger small">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                    </svg>
+                                    <span class="desktop-only-text">Supprimer</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="playlist-tracks-section">
+                        <div id="playlist-tracks-list" class="tracks-list"></div>
+                    </div>
+                </section>
 
                 <!-- VIEW 6: MON PROFIL & PUBLIC USER PROFILES (/user/:username) -->
-        <section id="view-profile" class="view-section">
-          <div class="profile-card-banner">
-            <div class="profile-header-content">
-              <div class="profile-avatar-container">
-                <img id="profile-avatar-img" src="/icons/icon.svg" alt="Avatar" class="profile-avatar-big">
-              </div>
-              <div class="profile-info-block">
-                <h1 id="profile-display-username" class="profile-username-title">Utilisateur</h1>
-                <p id="profile-bio-text" class="profile-bio-text">Passionné de musique sur YouTube Music Maison.</p>
-                <div class="profile-stats-row">
-                  <div class="profile-stat-item">
-                    <span id="profile-stat-likes" class="profile-stat-value">0</span>
-                    <span class="profile-stat-label">Titres likés</span>
-                  </div>
-                  <div class="profile-stat-item">
-                    <span id="profile-stat-playlists" class="profile-stat-value">0</span>
-                    <span class="profile-stat-label">Playlists</span>
-                  </div>
+                <section id="view-profile" class="view-section">
+                    <div class="profile-card-banner">
+                        <div class="profile-header-content">
+                            <div class="profile-avatar-container">
+                                <img id="profile-avatar-img" src="/icons/icon.svg" alt="Avatar"
+                                    class="profile-avatar-big">
+                            </div>
+                            <div class="profile-info-block">
+                                <h1 id="profile-display-username" class="profile-username-title">Utilisateur</h1>
+                                <p id="profile-bio-text" class="profile-bio-text">Passionné de musique sur YouTube Music
+                                    Maison.</p>
+                                <div class="profile-stats-row">
+                                    <div class="profile-stat-item">
+                                        <span id="profile-stat-likes" class="profile-stat-value">0</span>
+                                        <span class="profile-stat-label">Titres likés</span>
+                                    </div>
+                                    <div class="profile-stat-item">
+                                        <span id="profile-stat-playlists" class="profile-stat-value">0</span>
+                                        <span class="profile-stat-label">Playlists</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="profile-actions-block" id="profile-actions-block">
+                                <button class="btn secondary small"
+                                    onclick="window.App && window.App.openSettings(event)">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                                    </svg>
+                                    <span>Modifier le profil</span>
+                                </button>
+                                <button class="btn secondary small"
+                                    onclick="window.App && window.App.shareUserProfile()">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
+                                    </svg>
+                                    <span>Partager le profil</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="section-title" style="margin-top: 24px;">Playlists de l'utilisateur</h3>
+                    <div id="profile-playlists-grid" class="cards-grid"></div>
+                </section>
+
+                <!-- VIEW 6b: ARTISTE PAGE (/artist/:name) -->
+                <section id="view-artist" class="view-section">
+                    <div class="artist-hero-banner" id="artist-hero-banner">
+                        <div class="artist-hero-glow" id="artist-hero-glow"></div>
+                        <div class="artist-hero-content">
+                            <img id="artist-avatar-img" src="/icons/icon.svg" class="artist-avatar-big" alt="Artiste">
+                            <div class="artist-info-block">
+                                <span class="artist-badge">Artiste Officiel</span>
+                                <h1 id="artist-display-name" class="artist-title">Artiste</h1>
+                                <p id="artist-subscribers-text" class="artist-sub-text">0 auditeurs / abonnés</p>
+                                <div class="artist-hero-actions">
+                                    <button id="artist-play-all-btn" class="btn primary">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z" />
+                                        </svg>
+                                        <span>Tout écouter</span>
+                                    </button>
+                                    <button id="artist-radio-btn" class="btn secondary">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z" />
+                                        </svg>
+                                        <span>Lancer la Radio</span>
+                                    </button>
+                                    <button id="artist-shuffle-btn" class="btn secondary">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                                        </svg>
+                                        <span>Lecture Aléatoire</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="artist-content-body">
+                        <!-- Artist Bio Section -->
+                        <div class="artist-bio-card" id="artist-bio-card">
+                            <div class="artist-bio-header">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                                </svg>
+                                <span>À propos de l'artiste</span>
+                            </div>
+                            <p id="artist-bio-text" class="artist-bio-text">Chargement de la biographie...</p>
+                        </div>
+
+                        <div class="section-header">
+                            <h2 class="section-title">🔥 Titres populaires</h2>
+                        </div>
+                        <div id="artist-tracks-list" class="tracks-list"></div>
+
+                        <div class="section-header" style="margin-top: 36px;">
+                            <h2 class="section-title">💿 Albums & Discographie</h2>
+                            <span class="section-subtitle"
+                                style="font-size: 13px; color: var(--text-secondary);">Cliquez sur un album pour voir
+                                tous ses titres et les écouter</span>
+                        </div>
+                        <div id="artist-albums-grid" class="cards-grid"></div>
+                    </div>
+                </section>
+
+                <!-- VIEW 6c: ALBUM PAGE (/album/:id) -->
+                <section id="view-album" class="view-section">
+                    <div class="album-hero-banner" id="album-hero-banner">
+                        <div class="album-hero-glow" id="album-hero-glow"></div>
+                        <div class="album-hero-content">
+                            <div class="album-cover-wrapper">
+                                <img id="album-cover-img" src="/icons/icon.svg" class="album-cover-big"
+                                    alt="Album Cover">
+                            </div>
+                            <div class="album-info-block">
+                                <span class="album-badge">Album</span>
+                                <h1 id="album-display-title" class="album-title">Album</h1>
+                                <div class="album-artist-row">
+                                    <span id="album-artist-name" class="album-artist-name">Artiste</span>
+                                    <span class="dot-separator">•</span>
+                                    <span id="album-release-year" class="album-year">Album</span>
+                                </div>
+
+                                <div class="album-meta-stats">
+                                    <span class="meta-stat-pill" id="album-track-count-badge">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                                        </svg>
+                                        <span id="album-tracks-count-text">0 titres</span>
+                                    </span>
+                                    <span class="meta-stat-pill" id="album-duration-badge">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                        </svg>
+                                        <span id="album-total-duration-text">0 min</span>
+                                    </span>
+                                </div>
+
+                                <p id="album-description-text" class="album-description-text"></p>
+
+                                <div class="album-hero-actions">
+                                    <button id="album-play-all-btn" class="btn primary">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z" />
+                                        </svg>
+                                        <span>Tout écouter</span>
+                                    </button>
+                                    <button id="album-shuffle-btn" class="btn secondary">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                                d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                                        </svg>
+                                        <span>Lecture Aléatoire</span>
+                                    </button>
+                                    <button id="album-back-artist-btn" class="btn ghost">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                                        </svg>
+                                        <span>Retour à l'artiste</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="album-content-body">
+                        <div class="section-header">
+                            <h2 class="section-title">Pistes de l'album</h2>
+                        </div>
+                        <div id="album-tracks-list" class="tracks-list"></div>
+                    </div>
+                </section>
+
+                <!-- VIEW 7: PARAMÈTRES (Customisation, Thèmes, Profil) -->
+                <section id="view-settings" class="view-section">
+                    <h2 class="section-title">⚙️ Paramètres & Personnalisation</h2>
+
+                    <!-- Setting Section: Mon Profil -->
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">👤 Personnalisation du Profil</h3>
+                        <div class="settings-card profile-settings-card">
+                            <div class="profile-settings-header">
+                                <img id="settings-avatar-preview" src="/icons/icon.svg" class="profile-avatar-preview"
+                                    alt="Avatar">
+                                <div class="profile-header-meta">
+                                    <h4 id="settings-username-display">Mon Compte</h4>
+                                    <span class="user-dropdown-badge">Membre Cloud NeonDB</span>
+                                    <a href="/profile" id="settings-view-profile-btn" class="text-link-btn"
+                                        style="margin-top: 6px;"
+                                        onclick="window.App && window.App.openMyProfile(event)">
+                                        👁️ Voir mon profil public
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="input-row">
+                                <label>Photo de profil (URL personnalisée) :</label>
+                                <input type="text" id="settings-avatar-input"
+                                    placeholder="https://exemple.com/mon-avatar.jpg"
+                                    oninput="document.getElementById('settings-avatar-preview').src = this.value.trim() || '/icons/icon.svg'">
+                                <div class="avatar-presets-row">
+                                    <span style="font-size: 12px; color: var(--text-muted);">Presets rapides :</span>
+                                    <img src="https://api.dicebear.com/7.x/identicon/svg?seed=Felix"
+                                        class="avatar-preset-dot" alt=""
+                                        onclick="window.App && window.App.selectAvatarPreset(this.src)"
+                                        title="Identicon Felix">
+                                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Robot1"
+                                        class="avatar-preset-dot" alt=""
+                                        onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Robot">
+                                    <img src="https://api.dicebear.com/7.x/micah/svg?seed=MusicGuy"
+                                        class="avatar-preset-dot" alt=""
+                                        onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Micah">
+                                    <img src="https://api.dicebear.com/7.x/lorelei/svg?seed=MusicGirl"
+                                        class="avatar-preset-dot" alt=""
+                                        onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Lorelei">
+                                    <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NnA5MzZua24xNHhzamR4ZGoybjFkaGx6a2g1MnVsOWZ6Z2cxMDRqYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/1is4K4y0oWyyGnWTSh/giphy.gif"
+                                        class="avatar-preset-dot" alt=""
+                                        onclick="window.App && window.App.selectAvatarPreset(this.src)"
+                                        title="Vinyle DJ">
+                                </div>
+                            </div>
+
+                            <div class="bio-textarea-wrapper">
+                                <label
+                                    style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Biographie
+                                    :</label>
+                                <textarea id="settings-bio-input" maxlength="250"
+                                    placeholder="Parlez de vos goûts musicaux, vos artistes fétiches..."
+                                    oninput="document.getElementById('bio-char-count').textContent = this.value.length + ' / 250'"></textarea>
+                                <div id="bio-char-count" class="bio-char-count">0 / 250</div>
+                            </div>
+
+                            <button class="btn primary small" style="align-self: flex-start; margin-top: 8px;"
+                                onclick="window.App && window.App.saveProfileSettings()">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+                                </svg>
+                                <span>Enregistrer le profil</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Setting Section: Audio & Streaming -->
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">🔊 Préférences Audio & Qualité</h3>
+                        <div class="settings-card">
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Égaliseur Audio (EQ 5 Bandes)</span>
+                                    <span class="settings-item-desc">Ajustez les basses, voix et aigus ou appliquez des préréglages studio.</span>
+                                </div>
+                                <button class="btn secondary small" onclick="window.App && window.App.openEqualizerModal()">
+                                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 6px; fill: currentColor;"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z" /></svg>
+                                    <span>Ouvrir l'Égaliseur</span>
+                                </button>
+                            </div>
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Fondu Enchaîné (Crossfade)</span>
+                                    <span class="settings-item-desc">Enchaîne les morceaux sans coupure avec une transition douce.</span>
+                                </div>
+                                <button class="btn secondary small" onclick="window.App && window.App.openCrossfadePrompt()">
+                                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 6px; fill: currentColor;"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2-3.5-4.66L14 3v3zm-4 12l3.75-5-2.85-3.8 1.6-1.2 3.5 4.66L10 21v-3z" /></svg>
+                                    <span>Régler le fondu</span>
+                                </button>
+                            </div>
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Qualité de Streaming Audio</span>
+                                    <span class="settings-item-desc">Optimise le débit et la clarté du flux musical.</span>
+                                </div>
+                                <select id="settings-audio-quality" class="settings-select"
+                                    onchange="window.App && window.App.showToast('Qualité audio réglée : ' + this.value)">
+                                    <option value="high" selected>Haute Qualité (256 kbps AAC)</option>
+                                    <option value="medium">Standard (128 kbps)</option>
+                                    <option value="data_saver">Économie de données (64 kbps)</option>
+                                </select>
+                            </div>
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Radio Infinie Automatique</span>
+                                    <span class="settings-item-desc">Enchaîne automatiquement des titres similaires à la
+                                        fin de la file d'attente.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settings-autoplay-radio" checked
+                                        onchange="window.Player && (window.Player.autoplayRadio = this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Ambiance Lumineuse Réactive</span>
+                                    <span class="settings-item-desc">Change les reflets de fond en fonction des teintes
+                                        de la pochette du morceau en cours.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settings-ambient-glow" checked
+                                        onchange="document.getElementById('ambient-glow').classList.toggle('disabled', !this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Setting Section: Interface & Thèmes -->
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">🎨 Apparence & Interface</h3>
+                        <div class="settings-card">
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Thème d'accentuation</span>
+                                    <span class="settings-item-desc">Couleur principale des boutons, curseurs et
+                                        surlignages.</span>
+                                </div>
+                                <div class="theme-color-picker">
+                                    <button class="theme-color-dot active" data-color="#ff0033"
+                                        style="background: #ff0033;"
+                                        onclick="window.App && window.App.setAccentTheme('#ff0033', '#ff1f4b', 'Rouge YouTube')"
+                                        title="Rouge YouTube"></button>
+                                    <button class="theme-color-dot" data-color="#a855f7" style="background: #a855f7;"
+                                        onclick="window.App && window.App.setAccentTheme('#a855f7', '#c084fc', 'Violet Néon')"
+                                        title="Violet Néon"></button>
+                                    <button class="theme-color-dot" data-color="#06b6d4" style="background: #06b6d4;"
+                                        onclick="window.App && window.App.setAccentTheme('#06b6d4', '#22d3ee', 'Cyan Océan')"
+                                        title="Cyan Océan"></button>
+                                    <button class="theme-color-dot" data-color="#10b981" style="background: #10b981;"
+                                        onclick="window.App && window.App.setAccentTheme('#10b981', '#34d399', 'Émeraude')"
+                                        title="Émeraude"></button>
+                                    <button class="theme-color-dot" data-color="#f97316" style="background: #f97316;"
+                                        onclick="window.App && window.App.setAccentTheme('#f97316', '#fb923c', 'Orange Solaire')"
+                                        title="Orange Solaire"></button>
+                                    <button class="theme-color-dot" data-color="#ec4899" style="background: #ec4899;"
+                                        onclick="window.App && window.App.setAccentTheme('#ec4899', '#f472b6', 'Rose Fluo')"
+                                        title="Rose Fluo"></button>
+                                    <button class="theme-color-dot" data-color="#3b82f6" style="background: #3b82f6;"
+                                        onclick="window.App && window.App.setAccentTheme('#3b82f6', '#60a5fa', 'Bleu Royal')"
+                                        title="Bleu Royal"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Setting Section: Base de données & Données -->
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">☁️ Données & Cloud NeonDB</h3>
+                        <div class="settings-card">
+                            <p class="settings-info-text">Toutes vos playlists créées, importées, titres likés et
+                                historiques sont automatiquement synchronisés sur votre base NeonDB PostgreSQL.</p>
+                            <div class="settings-actions-row">
+                                <button class="btn secondary small"
+                                    onclick="window.Storage && window.Storage.pushToCloud(); window.App && window.App.showToast('Synchronisation forcée avec NeonDB !');">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                            d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 13l-1.41-1.41L13 16.17V10h-2v6.17l-4.59-4.59L5 13l7 7 7-7z" />
+                                    </svg>
+                                    <span>Forcer la synchronisation Cloud</span>
+                                </button>
+                                <button class="btn secondary small"
+                                    onclick="window.Storage && window.Storage.exportData()">
+                                    <span>Exporter backup JSON</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 8: PAGE D'ERREUR (404 / Non trouvé / Thème YouTube) -->
+                <section id="view-error" class="view-section">
+                    <div class="yt-error-container">
+                        <div class="yt-error-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                            </svg>
+                        </div>
+                        <h1 id="error-view-title" class="yt-error-title">Page introuvable</h1>
+                        <p id="error-view-message" class="yt-error-message">Cet utilisateur ou cette playlist n'existe
+                            pas ou a été supprimée.</p>
+                        <div class="yt-error-actions">
+                            <button class="btn primary" onclick="window.App && window.App.switchView('home')">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                                </svg>
+                                <span>Retour à l'accueil</span>
+                            </button>
+                            <button class="btn secondary" onclick="window.App && window.App.switchView('explore')">
+                                <span>Explorer la musique</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- Desktop Right Side Panel: Queue -->
+            <aside id="side-panel" class="side-panel hidden">
+                <div class="side-panel-header">
+                    <div class="side-panel-tabs">
+                        <button class="side-tab active" data-panel="queue">File d'attente</button>
+                    </div>
+                    <button id="close-side-panel-btn" class="icon-btn small"
+                        onclick="document.getElementById('side-panel').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
                 </div>
-              </div>
-              <div class="profile-actions-block" id="profile-actions-block">
-                <button class="btn secondary small" onclick="window.App && window.App.openSettings(event)">
-                  <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                  <span>Modifier le profil</span>
+                <div class="side-panel-body">
+                    <div id="panel-queue-content" class="panel-tab-content active">
+                        <div class="queue-toolbar">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="autoplay-radio-checkbox" checked
+                                    onchange="window.Player && (window.Player.autoplayRadio = this.checked)">
+                                <span>Radio infinie</span>
+                            </label>
+                            <button id="clear-queue-btn" class="text-link-btn"
+                                onclick="window.Player && window.Player.clearQueue()">Vider</button>
+                        </div>
+                        <div id="side-queue-list" class="queue-list"></div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Mobile Mini-Player Bar (docked above bottom nav) -->
+        <div id="mobile-mini-player" class="mobile-mini-player hidden"
+            onclick="window.App && window.App.openMobileFullscreenPlayer()">
+            <div class="mini-progress-bar">
+                <div id="mini-progress-fill" class="mini-progress-fill"></div>
+            </div>
+            <div class="mini-player-content">
+                <img id="mini-cover" src="/icons/icon.svg" alt="Cover" class="mini-cover">
+                <div class="mini-info">
+                    <span id="mini-title" class="mini-title">Sélectionnez un titre</span>
+                    <span id="mini-artist" class="mini-artist">YouTube Music</span>
+                </div>
+                <div class="mini-actions">
+                    <button id="mini-play-btn" class="icon-btn play-btn" aria-label="Lecture">
+                        <svg class="icon-play" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg class="icon-pause hidden" viewBox="0 0 24 24">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
+                    </button>
+                    <button id="mini-next-btn" class="icon-btn" aria-label="Suivant">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Bottom Navigation Bar -->
+        <nav class="mobile-bottom-nav">
+            <a href="/" class="mobile-nav-item active" data-view="home">
+                <svg viewBox="0 0 24 24">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                </svg>
+                <span>Accueil</span>
+            </a>
+            <a href="/explore" class="mobile-nav-item" data-view="explore">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z" />
+                </svg>
+                <span>Explorer</span>
+            </a>
+            <a href="/search" class="mobile-nav-item" data-view="search">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+                <span>Recherche</span>
+            </a>
+            <a href="/library" class="mobile-nav-item" data-view="library">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10l-2.5-1.5L13 12V6h5v6z" />
+                </svg>
+                <span>Bibliothèque</span>
+            </a>
+        </nav>
+
+        <!-- Desktop Bottom Player Bar -->
+        <footer id="desktop-player-bar" class="desktop-player-bar">
+            <!-- Scrubber Timeline Line (at very top of player bar) -->
+            <div class="player-scrubber-wrapper" id="player-scrubber-wrapper">
+                <div class="player-scrubber-track">
+                    <div id="player-buffered" class="player-buffered"></div>
+                    <div id="player-progress" class="player-progress"></div>
+                    <div id="player-scrubber-thumb" class="player-scrubber-thumb"></div>
+                </div>
+                <div id="scrub-tooltip" class="scrub-tooltip hidden">0:00</div>
+            </div>
+
+            <div class="player-bar-grid">
+                <!-- Left: Track Meta -->
+                <div class="player-track-info">
+                    <div class="track-cover-container" id="track-cover-btn">
+                        <img id="player-cover" src="/icons/icon.svg" alt="Cover" class="player-cover">
+                        <div class="cover-expand-overlay">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="track-text">
+                        <span id="player-title" class="track-title">Sélectionnez un titre</span>
+                        <span id="player-artist" class="track-artist">YouTube Music</span>
+                    </div>
+                    <button id="player-fav-btn" class="icon-btn fav-btn" title="Ajouter aux favoris">
+                        <svg class="heart-empty" viewBox="0 0 24 24">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                        <svg class="heart-filled hidden" viewBox="0 0 24 24">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                    <button id="player-add-to-pl-btn" class="icon-btn" title="Ajouter à une playlist">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Center: Controls & Timestamps -->
+                <div class="player-center-controls">
+                    <div class="controls-row">
+                        <button id="shuffle-btn" class="icon-btn toggle-btn" title="Lecture aléatoire">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                            </svg>
+                        </button>
+                        <button id="prev-btn" class="icon-btn" title="Précédent">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                            </svg>
+                        </button>
+                        <button id="play-pause-btn" class="icon-btn main-play-btn" title="Lecture / Pause">
+                            <div class="spinner-play-btn hidden" id="player-spinner"></div>
+                            <svg class="icon-play" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            <svg class="icon-pause hidden" viewBox="0 0 24 24">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                            </svg>
+                        </button>
+                        <button id="next-btn" class="icon-btn" title="Suivant">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                            </svg>
+                        </button>
+                        <button id="repeat-btn" class="icon-btn toggle-btn" title="Répéter (Désactivé)">
+                            <svg class="repeat-icon" viewBox="0 0 24 24">
+                                <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
+                            </svg>
+                            <span class="repeat-one-indicator hidden">1</span>
+                        </button>
+                    </div>
+                    <div class="time-row">
+                        <span id="current-time">0:00</span>
+                        <span class="time-divider">/</span>
+                        <span id="total-duration">0:00</span>
+                    </div>
+                </div>
+
+                <!-- Right: Queue, Download, Volume -->
+                <div class="player-right-tools">
+                    <button id="toggle-queue-btn" class="icon-btn toggle-btn" title="File d'attente">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
+                        </svg>
+                    </button>
+                    <!-- Playback Speed Picker -->
+                    <div class="speed-menu-wrapper" style="position: relative;">
+                        <button id="speed-picker-btn" class="icon-btn text-badge-btn" title="Vitesse de lecture" onclick="document.getElementById('speed-dropdown-menu').classList.toggle('hidden')">
+                            <span id="speed-badge-text" style="font-size: 11px; font-weight: 700; letter-spacing: -0.2px;">1.0x</span>
+                        </button>
+                        <div id="speed-dropdown-menu" class="speed-dropdown-menu hidden">
+                            <div class="speed-item" onclick="window.App && window.App.setPlaybackSpeed(0.5)">0.5x</div>
+                            <div class="speed-item" onclick="window.App && window.App.setPlaybackSpeed(0.75)">0.75x</div>
+                            <div class="speed-item active" onclick="window.App && window.App.setPlaybackSpeed(1)">1.0x (Normal)</div>
+                            <div class="speed-item" onclick="window.App && window.App.setPlaybackSpeed(1.25)">1.25x</div>
+                            <div class="speed-item" onclick="window.App && window.App.setPlaybackSpeed(1.5)">1.5x</div>
+                            <div class="speed-item" onclick="window.App && window.App.setPlaybackSpeed(2)">2.0x</div>
+                        </div>
+                    </div>
+
+                    <!-- Download offline -->
+                    <button id="download-track-btn" class="icon-btn" title="Télécharger pour écoute hors-ligne"
+                        onclick="if(window.Player && window.Player.currentTrack) { window.open(window.API.getDownloadUrl(window.Player.currentTrack.id, window.Player.currentTrack.title), '_blank'); window.App && window.App.showToast('Téléchargement lancé...'); }">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+                        </svg>
+                    </button>
+
+                    <!-- Volume Slider -->
+                    <div class="volume-slider-group">
+                        <button id="mute-btn" class="icon-btn small" title="Couper le son">
+                            <svg class="vol-high" viewBox="0 0 24 24">
+                                <path
+                                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                            </svg>
+                            <svg class="vol-muted hidden" viewBox="0 0 24 24">
+                                <path
+                                    d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+                            </svg>
+                        </button>
+                        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.9"
+                            class="volume-slider">
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+        <!-- MOBILE FULLSCREEN NOW PLAYING MODAL -->
+        <div id="mobile-fullscreen-player" class="mobile-fullscreen-player hidden">
+            <div class="mobile-drag-handle-bar">
+                <span class="mobile-drag-indicator"></span>
+            </div>
+            <div class="mobile-player-header">
+                <button id="close-fullscreen-player-btn" class="icon-btn" aria-label="Réduire">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+                    </svg>
                 </button>
-                <button class="btn secondary small" onclick="window.App && window.App.shareUserProfile()">
-                  <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                  <span>Partager le profil</span>
+                <button id="mobile-player-fav-btn" class="icon-btn fav-btn" aria-label="Favori">
+                    <svg class="heart-empty" viewBox="0 0 24 24">
+                        <path
+                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                    <svg class="heart-filled hidden" viewBox="0 0 24 24">
+                        <path
+                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
                 </button>
-              </div>
-            </div>
-          </div>
-
-          <h3 class="section-title" style="margin-top: 24px;">Playlists de l'utilisateur</h3>
-          <div id="profile-playlists-grid" class="cards-grid"></div>
-        </section>
-
-        <!-- VIEW 6b: ARTISTE PAGE (/artist/:name) -->
-        <section id="view-artist" class="view-section">
-          <div class="artist-hero-banner" id="artist-hero-banner">
-            <div class="artist-hero-glow" id="artist-hero-glow"></div>
-            <div class="artist-hero-content">
-              <img id="artist-avatar-img" src="/icons/icon.svg" class="artist-avatar-big" alt="Artiste">
-              <div class="artist-info-block">
-                <span class="artist-badge">Artiste Officiel</span>
-                <h1 id="artist-display-name" class="artist-title">Artiste</h1>
-                <p id="artist-subscribers-text" class="artist-sub-text">0 auditeurs / abonnés</p>
-                <div class="artist-hero-actions">
-                  <button id="artist-play-all-btn" class="btn primary">
-                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    <span>Tout écouter</span>
-                  </button>
-                  <button id="artist-radio-btn" class="btn secondary">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z"/></svg>
-                    <span>Lancer la Radio</span>
-                  </button>
-                  <button id="artist-shuffle-btn" class="btn secondary">
-                    <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-                    <span>Lecture Aléatoire</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="artist-content-body">
-            <!-- Artist Bio Section -->
-            <div class="artist-bio-card" id="artist-bio-card">
-              <div class="artist-bio-header">
-                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                <span>À propos de l'artiste</span>
-              </div>
-              <p id="artist-bio-text" class="artist-bio-text">Chargement de la biographie...</p>
             </div>
 
-            <div class="section-header">
-              <h2 class="section-title">🔥 Titres populaires</h2>
-            </div>
-            <div id="artist-tracks-list" class="tracks-list"></div>
-
-            <div class="section-header" style="margin-top: 36px;">
-              <h2 class="section-title">💿 Albums & Discographie</h2>
-              <span class="section-subtitle" style="font-size: 13px; color: var(--text-secondary);">Cliquez sur un album pour voir tous ses titres et les écouter</span>
-            </div>
-            <div id="artist-albums-grid" class="cards-grid"></div>
-          </div>
-        </section>
-
-        <!-- VIEW 6c: ALBUM PAGE (/album/:id) -->
-        <section id="view-album" class="view-section">
-          <div class="album-hero-banner" id="album-hero-banner">
-            <div class="album-hero-glow" id="album-hero-glow"></div>
-            <div class="album-hero-content">
-              <div class="album-cover-wrapper">
-                <img id="album-cover-img" src="/icons/icon.svg" class="album-cover-big" alt="Album Cover">
-              </div>
-              <div class="album-info-block">
-                <span class="album-badge">Album</span>
-                <h1 id="album-display-title" class="album-title">Album</h1>
-                <div class="album-artist-row">
-                  <span id="album-artist-name" class="album-artist-name">Artiste</span>
-                  <span class="dot-separator">•</span>
-                  <span id="album-release-year" class="album-year">Album</span>
-                </div>
-                
-                <div class="album-meta-stats">
-                  <span class="meta-stat-pill" id="album-track-count-badge">
-                    <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                    <span id="album-tracks-count-text">0 titres</span>
-                  </span>
-                  <span class="meta-stat-pill" id="album-duration-badge">
-                    <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-                    <span id="album-total-duration-text">0 min</span>
-                  </span>
+            <div class="mobile-player-body">
+                <!-- Big Cover -->
+                <div class="mobile-artwork-container" id="mobile-artwork-container">
+                    <img id="mobile-big-cover" src="/icons/icon.svg" alt="Cover" class="mobile-big-cover">
                 </div>
 
-                <p id="album-description-text" class="album-description-text"></p>
-
-                <div class="album-hero-actions">
-                  <button id="album-play-all-btn" class="btn primary">
-                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    <span>Tout écouter</span>
-                  </button>
-                  <button id="album-shuffle-btn" class="btn secondary">
-                    <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-                    <span>Lecture Aléatoire</span>
-                  </button>
-                  <button id="album-back-artist-btn" class="btn ghost">
-                    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-                    <span>Retour à l'artiste</span>
-                  </button>
+                <!-- Mobile Tabs (Lecteur / Paroles / File d'attente) -->
+                <div class="mobile-player-tabs">
+                    <button class="mobile-tab-btn active" data-tab="meta">Lecteur</button>
+                    <button class="mobile-tab-btn" data-tab="lyrics">Paroles</button>
+                    <button class="mobile-tab-btn" data-tab="queue">File d'attente</button>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <div class="album-content-body">
-            <div class="section-header">
-              <h2 class="section-title">Pistes de l'album</h2>
-            </div>
-            <div id="album-tracks-list" class="tracks-list"></div>
-          </div>
-        </section>
+                <!-- Tab 1: Meta & Controls -->
+                <div id="mobile-tab-meta" class="mobile-tab-content active">
+                    <div class="mobile-meta">
+                        <div class="mobile-meta-text">
+                            <h2 id="mobile-track-title" class="mobile-track-title">Sélectionnez un titre</h2>
+                            <p id="mobile-track-artist" class="mobile-track-artist">YouTube Music</p>
+                        </div>
+                        <button id="mobile-add-to-pl-btn" class="icon-btn" title="Ajouter à une playlist">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z" />
+                            </svg>
+                        </button>
+                    </div>
 
-        <!-- VIEW 7: PARAMÈTRES (Customisation, Thèmes, Profil) -->
-        <section id="view-settings" class="view-section">
-          <h2 class="section-title">⚙️ Paramètres & Personnalisation</h2>
+                    <!-- Mobile Scrubber -->
+                    <div class="mobile-scrubber-group">
+                        <input type="range" id="mobile-seek-slider" min="0" max="100" value="0" step="0.1"
+                            class="mobile-seek-slider">
+                        <div class="mobile-time-row">
+                            <span id="mobile-current-time">0:00</span>
+                            <span id="mobile-total-duration">0:00</span>
+                        </div>
+                    </div>
 
-          <!-- Setting Section: Mon Profil -->
-          <div class="settings-group">
-            <h3 class="settings-group-title">👤 Personnalisation du Profil</h3>
-            <div class="settings-card profile-settings-card">
-              <div class="profile-settings-header">
-                <img id="settings-avatar-preview" src="/icons/icon.svg" class="profile-avatar-preview" alt="Avatar">
-                <div class="profile-header-meta">
-                  <h4 id="settings-username-display">Mon Compte</h4>
-                  <span class="user-dropdown-badge">Membre Cloud NeonDB</span>
-                  <a href="/profile" id="settings-view-profile-btn" class="text-link-btn" style="margin-top: 6px;" onclick="window.App && window.App.openMyProfile(event)">
-                    👁️ Voir mon profil public
-                  </a>
+                    <!-- Mobile Big Controls -->
+                    <div class="mobile-big-controls">
+                        <button id="mobile-shuffle-btn" class="icon-btn toggle-btn" aria-label="Aléatoire"
+                            onclick="const s = window.Player && window.Player.toggleShuffle(); this.classList.toggle('active', s); window.App && window.App.showToast(s ? 'Lecture aléatoire activée' : 'Lecture aléatoire désactivée');">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                            </svg>
+                        </button>
+                        <button id="mobile-prev-btn" class="icon-btn medium" aria-label="Précédent">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                            </svg>
+                        </button>
+                        <button id="mobile-play-btn" class="icon-btn big-play-btn" aria-label="Lecture / Pause">
+                            <svg class="icon-play" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            <svg class="icon-pause hidden" viewBox="0 0 24 24">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                            </svg>
+                        </button>
+                        <button id="mobile-next-btn" class="icon-btn medium" aria-label="Suivant">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                            </svg>
+                        </button>
+                        <button id="mobile-repeat-btn" class="icon-btn toggle-btn" aria-label="Répéter"
+                            onclick="window.Player && window.App && window.App.updateRepeatUI(window.Player.cycleRepeatMode())">
+                            <svg class="repeat-icon" viewBox="0 0 24 24">
+                                <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
+                            </svg>
+                            <span class="repeat-one-indicator hidden">1</span>
+                        </button>
+                    </div>
+
+                    <!-- Mobile Extra Action Pills -->
+                    <div class="mobile-extra-actions">
+                        <button id="mobile-download-btn" class="action-pill-btn"
+                            onclick="if(window.Player && window.Player.currentTrack) { window.open(window.API.getDownloadUrl(window.Player.currentTrack.id, window.Player.currentTrack.title), '_blank'); window.App && window.App.showToast('Téléchargement lancé...'); }">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+                            </svg>
+                            <span>Télécharger</span>
+                        </button>
+                        <button id="mobile-sleep-btn" class="action-pill-btn"
+                            onclick="window.App && window.App.openSleepModal()">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" />
+                            </svg>
+                            <span>Minuterie</span>
+                        </button>
+                        <button id="mobile-eq-btn" class="action-pill-btn"
+                            onclick="window.App && window.App.openEqualizerModal()">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z" />
+                            </svg>
+                            <span>Égaliseur</span>
+                        </button>
+                        <button id="mobile-speed-btn" class="action-pill-btn"
+                            onclick="window.App && window.App.openSpeedPrompt()">
+                            <span id="mobile-speed-label" style="font-weight: 700;">1.0x</span>
+                            <span>Vitesse</span>
+                        </button>
+                    </div>
                 </div>
-              </div>
 
-              <div class="input-row">
-                <label>Photo de profil (URL personnalisée) :</label>
-                <input type="text" id="settings-avatar-input" placeholder="https://exemple.com/mon-avatar.jpg" oninput="document.getElementById('settings-avatar-preview').src = this.value.trim() || '/icons/icon.svg'">
-                <div class="avatar-presets-row">
-                  <span style="font-size: 12px; color: var(--text-muted);">Presets rapides :</span>
-                  <img src="https://api.dicebear.com/7.x/identicon/svg?seed=Felix" class="avatar-preset-dot" alt="" onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Identicon Felix">
-                  <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Robot1" class="avatar-preset-dot" alt="" onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Robot">
-                  <img src="https://api.dicebear.com/7.x/micah/svg?seed=MusicGuy" class="avatar-preset-dot" alt="" onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Micah">
-                  <img src="https://api.dicebear.com/7.x/lorelei/svg?seed=MusicGirl" class="avatar-preset-dot" alt="" onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Lorelei">
-                  <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NnA5MzZua24xNHhzamR4ZGoybjFkaGx6a2g1MnVsOWZ6Z2cxMDRqYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/1is4K4y0oWyyGnWTSh/giphy.gif" class="avatar-preset-dot" alt="" onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Vinyle DJ">
+                <!-- Tab 2: Lyrics -->
+                <div id="mobile-tab-lyrics" class="mobile-tab-content">
+                    <div class="lyrics-toolbar" style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
+                        <button id="mobile-copy-lyrics-btn" class="text-link-btn"
+                            onclick="const t = document.getElementById('mobile-lyrics-container')?.innerText; if(t) { navigator.clipboard.writeText(t); window.App && window.App.showToast('Paroles copiées !'); }">Copier
+                            les paroles</button>
+                    </div>
+                    <div id="mobile-lyrics-container" class="lyrics-container mobile-lyrics-view"></div>
                 </div>
-              </div>
 
-              <div class="bio-textarea-wrapper">
-                <label style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Biographie :</label>
-                <textarea id="settings-bio-input" maxlength="250" placeholder="Parlez de vos goûts musicaux, vos artistes fétiches..." oninput="document.getElementById('bio-char-count').textContent = this.value.length + ' / 250'"></textarea>
-                <div id="bio-char-count" class="bio-char-count">0 / 250</div>
-              </div>
-
-              <button class="btn primary small" style="align-self: flex-start; margin-top: 8px;" onclick="window.App && window.App.saveProfileSettings()">
-                <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-                <span>Enregistrer le profil</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Setting Section: Audio & Streaming -->
-          <div class="settings-group">
-            <h3 class="settings-group-title">🔊 Préférences Audio & Qualité</h3>
-            <div class="settings-card">
-              <div class="settings-item-row">
-                <div class="settings-item-text">
-                  <span class="settings-item-label">Qualité de Streaming Audio</span>
-                  <span class="settings-item-desc">Optimise le débit et la clarté du flux musical.</span>
+                <!-- Tab 3: Queue -->
+                <div id="mobile-tab-queue" class="mobile-tab-content">
+                    <div class="queue-toolbar">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="mobile-autoplay-radio-checkbox" checked>
+                            <span>Radio infinie</span>
+                        </label>
+                        <button id="mobile-clear-queue-btn" class="text-link-btn">Vider</button>
+                    </div>
+                    <div id="mobile-queue-list" class="queue-list"></div>
                 </div>
-                <select id="settings-audio-quality" class="settings-select" onchange="window.App && window.App.showToast('Qualité audio réglée : ' + this.value)">
-                  <option value="high" selected>Haute Qualité (256 kbps AAC)</option>
-                  <option value="medium">Standard (128 kbps)</option>
-                  <option value="data_saver">Économie de données (64 kbps)</option>
-                </select>
-              </div>
-              <div class="settings-item-row">
-                <div class="settings-item-text">
-                  <span class="settings-item-label">Radio Infinie Automatique</span>
-                  <span class="settings-item-desc">Enchaîne automatiquement des titres similaires à la fin de la file d'attente.</span>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" id="settings-autoplay-radio" checked onchange="window.Player && (window.Player.autoplayRadio = this.checked)">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="settings-item-row">
-                <div class="settings-item-text">
-                  <span class="settings-item-label">Ambiance Lumineuse Réactive</span>
-                  <span class="settings-item-desc">Change les reflets de fond en fonction des teintes de la pochette du morceau en cours.</span>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" id="settings-ambient-glow" checked onchange="document.getElementById('ambient-glow').classList.toggle('disabled', !this.checked)">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
             </div>
-          </div>
-
-          <!-- Setting Section: Interface & Thèmes -->
-          <div class="settings-group">
-            <h3 class="settings-group-title">🎨 Apparence & Interface</h3>
-            <div class="settings-card">
-              <div class="settings-item-row">
-                <div class="settings-item-text">
-                  <span class="settings-item-label">Thème d'accentuation</span>
-                  <span class="settings-item-desc">Couleur principale des boutons, curseurs et surlignages.</span>
-                </div>
-                <div class="theme-color-picker">
-                  <button class="theme-color-dot active" data-color="#ff0033" style="background: #ff0033;" onclick="window.App && window.App.setAccentTheme('#ff0033', '#ff1f4b', 'Rouge YouTube')" title="Rouge YouTube"></button>
-                  <button class="theme-color-dot" data-color="#a855f7" style="background: #a855f7;" onclick="window.App && window.App.setAccentTheme('#a855f7', '#c084fc', 'Violet Néon')" title="Violet Néon"></button>
-                  <button class="theme-color-dot" data-color="#06b6d4" style="background: #06b6d4;" onclick="window.App && window.App.setAccentTheme('#06b6d4', '#22d3ee', 'Cyan Océan')" title="Cyan Océan"></button>
-                  <button class="theme-color-dot" data-color="#10b981" style="background: #10b981;" onclick="window.App && window.App.setAccentTheme('#10b981', '#34d399', 'Émeraude')" title="Émeraude"></button>
-                  <button class="theme-color-dot" data-color="#f97316" style="background: #f97316;" onclick="window.App && window.App.setAccentTheme('#f97316', '#fb923c', 'Orange Solaire')" title="Orange Solaire"></button>
-                  <button class="theme-color-dot" data-color="#ec4899" style="background: #ec4899;" onclick="window.App && window.App.setAccentTheme('#ec4899', '#f472b6', 'Rose Fluo')" title="Rose Fluo"></button>
-                  <button class="theme-color-dot" data-color="#3b82f6" style="background: #3b82f6;" onclick="window.App && window.App.setAccentTheme('#3b82f6', '#60a5fa', 'Bleu Royal')" title="Bleu Royal"></button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Setting Section: Base de données & Données -->
-          <div class="settings-group">
-            <h3 class="settings-group-title">☁️ Données & Cloud NeonDB</h3>
-            <div class="settings-card">
-              <p class="settings-info-text">Toutes vos playlists créées, importées, titres likés et historiques sont automatiquement synchronisés sur votre base NeonDB PostgreSQL.</p>
-              <div class="settings-actions-row">
-                <button class="btn secondary small" onclick="window.Storage && window.Storage.pushToCloud(); window.App && window.App.showToast('Synchronisation forcée avec NeonDB !');">
-                  <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 13l-1.41-1.41L13 16.17V10h-2v6.17l-4.59-4.59L5 13l7 7 7-7z"/></svg>
-                  <span>Forcer la synchronisation Cloud</span>
-                </button>
-                <button class="btn secondary small" onclick="window.Storage && window.Storage.exportData()">
-                  <span>Exporter backup JSON</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- VIEW 8: PAGE D'ERREUR (404 / Non trouvé / Thème YouTube) -->
-        <section id="view-error" class="view-section">
-          <div class="yt-error-container">
-            <div class="yt-error-icon">
-              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-            </div>
-            <h1 id="error-view-title" class="yt-error-title">Page introuvable</h1>
-            <p id="error-view-message" class="yt-error-message">Cet utilisateur ou cette playlist n'existe pas ou a été supprimée.</p>
-            <div class="yt-error-actions">
-              <button class="btn primary" onclick="window.App && window.App.switchView('home')">
-                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-                <span>Retour à l'accueil</span>
-              </button>
-              <button class="btn secondary" onclick="window.App && window.App.switchView('explore')">
-                <span>Explorer la musique</span>
-              </button>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <!-- Desktop Right Side Panel: Queue -->
-      <aside id="side-panel" class="side-panel hidden">
-        <div class="side-panel-header">
-          <div class="side-panel-tabs">
-            <button class="side-tab active" data-panel="queue">File d'attente</button>
-          </div>
-          <button id="close-side-panel-btn" class="icon-btn small" onclick="document.getElementById('side-panel').classList.add('hidden')">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
         </div>
-        <div class="side-panel-body">
-          <div id="panel-queue-content" class="panel-tab-content active">
-            <div class="queue-toolbar">
-              <label class="toggle-label">
-                <input type="checkbox" id="autoplay-radio-checkbox" checked onchange="window.Player && (window.Player.autoplayRadio = this.checked)">
-                <span>Radio infinie</span>
-              </label>
-              <button id="clear-queue-btn" class="text-link-btn" onclick="window.Player && window.Player.clearQueue()">Vider</button>
+
+        <!-- MODAL: Sleep Timer -->
+        <div id="modal-sleep-timer" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Minuterie de veille</h3>
+                    <button class="icon-btn close-modal-btn"
+                        onclick="document.getElementById('modal-sleep-timer').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="timer-options">
+                        <button class="timer-option-btn" data-minutes="15"
+                            onclick="window.Player && window.Player.setSleepTimer(15); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 15 min');">15
+                            minutes</button>
+                        <button class="timer-option-btn" data-minutes="30"
+                            onclick="window.Player && window.Player.setSleepTimer(30); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 30 min');">30
+                            minutes</button>
+                        <button class="timer-option-btn" data-minutes="45"
+                            onclick="window.Player && window.Player.setSleepTimer(45); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 45 min');">45
+                            minutes</button>
+                        <button class="timer-option-btn" data-minutes="60"
+                            onclick="window.Player && window.Player.setSleepTimer(60); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 60 min');">1
+                            heure</button>
+                        <button class="timer-option-btn" data-minutes="end_of_track"
+                            onclick="window.Player && window.Player.setSleepTimer('end_of_track'); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : Fin du titre');">Fin
+                            du titre en cours</button>
+                        <button id="cancel-timer-btn" class="timer-option-btn danger hidden"
+                            onclick="window.Player && window.Player.cancelSleepTimer(); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie annulée');">Désactiver
+                            la minuterie</button>
+                    </div>
+                </div>
             </div>
-            <div id="side-queue-list" class="queue-list"></div>
-          </div>
         </div>
-      </aside>
+
+        <!-- MODAL: Equalizer -->
+        <div id="modal-equalizer" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Égaliseur Audio</h3>
+                    <button class="icon-btn close-modal-btn"
+                        onclick="document.getElementById('modal-equalizer').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="eq-presets-row">
+                        <button class="eq-preset-btn active" data-preset="flat"
+                            onclick="window.Player && window.Player.applyEqPreset('flat'); window.App && window.App.showToast('Égaliseur : Plat');">Plat</button>
+                        <button class="eq-preset-btn" data-preset="bass_boost"
+                            onclick="window.Player && window.Player.applyEqPreset('bass_boost'); window.App && window.App.showToast('Égaliseur : Basses ++');">Basses
+                            ++</button>
+                        <button class="eq-preset-btn" data-preset="vocal"
+                            onclick="window.Player && window.Player.applyEqPreset('vocal'); window.App && window.App.showToast('Égaliseur : Voix claire');">Voix
+                            claire</button>
+                        <button class="eq-preset-btn" data-preset="electronic"
+                            onclick="window.Player && window.Player.applyEqPreset('electronic'); window.App && window.App.showToast('Égaliseur : Électro');">Électro</button>
+                        <button class="eq-preset-btn" data-preset="rock"
+                            onclick="window.Player && window.Player.applyEqPreset('rock'); window.App && window.App.showToast('Égaliseur : Rock');">Rock</button>
+                        <button class="eq-preset-btn" data-preset="treble_boost"
+                            onclick="window.Player && window.Player.applyEqPreset('treble_boost'); window.App && window.App.showToast('Égaliseur : Aigus ++');">Aigus
+                            ++</button>
+                    </div>
+                    <div class="eq-sliders-container">
+                        <div class="eq-band">
+                            <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1"
+                                value="0" data-band="0"
+                                oninput="window.Player && window.Player.setEqBand(0, parseFloat(this.value))">
+                            <span>60Hz</span>
+                        </div>
+                        <div class="eq-band">
+                            <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1"
+                                value="0" data-band="1"
+                                oninput="window.Player && window.Player.setEqBand(1, parseFloat(this.value))">
+                            <span>230Hz</span>
+                        </div>
+                        <div class="eq-band">
+                            <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1"
+                                value="0" data-band="2"
+                                oninput="window.Player && window.Player.setEqBand(2, parseFloat(this.value))">
+                            <span>910Hz</span>
+                        </div>
+                        <div class="eq-band">
+                            <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1"
+                                value="0" data-band="3"
+                                oninput="window.Player && window.Player.setEqBand(3, parseFloat(this.value))">
+                            <span>3.6kHz</span>
+                        </div>
+                        <div class="eq-band">
+                            <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1"
+                                value="0" data-band="4"
+                                oninput="window.Player && window.Player.setEqBand(4, parseFloat(this.value))">
+                            <span>14kHz</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Playlist Picker / Creator -->
+        <div id="modal-playlist-picker" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Ajouter à une playlist</h3>
+                    <button class="icon-btn close-modal-btn"
+                        onclick="document.getElementById('modal-playlist-picker').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="new-pl-input-group">
+                        <input type="text" id="new-playlist-input" placeholder="Nom de la nouvelle playlist...">
+                        <button id="create-and-add-pl-btn" class="btn primary small"
+                            onclick="const name = document.getElementById('new-playlist-input').value.trim(); if(name && window.App && window.App.selectedTrackForPlaylist) { const pl = window.Storage.createPlaylist(name); window.Storage.addTrackToPlaylist(pl.id, window.App.selectedTrackForPlaylist); document.getElementById('modal-playlist-picker').classList.add('hidden'); document.getElementById('new-playlist-input').value = ''; window.App.showToast('Ajouté à ' + pl.name); window.App.renderPlaylists(); }">Créer</button>
+                    </div>
+                    <div id="playlist-picker-list" class="playlist-picker-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Playlist Importer (YouTube URL or Text List) -->
+        <div id="modal-import-playlist" class="modal-overlay hidden">
+            <div class="modal-card wide">
+                <div class="modal-header">
+                    <h3>📥 Importer une Playlist</h3>
+                    <button class="icon-btn close-modal-btn"
+                        onclick="document.getElementById('modal-import-playlist').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="import-tabs">
+                        <button class="import-tab active" data-tab="yt-url"
+                            onclick="window.App && window.App.switchImportTab('yt-url')">Lien Playlist (Spotify, Deezer,
+                            YouTube)</button>
+                        <button class="import-tab" data-tab="text-list"
+                            onclick="window.App && window.App.switchImportTab('text-list')">Liste de Titres (Texte
+                            brut)</button>
+                    </div>
+
+                    <div id="import-tab-yt-url" class="import-tab-content active">
+                        <p class="import-desc">Collez l'URL d'une playlist <strong>Spotify</strong>,
+                            <strong>Deezer</strong> ou <strong>YouTube Music</strong> :</p>
+                        <div class="input-row">
+                            <input type="text" id="import-yt-url-input"
+                                placeholder="https://open.spotify.com/playlist/... ou https://deezer.com/... ou YouTube">
+                        </div>
+                        <div class="input-row" style="margin-top: 10px;">
+                            <input type="text" id="import-yt-name-input" placeholder="Nom de la playlist (facultatif)">
+                        </div>
+                        <button id="submit-import-yt-btn" class="btn primary full-width" style="margin-top: 16px;"
+                            onclick="window.App && window.App.submitImportYouTube()">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+                            </svg>
+                            <span>Importer cette playlist</span>
+                        </button>
+                    </div>
+
+                    <div id="import-tab-text-list" class="import-tab-content">
+                        <p class="import-desc">Collez une liste de titres (ex: copié depuis Spotify, Deezer ou Apple
+                            Music) :</p>
+                        <textarea id="import-text-input" rows="6"
+                            placeholder="Daft Punk - One More Time&#10;The Weeknd - Blinding Lights&#10;Billie Eilish - Birds of a Feather&#10;..."></textarea>
+                        <div class="input-row" style="margin-top: 10px;">
+                            <input type="text" id="import-text-name-input" placeholder="Nom de la nouvelle playlist">
+                        </div>
+                        <button id="submit-import-text-btn" class="btn primary full-width" style="margin-top: 16px;"
+                            onclick="window.App && window.App.submitImportText()">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                            </svg>
+                            <span>Rechercher et Créer la playlist</span>
+                        </button>
+                    </div>
+
+                    <div id="import-loading-indicator" class="import-loading hidden">
+                        <div class="import-progress-container">
+                            <div id="import-progress-bar-fill" class="import-progress-bar-fill"></div>
+                        </div>
+                        <div class="import-loading-details">
+                            <div class="spinner"></div>
+                            <p id="import-loading-text">Importation de la playlist en cours...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Authentification (Connexion, Inscription, Invité) -->
+        <div id="modal-auth" class="modal-overlay hidden">
+            <div class="modal-card auth-modal-card">
+                <div class="modal-header">
+                    <h3 id="auth-modal-title">🔐 Connexion</h3>
+                    <button class="icon-btn close-modal-btn"
+                        onclick="document.getElementById('modal-auth').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="auth-status-box" class="auth-status-box hidden">
+                        <p id="auth-status-msg"></p>
+                        <button id="auth-logout-btn" class="btn secondary full-width"
+                            onclick="window.Storage && window.Storage.logout(); window.App && window.App.closeAuthModal(); window.App && window.App.showToast('Déconnecté');">Se
+                            déconnecter</button>
+                    </div>
+
+                    <form id="auth-form"
+                        onsubmit="event.preventDefault(); window.App && window.App.handleAuthSubmit();">
+                        <div class="auth-tabs">
+                            <button type="button" class="auth-tab-btn active" id="auth-tab-login"
+                                onclick="window.App && window.App.switchAuthTab('login')">Se connecter</button>
+                            <button type="button" class="auth-tab-btn" id="auth-tab-register"
+                                onclick="window.App && window.App.switchAuthTab('register')">Créer un compte</button>
+                        </div>
+
+                        <p class="auth-desc" id="auth-mode-desc">Connectez-vous pour synchroniser vos playlists et
+                            favoris automatiquement.</p>
+
+                        <div class="input-row" style="margin-top: 14px;">
+                            <input type="text" id="auth-username-input" placeholder="Nom d'utilisateur" required
+                                autocomplete="username" minlength="2">
+                        </div>
+                        <div class="input-row" style="margin-top: 10px;">
+                            <input type="password" id="auth-password-input" placeholder="Mot de passe" required
+                                autocomplete="current-password" minlength="4">
+                        </div>
+
+                        <div id="auth-error-msg" class="auth-error hidden"></div>
+
+                        <button type="submit" id="auth-submit-btn" class="btn primary full-width"
+                            style="margin-top: 16px;">
+                            <span id="auth-submit-label">Se connecter</span>
+                        </button>
+                    </form>
+
+                    <div class="auth-divider">
+                        <span>OU</span>
+                    </div>
+
+                    <button type="button" id="auth-guest-btn" class="btn secondary full-width"
+                        onclick="window.App && window.App.continueAsGuest()">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                        </svg>
+                        <span>Continuer en tant qu'invité</span>
+                    </button>
+                    <p class="auth-guest-hint">En mode invité, vous pouvez tout écouter et créer des playlists locales
+                        sans compte. Les données ne seront pas sauvegardées sur le cloud.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Partager (Style YouTube Music) -->
+        <div id="modal-share" class="modal-overlay hidden">
+            <div class="modal-card share-modal-card">
+                <div class="modal-header share-modal-header">
+                    <h3>Partager</h3>
+                    <button class="icon-btn close-modal-btn"
+                        onclick="document.getElementById('modal-share').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body share-modal-body">
+                    <div class="share-social-grid">
+                        <!-- LinkedIn -->
+                        <button class="share-social-item" id="share-btn-linkedin" title="LinkedIn">
+                            <div class="share-social-circle bg-linkedin">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.64c-.95 0-1.72.78-1.72 1.73s.77 1.73 1.72 1.73 1.73-.78 1.73-1.73-.78-1.73-1.73-1.73z" />
+                                </svg>
+                            </div>
+                            <span>LinkedIn</span>
+                        </button>
+                        <!-- WhatsApp -->
+                        <button class="share-social-item" id="share-btn-whatsapp" title="WhatsApp">
+                            <div class="share-social-circle bg-whatsapp">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.53c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.76-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.35-.77-1.85-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.23.9 2.42 1.02 2.59.13.17 1.77 2.7 4.28 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.19-.06-.11-.23-.17-.48-.3z" />
+                                </svg>
+                            </div>
+                            <span>WhatsApp</span>
+                        </button>
+                        <!-- Facebook -->
+                        <button class="share-social-item" id="share-btn-facebook" title="Facebook">
+                            <div class="share-social-circle bg-facebook">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z" />
+                                </svg>
+                            </div>
+                            <span>Facebook</span>
+                        </button>
+                        <!-- X / Twitter -->
+                        <button class="share-social-item" id="share-btn-x" title="X">
+                            <div class="share-social-circle bg-x">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
+                            </div>
+                            <span>X</span>
+                        </button>
+                        <!-- E-mail -->
+                        <button class="share-social-item" id="share-btn-email" title="E-mail">
+                            <div class="share-social-circle bg-email">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+                                </svg>
+                            </div>
+                            <span>E-mail</span>
+                        </button>
+                        <!-- Reddit -->
+                        <button class="share-social-item" id="share-btn-reddit" title="Reddit">
+                            <div class="share-social-circle bg-reddit">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm5.748-11.41a1.503 1.503 0 0 0-2.383-.872c-1.02-.636-2.39-1.037-3.905-1.085l.777-3.655 2.534.538a1.218 1.218 0 1 0 1.247-1.196 1.217 1.217 0 0 0-1.205.952l-2.836-.602a.294.294 0 0 0-.345.228l-.895 4.21c-1.55.04-2.95.443-3.987 1.087a1.503 1.503 0 0 0-2.378.873 1.488 1.488 0 0 0 .524 1.464c-.03.17-.046.342-.046.516 0 2.63 3.084 4.77 6.89 4.77s6.89-2.14 6.89-4.77c0-.174-.016-.346-.046-.516a1.488 1.488 0 0 0 .524-1.464zM9.01 12.443a1.144 1.144 0 1 1 2.288 0 1.144 1.144 0 0 1-2.288 0zm5.98 2.875c-.687.688-2.001.742-2.99.742s-2.302-.054-2.99-.742a.302.302 0 1 1 .427-.427c.468.468 1.554.568 2.563.568 1.009 0 2.095-.1 2.563-.568a.302.302 0 0 1 .427.427zm-.008-1.731a1.144 1.144 0 1 1 2.288 0 1.144 1.144 0 0 1-2.288 0z" />
+                                </svg>
+                            </div>
+                            <span>Reddit</span>
+                        </button>
+                    </div>
+
+                    <!-- Copy Link Row -->
+                    <div class="share-link-box">
+                        <span id="share-link-input" class="share-link-text">https://...</span>
+                        <button id="share-copy-btn" class="share-copy-pill"
+                            onclick="window.App && window.App.copyShareModalUrl()">Copier</button>
+                    </div>
+
+                    <!-- Invite Collaborators Row -->
+                    <div class="share-collaborators-row" id="share-collaborators-row"
+                        onclick="window.App && window.App.inviteCollaborators()">
+                        <div class="share-collab-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                            </svg>
+                        </div>
+                        <div class="share-collab-text">
+                            <span class="share-collab-title">Inviter des collaborateurs</span>
+                            <span class="share-collab-sub">Permettez à d'autres utilisateurs d'ajouter des titres à
+                                cette playlist</span>
+                        </div>
+                        <div class="share-collab-arrow">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications Container -->
+        <div id="toast-container" class="toast-container"></div>
     </div>
 
-    <!-- Mobile Mini-Player Bar (docked above bottom nav) -->
-    <div id="mobile-mini-player" class="mobile-mini-player hidden" onclick="window.App && window.App.openMobileFullscreenPlayer()">
-      <div class="mini-progress-bar">
-        <div id="mini-progress-fill" class="mini-progress-fill"></div>
-      </div>
-      <div class="mini-player-content">
-        <img id="mini-cover" src="/icons/icon.svg" alt="Cover" class="mini-cover">
-        <div class="mini-info">
-          <span id="mini-title" class="mini-title">Sélectionnez un titre</span>
-          <span id="mini-artist" class="mini-artist">YouTube Music</span>
-        </div>
-        <div class="mini-actions">
-          <button id="mini-play-btn" class="icon-btn play-btn" aria-label="Lecture">
-            <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            <svg class="icon-pause hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-          </button>
-          <button id="mini-next-btn" class="icon-btn" aria-label="Suivant">
-            <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mobile Bottom Navigation Bar -->
-    <nav class="mobile-bottom-nav">
-      <a href="/" class="mobile-nav-item active" data-view="home">
-        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-        <span>Accueil</span>
-      </a>
-      <a href="/explore" class="mobile-nav-item" data-view="explore">
-        <svg viewBox="0 0 24 24"><path d="M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z"/></svg>
-        <span>Explorer</span>
-      </a>
-      <a href="/search" class="mobile-nav-item" data-view="search">
-        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-        <span>Recherche</span>
-      </a>
-      <a href="/library" class="mobile-nav-item" data-view="library">
-        <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10l-2.5-1.5L13 12V6h5v6z"/></svg>
-        <span>Bibliothèque</span>
-      </a>
-    </nav>
-
-    <!-- Desktop Bottom Player Bar -->
-    <footer id="desktop-player-bar" class="desktop-player-bar">
-      <!-- Scrubber Timeline Line (at very top of player bar) -->
-      <div class="player-scrubber-wrapper" id="player-scrubber-wrapper">
-        <div class="player-scrubber-track">
-          <div id="player-buffered" class="player-buffered"></div>
-          <div id="player-progress" class="player-progress"></div>
-          <div id="player-scrubber-thumb" class="player-scrubber-thumb"></div>
-        </div>
-        <div id="scrub-tooltip" class="scrub-tooltip hidden">0:00</div>
-      </div>
-
-      <div class="player-bar-grid">
-        <!-- Left: Track Meta -->
-        <div class="player-track-info">
-          <div class="track-cover-container" id="track-cover-btn">
-            <img id="player-cover" src="/icons/icon.svg" alt="Cover" class="player-cover">
-            <div class="cover-expand-overlay">
-              <svg viewBox="0 0 24 24"><path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/></svg>
-            </div>
-          </div>
-          <div class="track-text">
-            <span id="player-title" class="track-title">Sélectionnez un titre</span>
-            <span id="player-artist" class="track-artist">YouTube Music</span>
-          </div>
-          <button id="player-fav-btn" class="icon-btn fav-btn" title="Ajouter aux favoris">
-            <svg class="heart-empty" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            <svg class="heart-filled hidden" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-          </button>
-          <button id="player-add-to-pl-btn" class="icon-btn" title="Ajouter à une playlist">
-            <svg viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
-          </button>
-        </div>
-
-        <!-- Center: Controls & Timestamps -->
-        <div class="player-center-controls">
-          <div class="controls-row">
-            <button id="shuffle-btn" class="icon-btn toggle-btn" title="Lecture aléatoire">
-              <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-            </button>
-            <button id="prev-btn" class="icon-btn" title="Précédent">
-              <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-            </button>
-            <button id="play-pause-btn" class="icon-btn main-play-btn" title="Lecture / Pause">
-              <div class="spinner-play-btn hidden" id="player-spinner"></div>
-              <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              <svg class="icon-pause hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            </button>
-            <button id="next-btn" class="icon-btn" title="Suivant">
-              <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-            </button>
-            <button id="repeat-btn" class="icon-btn toggle-btn" title="Répéter (Désactivé)">
-              <svg class="repeat-icon" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
-              <span class="repeat-one-indicator hidden">1</span>
-            </button>
-          </div>
-          <div class="time-row">
-            <span id="current-time">0:00</span>
-            <span class="time-divider">/</span>
-            <span id="total-duration">0:00</span>
-          </div>
-        </div>
-
-        <!-- Right: Queue, Download, Volume -->
-        <div class="player-right-tools">
-          <button id="toggle-queue-btn" class="icon-btn toggle-btn" title="File d'attente">
-            <svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
-          </button>
-
-          <!-- Download offline -->
-          <button id="download-track-btn" class="icon-btn" title="Télécharger pour écoute hors-ligne" onclick="if(window.Player && window.Player.currentTrack) { window.open(window.API.getDownloadUrl(window.Player.currentTrack.id, window.Player.currentTrack.title), '_blank'); window.App && window.App.showToast('Téléchargement lancé...'); }">
-            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-          </button>
-
-          <!-- Volume Slider -->
-          <div class="volume-slider-group">
-            <button id="mute-btn" class="icon-btn small" title="Couper le son">
-              <svg class="vol-high" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-              <svg class="vol-muted hidden" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-            </button>
-            <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.9" class="volume-slider">
-          </div>
-        </div>
-      </div>
-    </footer>
-
-    <!-- MOBILE FULLSCREEN NOW PLAYING MODAL -->
-    <div id="mobile-fullscreen-player" class="mobile-fullscreen-player hidden">
-      <div class="mobile-drag-handle-bar">
-        <span class="mobile-drag-indicator"></span>
-      </div>
-      <div class="mobile-player-header">
-        <button id="close-fullscreen-player-btn" class="icon-btn" aria-label="Réduire">
-          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-        </button>
-        <button id="mobile-player-fav-btn" class="icon-btn fav-btn" aria-label="Favori">
-          <svg class="heart-empty" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-          <svg class="heart-filled hidden" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-        </button>
-      </div>
-
-      <div class="mobile-player-body">
-        <!-- Big Cover -->
-        <div class="mobile-artwork-container" id="mobile-artwork-container">
-          <img id="mobile-big-cover" src="/icons/icon.svg" alt="Cover" class="mobile-big-cover">
-        </div>
-
-        <!-- Mobile Tabs (Lecteur / Paroles / File d'attente) -->
-        <div class="mobile-player-tabs">
-          <button class="mobile-tab-btn active" data-tab="meta">Lecteur</button>
-          <button class="mobile-tab-btn" data-tab="lyrics">Paroles</button>
-          <button class="mobile-tab-btn" data-tab="queue">File d'attente</button>
-        </div>
-
-        <!-- Tab 1: Meta & Controls -->
-        <div id="mobile-tab-meta" class="mobile-tab-content active">
-          <div class="mobile-meta">
-            <div class="mobile-meta-text">
-              <h2 id="mobile-track-title" class="mobile-track-title">Sélectionnez un titre</h2>
-              <p id="mobile-track-artist" class="mobile-track-artist">YouTube Music</p>
-            </div>
-            <button id="mobile-add-to-pl-btn" class="icon-btn" title="Ajouter à une playlist">
-              <svg viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
-            </button>
-          </div>
-
-          <!-- Mobile Scrubber -->
-          <div class="mobile-scrubber-group">
-            <input type="range" id="mobile-seek-slider" min="0" max="100" value="0" step="0.1" class="mobile-seek-slider">
-            <div class="mobile-time-row">
-              <span id="mobile-current-time">0:00</span>
-              <span id="mobile-total-duration">0:00</span>
-            </div>
-          </div>
-
-          <!-- Mobile Big Controls -->
-          <div class="mobile-big-controls">
-            <button id="mobile-shuffle-btn" class="icon-btn toggle-btn" aria-label="Aléatoire" onclick="const s = window.Player && window.Player.toggleShuffle(); this.classList.toggle('active', s); window.App && window.App.showToast(s ? 'Lecture aléatoire activée' : 'Lecture aléatoire désactivée');">
-              <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-            </button>
-            <button id="mobile-prev-btn" class="icon-btn medium" aria-label="Précédent">
-              <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-            </button>
-            <button id="mobile-play-btn" class="icon-btn big-play-btn" aria-label="Lecture / Pause">
-              <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              <svg class="icon-pause hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            </button>
-            <button id="mobile-next-btn" class="icon-btn medium" aria-label="Suivant">
-              <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-            </button>
-            <button id="mobile-repeat-btn" class="icon-btn toggle-btn" aria-label="Répéter" onclick="window.Player && window.App && window.App.updateRepeatUI(window.Player.cycleRepeatMode())">
-              <svg class="repeat-icon" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
-              <span class="repeat-one-indicator hidden">1</span>
-            </button>
-          </div>
-
-          <!-- Mobile Extra Action Pills -->
-          <div class="mobile-extra-actions">
-            <button id="mobile-download-btn" class="action-pill-btn" onclick="if(window.Player && window.Player.currentTrack) { window.open(window.API.getDownloadUrl(window.Player.currentTrack.id, window.Player.currentTrack.title), '_blank'); window.App && window.App.showToast('Téléchargement lancé...'); }">
-              <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-              <span>Télécharger</span>
-            </button>
-            <button id="mobile-sleep-btn" class="action-pill-btn" onclick="window.App && window.App.openSleepModal()">
-              <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
-              <span>Minuterie</span>
-            </button>
-            <button id="mobile-eq-btn" class="action-pill-btn" onclick="window.App && window.App.openEqualizerModal()">
-              <svg viewBox="0 0 24 24"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"/></svg>
-              <span>Égaliseur</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Tab 2: Lyrics -->
-        <div id="mobile-tab-lyrics" class="mobile-tab-content">
-          <div class="lyrics-toolbar" style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
-            <button id="mobile-copy-lyrics-btn" class="text-link-btn" onclick="const t = document.getElementById('mobile-lyrics-container')?.innerText; if(t) { navigator.clipboard.writeText(t); window.App && window.App.showToast('Paroles copiées !'); }">Copier les paroles</button>
-          </div>
-          <div id="mobile-lyrics-container" class="lyrics-container mobile-lyrics-view"></div>
-        </div>
-
-        <!-- Tab 3: Queue -->
-        <div id="mobile-tab-queue" class="mobile-tab-content">
-          <div class="queue-toolbar">
-            <label class="toggle-label">
-              <input type="checkbox" id="mobile-autoplay-radio-checkbox" checked>
-              <span>Radio infinie</span>
-            </label>
-            <button id="mobile-clear-queue-btn" class="text-link-btn">Vider</button>
-          </div>
-          <div id="mobile-queue-list" class="queue-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: Sleep Timer -->
-    <div id="modal-sleep-timer" class="modal-overlay hidden">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>Minuterie de veille</h3>
-          <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-sleep-timer').classList.add('hidden')">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="timer-options">
-            <button class="timer-option-btn" data-minutes="15" onclick="window.Player && window.Player.setSleepTimer(15); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 15 min');">15 minutes</button>
-            <button class="timer-option-btn" data-minutes="30" onclick="window.Player && window.Player.setSleepTimer(30); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 30 min');">30 minutes</button>
-            <button class="timer-option-btn" data-minutes="45" onclick="window.Player && window.Player.setSleepTimer(45); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 45 min');">45 minutes</button>
-            <button class="timer-option-btn" data-minutes="60" onclick="window.Player && window.Player.setSleepTimer(60); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 60 min');">1 heure</button>
-            <button class="timer-option-btn" data-minutes="end_of_track" onclick="window.Player && window.Player.setSleepTimer('end_of_track'); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : Fin du titre');">Fin du titre en cours</button>
-            <button id="cancel-timer-btn" class="timer-option-btn danger hidden" onclick="window.Player && window.Player.cancelSleepTimer(); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie annulée');">Désactiver la minuterie</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: Equalizer -->
-    <div id="modal-equalizer" class="modal-overlay hidden">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>Égaliseur Audio</h3>
-          <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-equalizer').classList.add('hidden')">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="eq-presets-row">
-            <button class="eq-preset-btn active" data-preset="flat" onclick="window.Player && window.Player.applyEqPreset('flat'); window.App && window.App.showToast('Égaliseur : Plat');">Plat</button>
-            <button class="eq-preset-btn" data-preset="bass_boost" onclick="window.Player && window.Player.applyEqPreset('bass_boost'); window.App && window.App.showToast('Égaliseur : Basses ++');">Basses ++</button>
-            <button class="eq-preset-btn" data-preset="vocal" onclick="window.Player && window.Player.applyEqPreset('vocal'); window.App && window.App.showToast('Égaliseur : Voix claire');">Voix claire</button>
-            <button class="eq-preset-btn" data-preset="electronic" onclick="window.Player && window.Player.applyEqPreset('electronic'); window.App && window.App.showToast('Égaliseur : Électro');">Électro</button>
-            <button class="eq-preset-btn" data-preset="rock" onclick="window.Player && window.Player.applyEqPreset('rock'); window.App && window.App.showToast('Égaliseur : Rock');">Rock</button>
-            <button class="eq-preset-btn" data-preset="treble_boost" onclick="window.Player && window.Player.applyEqPreset('treble_boost'); window.App && window.App.showToast('Égaliseur : Aigus ++');">Aigus ++</button>
-          </div>
-          <div class="eq-sliders-container">
-            <div class="eq-band">
-              <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1" value="0" data-band="0" oninput="window.Player && window.Player.setEqBand(0, parseFloat(this.value))">
-              <span>60Hz</span>
-            </div>
-            <div class="eq-band">
-              <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1" value="0" data-band="1" oninput="window.Player && window.Player.setEqBand(1, parseFloat(this.value))">
-              <span>230Hz</span>
-            </div>
-            <div class="eq-band">
-              <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1" value="0" data-band="2" oninput="window.Player && window.Player.setEqBand(2, parseFloat(this.value))">
-              <span>910Hz</span>
-            </div>
-            <div class="eq-band">
-              <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1" value="0" data-band="3" oninput="window.Player && window.Player.setEqBand(3, parseFloat(this.value))">
-              <span>3.6kHz</span>
-            </div>
-            <div class="eq-band">
-              <input type="range" class="eq-slider" orient="vertical" min="-12" max="12" step="1" value="0" data-band="4" oninput="window.Player && window.Player.setEqBand(4, parseFloat(this.value))">
-              <span>14kHz</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: Playlist Picker / Creator -->
-    <div id="modal-playlist-picker" class="modal-overlay hidden">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>Ajouter à une playlist</h3>
-          <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-playlist-picker').classList.add('hidden')">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="new-pl-input-group">
-            <input type="text" id="new-playlist-input" placeholder="Nom de la nouvelle playlist...">
-            <button id="create-and-add-pl-btn" class="btn primary small" onclick="const name = document.getElementById('new-playlist-input').value.trim(); if(name && window.App && window.App.selectedTrackForPlaylist) { const pl = window.Storage.createPlaylist(name); window.Storage.addTrackToPlaylist(pl.id, window.App.selectedTrackForPlaylist); document.getElementById('modal-playlist-picker').classList.add('hidden'); document.getElementById('new-playlist-input').value = ''; window.App.showToast('Ajouté à ' + pl.name); window.App.renderPlaylists(); }">Créer</button>
-          </div>
-          <div id="playlist-picker-list" class="playlist-picker-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: Playlist Importer (YouTube URL or Text List) -->
-    <div id="modal-import-playlist" class="modal-overlay hidden">
-      <div class="modal-card wide">
-        <div class="modal-header">
-          <h3>📥 Importer une Playlist</h3>
-          <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-import-playlist').classList.add('hidden')">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="import-tabs">
-            <button class="import-tab active" data-tab="yt-url" onclick="window.App && window.App.switchImportTab('yt-url')">Lien Playlist (Spotify, Deezer, YouTube)</button>
-            <button class="import-tab" data-tab="text-list" onclick="window.App && window.App.switchImportTab('text-list')">Liste de Titres (Texte brut)</button>
-          </div>
-
-          <div id="import-tab-yt-url" class="import-tab-content active">
-            <p class="import-desc">Collez l'URL d'une playlist <strong>Spotify</strong>, <strong>Deezer</strong> ou <strong>YouTube Music</strong> :</p>
-            <div class="input-row">
-              <input type="text" id="import-yt-url-input" placeholder="https://open.spotify.com/playlist/... ou https://deezer.com/... ou YouTube">
-            </div>
-            <div class="input-row" style="margin-top: 10px;">
-              <input type="text" id="import-yt-name-input" placeholder="Nom de la playlist (facultatif)">
-            </div>
-            <button id="submit-import-yt-btn" class="btn primary full-width" style="margin-top: 16px;" onclick="window.App && window.App.submitImportYouTube()">
-              <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-              <span>Importer cette playlist</span>
-            </button>
-          </div>
-
-          <div id="import-tab-text-list" class="import-tab-content">
-            <p class="import-desc">Collez une liste de titres (ex: copié depuis Spotify, Deezer ou Apple Music) :</p>
-            <textarea id="import-text-input" rows="6" placeholder="Daft Punk - One More Time&#10;The Weeknd - Blinding Lights&#10;Billie Eilish - Birds of a Feather&#10;..."></textarea>
-            <div class="input-row" style="margin-top: 10px;">
-              <input type="text" id="import-text-name-input" placeholder="Nom de la nouvelle playlist">
-            </div>
-            <button id="submit-import-text-btn" class="btn primary full-width" style="margin-top: 16px;" onclick="window.App && window.App.submitImportText()">
-              <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-              <span>Rechercher et Créer la playlist</span>
-            </button>
-          </div>
-
-          <div id="import-loading-indicator" class="import-loading hidden">
-            <div class="import-progress-container">
-              <div id="import-progress-bar-fill" class="import-progress-bar-fill"></div>
-            </div>
-            <div class="import-loading-details">
-              <div class="spinner"></div>
-              <p id="import-loading-text">Importation de la playlist en cours...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: Authentification (Connexion, Inscription, Invité) -->
-    <div id="modal-auth" class="modal-overlay hidden">
-      <div class="modal-card auth-modal-card">
-        <div class="modal-header">
-          <h3 id="auth-modal-title">🔐 Connexion</h3>
-          <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-auth').classList.add('hidden')">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div id="auth-status-box" class="auth-status-box hidden">
-            <p id="auth-status-msg"></p>
-            <button id="auth-logout-btn" class="btn secondary full-width" onclick="window.Storage && window.Storage.logout(); window.App && window.App.closeAuthModal(); window.App && window.App.showToast('Déconnecté');">Se déconnecter</button>
-          </div>
-
-          <form id="auth-form" onsubmit="event.preventDefault(); window.App && window.App.handleAuthSubmit();">
-            <div class="auth-tabs">
-              <button type="button" class="auth-tab-btn active" id="auth-tab-login" onclick="window.App && window.App.switchAuthTab('login')">Se connecter</button>
-              <button type="button" class="auth-tab-btn" id="auth-tab-register" onclick="window.App && window.App.switchAuthTab('register')">Créer un compte</button>
-            </div>
-
-            <p class="auth-desc" id="auth-mode-desc">Connectez-vous pour synchroniser vos playlists et favoris automatiquement.</p>
-
-            <div class="input-row" style="margin-top: 14px;">
-              <input type="text" id="auth-username-input" placeholder="Nom d'utilisateur" required autocomplete="username" minlength="2">
-            </div>
-            <div class="input-row" style="margin-top: 10px;">
-              <input type="password" id="auth-password-input" placeholder="Mot de passe" required autocomplete="current-password" minlength="4">
-            </div>
-
-            <div id="auth-error-msg" class="auth-error hidden"></div>
-
-            <button type="submit" id="auth-submit-btn" class="btn primary full-width" style="margin-top: 16px;">
-              <span id="auth-submit-label">Se connecter</span>
-            </button>
-          </form>
-
-          <div class="auth-divider">
-            <span>OU</span>
-          </div>
-
-          <button type="button" id="auth-guest-btn" class="btn secondary full-width" onclick="window.App && window.App.continueAsGuest()">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-            <span>Continuer en tant qu'invité</span>
-          </button>
-          <p class="auth-guest-hint">En mode invité, vous pouvez tout écouter et créer des playlists locales sans compte. Les données ne seront pas sauvegardées sur le cloud.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal: Partager (Style YouTube Music) -->
-    <div id="modal-share" class="modal-overlay hidden">
-      <div class="modal-card share-modal-card">
-        <div class="modal-header share-modal-header">
-          <h3>Partager</h3>
-          <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-share').classList.add('hidden')">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-        <div class="modal-body share-modal-body">
-          <div class="share-social-grid">
-            <!-- LinkedIn -->
-            <button class="share-social-item" id="share-btn-linkedin" title="LinkedIn">
-              <div class="share-social-circle bg-linkedin">
-                <svg viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.64c-.95 0-1.72.78-1.72 1.73s.77 1.73 1.72 1.73 1.73-.78 1.73-1.73-.78-1.73-1.73-1.73z"/></svg>
-              </div>
-              <span>LinkedIn</span>
-            </button>
-            <!-- WhatsApp -->
-            <button class="share-social-item" id="share-btn-whatsapp" title="WhatsApp">
-              <div class="share-social-circle bg-whatsapp">
-                <svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.53c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.76-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.35-.77-1.85-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.23.9 2.42 1.02 2.59.13.17 1.77 2.7 4.28 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.19-.06-.11-.23-.17-.48-.3z"/></svg>
-              </div>
-              <span>WhatsApp</span>
-            </button>
-            <!-- Facebook -->
-            <button class="share-social-item" id="share-btn-facebook" title="Facebook">
-              <div class="share-social-circle bg-facebook">
-                <svg viewBox="0 0 24 24"><path d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z"/></svg>
-              </div>
-              <span>Facebook</span>
-            </button>
-            <!-- X / Twitter -->
-            <button class="share-social-item" id="share-btn-x" title="X">
-              <div class="share-social-circle bg-x">
-                <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-              </div>
-              <span>X</span>
-            </button>
-            <!-- E-mail -->
-            <button class="share-social-item" id="share-btn-email" title="E-mail">
-              <div class="share-social-circle bg-email">
-                <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-              </div>
-              <span>E-mail</span>
-            </button>
-            <!-- Reddit -->
-            <button class="share-social-item" id="share-btn-reddit" title="Reddit">
-              <div class="share-social-circle bg-reddit">
-                <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm5.748-11.41a1.503 1.503 0 0 0-2.383-.872c-1.02-.636-2.39-1.037-3.905-1.085l.777-3.655 2.534.538a1.218 1.218 0 1 0 1.247-1.196 1.217 1.217 0 0 0-1.205.952l-2.836-.602a.294.294 0 0 0-.345.228l-.895 4.21c-1.55.04-2.95.443-3.987 1.087a1.503 1.503 0 0 0-2.378.873 1.488 1.488 0 0 0 .524 1.464c-.03.17-.046.342-.046.516 0 2.63 3.084 4.77 6.89 4.77s6.89-2.14 6.89-4.77c0-.174-.016-.346-.046-.516a1.488 1.488 0 0 0 .524-1.464zM9.01 12.443a1.144 1.144 0 1 1 2.288 0 1.144 1.144 0 0 1-2.288 0zm5.98 2.875c-.687.688-2.001.742-2.99.742s-2.302-.054-2.99-.742a.302.302 0 1 1 .427-.427c.468.468 1.554.568 2.563.568 1.009 0 2.095-.1 2.563-.568a.302.302 0 0 1 .427.427zm-.008-1.731a1.144 1.144 0 1 1 2.288 0 1.144 1.144 0 0 1-2.288 0z"/></svg>
-              </div>
-              <span>Reddit</span>
-            </button>
-          </div>
-
-          <!-- Copy Link Row -->
-          <div class="share-link-box">
-            <span id="share-link-input" class="share-link-text">https://...</span>
-            <button id="share-copy-btn" class="share-copy-pill" onclick="window.App && window.App.copyShareModalUrl()">Copier</button>
-          </div>
-
-          <!-- Invite Collaborators Row -->
-          <div class="share-collaborators-row" id="share-collaborators-row" onclick="window.App && window.App.inviteCollaborators()">
-            <div class="share-collab-icon">
-              <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            </div>
-            <div class="share-collab-text">
-              <span class="share-collab-title">Inviter des collaborateurs</span>
-              <span class="share-collab-sub">Permettez à d'autres utilisateurs d'ajouter des titres à cette playlist</span>
-            </div>
-            <div class="share-collab-arrow">
-              <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toast Notifications Container -->
-    <div id="toast-container" class="toast-container"></div>
-  </div>
-
-  <!-- Scripts -->
-  <script src="/js/api.js?v=3.1"></script>
-  <script src="/js/storage.js?v=3.1"></script>
-  <script src="/js/lyrics.js?v=3.1"></script>
-  <script src="/js/player.js?v=3.1"></script>
-  <script src="/js/app.js?v=3.1"></script>
-  <script>
-    // Register PWA service worker with auto-update
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=3.1').then(reg => {
-          reg.update();
-        }).catch(err => {
-          console.log('SW note:', err);
-        });
-      });
-    }
-  </script>
+    <!-- Scripts -->
+    <script src="/js/api.js?v=3.1"></script>
+    <script src="/js/storage.js?v=3.1"></script>
+    <script src="/js/lyrics.js?v=3.1"></script>
+    <script src="/js/player.js?v=3.1"></script>
+    <script src="/js/app.js?v=3.1"></script>
+    <script>
+        // Register PWA service worker with auto-update
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js?v=3.1').then(reg => {
+                    reg.update();
+                }).catch(err => {
+                    console.log('SW note:', err);
+                });
+            });
+        }
+    </script>
 </body>
+
 </html>

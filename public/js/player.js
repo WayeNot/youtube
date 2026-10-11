@@ -207,11 +207,20 @@ class PlayerEngine {
         return filter;
       });
 
-      // Connect filters directly to destination
-      prevNode.connect(this.audioCtx.destination);
+      // DynamicsCompressorNode for Smart Volume Normalization / ReplayGain
+      this.compressor = this.audioCtx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-24, this.audioCtx.currentTime);
+      this.compressor.knee.setValueAtTime(30, this.audioCtx.currentTime);
+      this.compressor.ratio.setValueAtTime(12, this.audioCtx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.audioCtx.currentTime);
+      this.compressor.release.setValueAtTime(0.25, this.audioCtx.currentTime);
+
+      // Connect filters through compressor to destination
+      prevNode.connect(this.compressor);
+      this.compressor.connect(this.audioCtx.destination);
       this.isEqInitialized = true;
     } catch (e) {
-      console.warn('Equalizer initialization error:', e);
+      console.warn('Equalizer/Normalizer initialization error:', e);
     }
   }
 
@@ -281,10 +290,22 @@ class PlayerEngine {
     this.emit('track_change', { track: this.currentTrack, index: this.currentIndex });
     this.updateMediaSessionMetadata();
 
-    // Set audio source
-    const streamUrl = API.getStreamUrl(track.id);
-    this.audio.preload = 'auto';
-    this.audio.src = streamUrl;
+    // Check if track is cached in IndexedDB offline vault
+    try {
+      const offlineItem = await Storage.getTrackOffline(track.id);
+      if (offlineItem && offlineItem.audioBlob) {
+        const blobUrl = URL.createObjectURL(offlineItem.audioBlob);
+        this.audio.src = blobUrl;
+      } else {
+        const streamUrl = API.getStreamUrl(track.id);
+        this.audio.preload = 'auto';
+        this.audio.src = streamUrl;
+      }
+    } catch (e) {
+      const streamUrl = API.getStreamUrl(track.id);
+      this.audio.preload = 'auto';
+      this.audio.src = streamUrl;
+    }
 
     try {
       if (this.audioCtx && this.audioCtx.state === 'suspended') {

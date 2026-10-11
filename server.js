@@ -366,24 +366,26 @@ async function findArtistCard(query) {
     return null;
 }
 
-// 2. Suggestions API (Google / YouTube autocomplete + Detected Artist Entity)
+// 2. Suggestions API (Google / YouTube autocomplete + Detected Artist Entity + Direct Track Previews)
 app.get('/api/suggestions', async (req, res) => {
     const query = (req.query.q || '').trim();
-    if (!query) return res.json({ suggestions: [], artist: null });
+    if (!query) return res.json({ suggestions: [], artist: null, tracks: [] });
 
     try {
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(
             query
         )}`;
-        const [r, artistCard] = await Promise.all([
+        const [r, artistCard, quickTracks] = await Promise.all([
             fetch(url),
             query.length >= 2 ? findArtistCard(query) : Promise.resolve(null),
+            query.length >= 2 ? searchInnertube(query) : Promise.resolve([])
         ]);
         const data = await r.json();
         const suggestions = Array.isArray(data?.[1]) ? data[1] : [];
-        res.json({ suggestions, artist: artistCard });
+        const tracks = Array.isArray(quickTracks) ? quickTracks.slice(0, 4) : [];
+        res.json({ suggestions, artist: artistCard, tracks });
     } catch (err) {
-        res.json({ suggestions: [], artist: null });
+        res.json({ suggestions: [], artist: null, tracks: [] });
     }
 });
 
