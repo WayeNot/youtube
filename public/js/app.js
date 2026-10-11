@@ -730,16 +730,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            this.dom.cancelTimerBtn.addEventListener('click', () => {
-                Player.cancelSleepTimer();
-                this.dom.modalSleepTimer.classList.add('hidden');
-                this.showToast('Minuterie annulée');
-            });
+            if (this.dom.cancelTimerBtn) {
+                this.dom.cancelTimerBtn.addEventListener('click', () => {
+                    Player.cancelSleepTimer();
+                    if (this.dom.modalSleepTimer) this.dom.modalSleepTimer.classList.add('hidden');
+                    this.showToast('Minuterie annulée');
+                });
+            }
 
             // Equalizer Modal
-            const openEqModal = () => this.dom.modalEqualizer.classList.remove('hidden');
-            this.dom.eqBtn.addEventListener('click', openEqModal);
-            this.dom.mobileEqBtn.addEventListener('click', openEqModal);
+            const openEqModal = () => this.dom.modalEqualizer && this.dom.modalEqualizer.classList.remove('hidden');
+            if (this.dom.eqBtn) this.dom.eqBtn.addEventListener('click', openEqModal);
+            if (this.dom.mobileEqBtn) this.dom.mobileEqBtn.addEventListener('click', openEqModal);
 
             document.querySelectorAll('.eq-preset-btn').forEach((btn) => {
                 btn.addEventListener('click', () => {
@@ -990,24 +992,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Sleep Timer Events
             window.addEventListener('player_sleep_timer_set', () => {
-                this.dom.sleepTimerBadge.classList.remove('hidden');
-                this.dom.cancelTimerBtn.classList.remove('hidden');
+                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.classList.remove('hidden');
+                if (this.dom.cancelTimerBtn) this.dom.cancelTimerBtn.classList.remove('hidden');
             });
 
             window.addEventListener('player_sleep_timer_tick', (e) => {
                 const mins = Math.ceil(e.detail.remainingSeconds / 60);
-                this.dom.sleepTimerBadge.textContent = `${mins}m`;
+                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.textContent = `${mins}m`;
             });
 
             window.addEventListener('player_sleep_timer_ended', () => {
-                this.dom.sleepTimerBadge.classList.add('hidden');
-                this.dom.cancelTimerBtn.classList.add('hidden');
+                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.classList.add('hidden');
+                if (this.dom.cancelTimerBtn) this.dom.cancelTimerBtn.classList.add('hidden');
                 this.showToast('Minuterie de veille terminée, musique mise en pause.');
             });
 
             window.addEventListener('player_sleep_timer_cancelled', () => {
-                this.dom.sleepTimerBadge.classList.add('hidden');
-                this.dom.cancelTimerBtn.classList.add('hidden');
+                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.classList.add('hidden');
+                if (this.dom.cancelTimerBtn) this.dom.cancelTimerBtn.classList.add('hidden');
             });
 
             // Error
