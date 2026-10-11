@@ -5155,3 +5155,53 @@ textarea#import-text-input:focus {
   font-size: 12px;
   color: var(--text-secondary);
 }
+/* ─── Liked Songs Import Help Modal ─── */
+.liked-import-step-block {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+}
+.liked-import-platform {
+  margin-bottom: 10px;
+}
+.platform-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.platform-badge.spotify  { background: #1DB954; color: #000; }
+.platform-badge.deezer   { background: #A238FF; color: #fff; }
+.platform-badge.youtube  { background: #FF0000; color: #fff; }
+.liked-import-steps {
+  margin: 0 0 0 18px;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.liked-import-steps li strong { color: var(--text-primary); }
+.liked-import-steps kbd {
+  display: inline-block;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-primary);
+}
+.liked-import-note {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 200, 0, 0.08);
+  border-left: 3px solid #ffc800;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #ffc800;
+}

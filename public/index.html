@@ -1513,6 +1513,11 @@
                             </svg>
                             <span>Importer cette playlist</span>
                         </button>
+                        <button class="btn secondary full-width" style="margin-top: 10px;"
+                            onclick="document.getElementById('modal-liked-import-help').classList.remove('hidden')">
+                            <svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                            💡 Comment importer mes titres likés ?
+                        </button>
                     </div>
 
                     <div id="import-tab-text-list" class="import-tab-content">
@@ -1541,6 +1546,71 @@
                             <p id="import-loading-text">Importation de la playlist en cours...</p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Comment importer ses titres likés -->
+        <div id="modal-liked-import-help" class="modal-overlay hidden">
+            <div class="modal-card wide">
+                <div class="modal-header">
+                    <h3>💡 Importer ses Titres Likés</h3>
+                    <button class="icon-btn close-modal-btn"
+                        onclick="document.getElementById('modal-liked-import-help').classList.add('hidden')">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p style="color:var(--text-secondary);margin-bottom:18px;">
+                        Les plateformes comme Spotify, Deezer ou YouTube Music ne permettent pas de partager
+                        directement votre playlist « Titres likés ». Voici l'astuce pour les importer malgré tout :
+                    </p>
+
+                    <div class="liked-import-step-block">
+                        <div class="liked-import-platform">
+                            <span class="platform-badge spotify">Spotify</span>
+                        </div>
+                        <ol class="liked-import-steps">
+                            <li>Ouvre <strong>Spotify PC</strong> et va dans <em>Titres likés</em>.</li>
+                            <li>Fais <kbd>Ctrl + A</kbd> pour tout sélectionner.</li>
+                            <li>Clic droit → <strong>Ajouter à une nouvelle playlist</strong>.</li>
+                            <li>Donne un nom à la playlist, puis rends-la <strong>publique</strong> (clic droit sur la playlist → Rendre publique).</li>
+                            <li>Copie le lien de cette playlist et colle-le ci-dessus pour l'importer.</li>
+                        </ol>
+                        <div class="liked-import-note">
+                            ⚠️ La playlist embed Spotify est limitée à ~50 titres visibles publiquement.
+                            Pour plus de titres, divise tes likés en plusieurs playlists de 50.
+                        </div>
+                    </div>
+
+                    <div class="liked-import-step-block">
+                        <div class="liked-import-platform">
+                            <span class="platform-badge deezer">Deezer</span>
+                        </div>
+                        <ol class="liked-import-steps">
+                            <li>Ouvre <strong>Deezer PC</strong> ou l'app et va dans <em>Musique aimée</em>.</li>
+                            <li>Fais <kbd>Ctrl + A</kbd> pour tout sélectionner.</li>
+                            <li>Clic droit → <strong>Ajouter à une nouvelle playlist</strong>.</li>
+                            <li>Rends la playlist <strong>publique</strong> dans ses paramètres.</li>
+                            <li>Copie le lien de la playlist et colle-le pour l'importer — <strong>toutes les pages sont récupérées automatiquement</strong>.</li>
+                        </ol>
+                    </div>
+
+                    <div class="liked-import-step-block">
+                        <div class="liked-import-platform">
+                            <span class="platform-badge youtube">YouTube Music</span>
+                        </div>
+                        <ol class="liked-import-steps">
+                            <li>La playlist « Titres aimés » de YouTube Music est privée et ne peut pas être partagée.</li>
+                            <li>Crée une nouvelle playlist publique et ajoutes-y les titres voulus.</li>
+                            <li>Copie le lien YouTube Music ou YouTube de la playlist et colle-le pour l'importer.</li>
+                        </ol>
+                    </div>
+
+                    <button class="btn primary full-width" style="margin-top:20px;"
+                        onclick="document.getElementById('modal-liked-import-help').classList.add('hidden')">
+                        Compris, j'y vais !
+                    </button>
                 </div>
             </div>
         </div>

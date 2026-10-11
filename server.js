@@ -1147,19 +1147,22 @@ app.post('/api/playlist/import', async (req, res) => {
                     return res.status(400).json({ error: 'Cette playlist Spotify ne contient aucun titre public.' });
                 }
 
-                // Resolve tracks on YouTube (concurrency limited to 5 at a time)
-                const itemsToResolve = trackList.slice(0, 50);
+                // Resolve tracks on YouTube (concurrency limited to 3 at a time, up to 200 tracks)
+                const itemsToResolve = trackList.slice(0, 200);
                 const tracks = [];
-                for (const item of itemsToResolve) {
-                    const artist = item.subtitle || '';
-                    const title = item.title || '';
-                    const query = `${artist} - ${title}`.trim();
-                    try {
-                        const found = await performSearch(query, 1);
-                        if (found && found.length > 0) {
-                            tracks.push(found[0]);
-                        }
-                    } catch (e) { }
+                const CONCURRENCY_SP = 3;
+                for (let i = 0; i < itemsToResolve.length; i += CONCURRENCY_SP) {
+                    const batch = itemsToResolve.slice(i, i + CONCURRENCY_SP);
+                    const results = await Promise.all(batch.map(async (item) => {
+                        const artist = item.subtitle || '';
+                        const title = item.title || '';
+                        const query = `${artist} - ${title}`.trim();
+                        try {
+                            const found = await performSearch(query, 1);
+                            return (found && found.length > 0) ? found[0] : null;
+                        } catch (e) { return null; }
+                    }));
+                    results.forEach(r => r && tracks.push(r));
                 }
 
                 return res.json({
@@ -1193,24 +1196,41 @@ app.post('/api/playlist/import', async (req, res) => {
                 if (dzData.error) throw new Error(dzData.error.message || 'Erreur API Deezer');
 
                 const deezerTitle = dzData.title || name || 'Playlist Deezer';
-                const dzTracks = dzData.tracks?.data || [];
-                if (dzTracks.length === 0) {
+
+                // Pagination complète : récupérer tous les morceaux via next URL
+                let allDzTracks = dzData.tracks?.data || [];
+                let nextDzUrl = dzData.tracks?.next || null;
+                while (nextDzUrl && allDzTracks.length < 2000) {
+                    try {
+                        const pageRes = await fetch(nextDzUrl);
+                        if (!pageRes.ok) break;
+                        const pageData = await pageRes.json();
+                        if (pageData.error) break;
+                        allDzTracks = allDzTracks.concat(pageData.data || []);
+                        nextDzUrl = pageData.next || null;
+                    } catch (e) { break; }
+                }
+
+                if (allDzTracks.length === 0) {
                     return res.status(400).json({ error: 'Cette playlist Deezer ne contient aucun morceau.' });
                 }
 
-                // Resolve tracks on YouTube (first 50 tracks)
-                const itemsToResolve = dzTracks.slice(0, 50);
+                // Resolve tracks on YouTube (concurrency 3, up to 500 tracks)
+                const itemsToResolve = allDzTracks.slice(0, 500);
                 const tracks = [];
-                for (const item of itemsToResolve) {
-                    const artist = item.artist?.name || '';
-                    const title = item.title || '';
-                    const query = `${artist} - ${title}`.trim();
-                    try {
-                        const found = await performSearch(query, 1);
-                        if (found && found.length > 0) {
-                            tracks.push(found[0]);
-                        }
-                    } catch (e) { }
+                const CONCURRENCY_DZ = 3;
+                for (let i = 0; i < itemsToResolve.length; i += CONCURRENCY_DZ) {
+                    const batch = itemsToResolve.slice(i, i + CONCURRENCY_DZ);
+                    const results = await Promise.all(batch.map(async (item) => {
+                        const artist = item.artist?.name || '';
+                        const title = item.title || '';
+                        const query = `${artist} - ${title}`.trim();
+                        try {
+                            const found = await performSearch(query, 1);
+                            return (found && found.length > 0) ? found[0] : null;
+                        } catch (e) { return null; }
+                    }));
+                    results.forEach(r => r && tracks.push(r));
                 }
 
                 return res.json({
@@ -1227,8 +1247,8 @@ app.post('/api/playlist/import', async (req, res) => {
         // 3. YouTube / YouTube Music URL (via yt-dlp)
         execFile(
             YTDLP_PATH,
-            ['--flat-playlist', '-j', '--playlist-end', '80', '--', cleanUrl],
-            { timeout: 35000 },
+            ['--flat-playlist', '-j', '--', cleanUrl],
+            { timeout: 120000 },
             (err, stdout) => {
                 if (err || !stdout) {
                     return res.status(400).json({ error: 'Impossible de récupérer cette playlist. Vérifiez le lien.' });
@@ -1273,7 +1293,7 @@ app.post('/api/playlist/import', async (req, res) => {
             .split('\n')
             .map(l => l.replace(/^\d+[\.\)\-\s]+/, '').trim())
             .filter(l => l.length > 2)
-            .slice(0, 35);
+            .slice(0, 500);
 
         const tracks = [];
         for (const query of lines) {
