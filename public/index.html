@@ -54,10 +54,10 @@
                 }
                 if (u && u.username) {
                     document.addEventListener('DOMContentLoaded', function () {
-                        const l = document.getElementById('auth-btn-label');
-                        const d = document.getElementById('dropdown-username-display');
-                        const b = document.getElementById('auth-btn');
-                        const a = document.getElementById('auth-dropdown-arrow');
+                        let l = document.getElementById('auth-btn-label');
+                        let d = document.getElementById('dropdown-username-display');
+                        let b = document.getElementById('auth-btn');
+                        let a = document.getElementById('auth-dropdown-arrow');
                         if (l) l.textContent = u.username;
                         if (d) d.textContent = u.username;
                         if (b) b.classList.add('logged-in');
