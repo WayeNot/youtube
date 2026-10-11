@@ -3,7 +3,6 @@ class PlayerEngine {
   constructor() {
     this.audio = new Audio();
     this.audio.preload = 'auto';
-    this.audio.crossOrigin = 'anonymous';
 
     this.currentTrack = null;
     this.queue = [];
@@ -97,8 +96,8 @@ class PlayerEngine {
     this.audio.addEventListener('error', (e) => {
       console.warn('Audio element error, attempting recovery:', e);
       this.isLoading = false;
-      // Try direct stream url if proxy had an issue
-      if (this.currentTrack && !this.audio.src.includes('/api/stream-url/')) {
+      // Retry stream via proxy with cache-buster if proxy had an issue
+      if (this.currentTrack && !this.audio.src.includes('retry=1')) {
         this.fallbackDirectStream(this.currentTrack);
       } else {
         this.emit('error', { message: 'Impossible de lire ce titre' });
@@ -267,14 +266,13 @@ class PlayerEngine {
 
   async fallbackDirectStream(track) {
     try {
-      const res = await fetch(`/api/stream-url/${track.id}`);
-      const data = await res.json();
-      if (data.url) {
-        this.audio.src = data.url;
-        await this.audio.play();
-      }
+      // Retry via backend proxy with cache busting so server extracts a fresh stream URL
+      const retryUrl = `${API.getStreamUrl(track.id)}?retry=1&t=${Date.now()}`;
+      this.audio.src = retryUrl;
+      await this.audio.play();
     } catch (e) {
-      console.error('Fallback failed:', e);
+      console.error('Fallback recovery failed:', e);
+      this.emit('error', { message: 'Impossible de lire ce titre' });
     }
   }
 

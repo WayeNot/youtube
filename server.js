@@ -86,10 +86,11 @@ async function getAudioStreamUrl(videoId) {
         '-f', 'ba[ext=m4a]/ba/b',
         '--no-playlist',
         '--no-warnings',
+        '--extractor-args', 'youtube:player_client=android,web',
         '--',
         `https://www.youtube.com/watch?v=${videoId}`
       ],
-      { timeout: 15000 },
+      { timeout: 20000 },
       async (err, stdout, stderr) => {
         if (err) {
           console.error(`yt-dlp error for ${videoId}:`, stderr || err.message);
@@ -625,6 +626,9 @@ app.get('/api/stream/:id', async (req, res) => {
   }
 
   try {
+    if (req.query.retry === '1') {
+      streamCache.delete(videoId);
+    }
     const streamUrl = await getAudioStreamUrl(videoId);
 
     // Forward Range header from browser
