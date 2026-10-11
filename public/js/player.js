@@ -193,11 +193,6 @@ class PlayerEngine {
       this.audioCtx = new AudioContext();
       this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
 
-      // Create AnalyserNode for audio visualizer
-      this.analyser = this.audioCtx.createAnalyser();
-      this.analyser.fftSize = 128;
-      this.analyser.smoothingTimeConstant = 0.8;
-
       const freqs = [60, 230, 910, 3600, 14000];
       const types = ['lowshelf', 'peaking', 'peaking', 'peaking', 'highshelf'];
 
@@ -212,20 +207,12 @@ class PlayerEngine {
         return filter;
       });
 
-      // Connect through analyser before destination
-      prevNode.connect(this.analyser);
-      this.analyser.connect(this.audioCtx.destination);
+      // Connect filters directly to destination
+      prevNode.connect(this.audioCtx.destination);
       this.isEqInitialized = true;
     } catch (e) {
       console.warn('Equalizer initialization error:', e);
     }
-  }
-
-  getFrequencyData() {
-    if (!this.analyser) return null;
-    const data = new Uint8Array(this.analyser.frequencyBinCount);
-    this.analyser.getByteFrequencyData(data);
-    return data;
   }
 
   setEqBand(bandIndex, gainValue) {
@@ -251,7 +238,7 @@ class PlayerEngine {
   }
 
   // Playback Methods
-  async playTrack(track, newQueue = null) {
+  async playTrack(track, newQueue = null, explicitIndex = null) {
     if (!track || !track.id) return;
 
     this.isLoading = true;
@@ -260,13 +247,24 @@ class PlayerEngine {
 
     // Check if new queue provided
     if (newQueue && Array.isArray(newQueue)) {
-      this.queue = [...newQueue];
-      this.originalQueue = [...newQueue];
+      // Deduplicate newQueue by track id
+      const seen = new Set();
+      const deduped = [];
+      newQueue.forEach(t => {
+        if (t && t.id && !seen.has(t.id)) {
+          seen.add(t.id);
+          deduped.push(t);
+        }
+      });
+      this.queue = deduped.length > 0 ? deduped : [...newQueue];
+      this.originalQueue = [...this.queue];
       this.currentIndex = this.queue.findIndex(t => t.id === track.id);
       if (this.currentIndex === -1) {
         this.queue.unshift(track);
         this.currentIndex = 0;
       }
+    } else if (explicitIndex !== null && typeof explicitIndex === 'number') {
+      this.currentIndex = explicitIndex;
     } else {
       // If song not in queue, add it
       const existingIdx = this.queue.findIndex(t => t.id === track.id);
@@ -363,13 +361,12 @@ class PlayerEngine {
     }
 
     if (this.currentIndex < this.queue.length - 1) {
-      this.currentIndex++;
-      this.playTrack(this.queue[this.currentIndex]);
+      const nextIdx = this.currentIndex + 1;
+      this.playTrack(this.queue[nextIdx], null, nextIdx);
     } else {
       // Reached end of queue
       if (this.repeatMode === 'all' && this.queue.length > 0) {
-        this.currentIndex = 0;
-        this.playTrack(this.queue[0]);
+        this.playTrack(this.queue[0], null, 0);
       } else if (this.autoplayRadio && this.currentTrack) {
         this.fetchRadioRecommendations();
       } else {
@@ -387,8 +384,8 @@ class PlayerEngine {
     }
 
     if (this.currentIndex > 0) {
-      this.currentIndex--;
-      this.playTrack(this.queue[this.currentIndex]);
+      const prevIdx = this.currentIndex - 1;
+      this.playTrack(this.queue[prevIdx], null, prevIdx);
     } else {
       this.seek(0);
     }

@@ -191,7 +191,14 @@ const Storage = {
 
   getFavorites() {
     try {
-      return JSON.parse(localStorage.getItem(this.KEYS.FAVORITES)) || [];
+      const list = JSON.parse(localStorage.getItem(this.KEYS.FAVORITES)) || [];
+      // Deduplicate by ID
+      const seen = new Set();
+      return list.filter(item => {
+        if (!item || !item.id || seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
     } catch (e) {
       return [];
     }
@@ -246,7 +253,18 @@ const Storage = {
   // Playlists
   getPlaylists() {
     try {
-      return JSON.parse(localStorage.getItem(this.KEYS.PLAYLISTS)) || [];
+      const list = JSON.parse(localStorage.getItem(this.KEYS.PLAYLISTS)) || [];
+      // Deduplicate tracks within each playlist
+      return list.map(pl => {
+        if (!pl || !Array.isArray(pl.tracks)) return pl;
+        const seen = new Set();
+        pl.tracks = pl.tracks.filter(t => {
+          if (!t || !t.id || seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
+        return pl;
+      });
     } catch (e) {
       return [];
     }

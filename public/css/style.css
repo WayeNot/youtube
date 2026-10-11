@@ -4100,193 +4100,82 @@ textarea#import-text-input:focus {
 }
 
 /* ==========================================================================
-   Interactive Audio Visualizer (Waveform & Spectrum Canvas)
+   Global YouTube-style Top Progress Loading Bar
    ========================================================================== */
-.visualizer-container {
+.global-progress-bar {
   position: fixed;
-  bottom: 72px; /* right above desktop player bar */
+  top: 0;
   left: 0;
   width: 100%;
-  height: 54px;
+  height: 3px;
+  z-index: 99999;
   pointer-events: none;
-  z-index: 90;
+  background: transparent;
   opacity: 0;
-  transition: opacity 0.3s ease;
-  overflow: hidden;
+  transition: opacity 0.25s ease;
 }
-.visualizer-container.active {
-  opacity: 0.85;
+.global-progress-bar.loading {
+  opacity: 1;
 }
-.audio-visualizer-canvas {
-  width: 100%;
+.global-progress-fill {
   height: 100%;
-  display: block;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-red, #ff0033), #ff4d6d, #ff758c);
+  box-shadow: 0 0 10px rgba(255, 0, 51, 0.8), 0 0 5px rgba(255, 0, 51, 0.5);
+  transition: width 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
 }
-
-/* Party Mode Header Button Glow */
-.party-btn-glow {
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.2), rgba(138, 43, 226, 0.25)) !important;
-  border: 1px solid rgba(255, 0, 51, 0.4) !important;
-  color: #fff !important;
+.global-progress-bar.indeterminate .global-progress-fill {
+  width: 35% !important;
+  animation: global-progress-indeterminate 1.4s infinite cubic-bezier(0.65, 0.815, 0.735, 0.395);
 }
-.party-btn-glow:hover {
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.35), rgba(138, 43, 226, 0.4)) !important;
+@keyframes global-progress-indeterminate {
+  0% { left: -35%; width: 35%; }
+  60% { left: 100%; width: 80%; }
+  100% { left: 100%; width: 10%; }
 }
 
 /* ==========================================================================
-   Party Mode Modal & Chat Styles
+   Playlist Import Modal Progress Bar
    ========================================================================== */
-.party-modal-card {
-  max-width: 500px;
-  width: 92%;
-  background: #1a1a1a;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-.party-modal-title-row {
+.import-loading {
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.party-live-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #ff0033;
-  box-shadow: 0 0 10px #ff0033;
-  animation: pulse-live 1.5s infinite;
-}
-@keyframes pulse-live {
-  0% { transform: scale(0.9); opacity: 0.8; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.8; }
-}
-.party-intro-text {
-  font-size: 13.5px;
-  color: #aaa;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-.party-join-divider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 16px 0;
-  color: #666;
-  font-size: 11px;
-  letter-spacing: 1px;
-}
-.party-join-divider::before, .party-join-divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.party-join-divider span {
-  padding: 0 10px;
-}
-
-.party-room-header-box {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #111;
-  padding: 12px 16px;
-  border-radius: 12px;
-  margin-bottom: 14px;
-}
-.party-room-code-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #aaa;
-}
-.party-room-code-badge strong {
-  color: #ff0033;
-  font-size: 16px;
-  letter-spacing: 0.5px;
-}
-.party-members-header {
-  font-size: 12px;
-  font-weight: 600;
-  color: #888;
-  margin-bottom: 8px;
-}
-.party-members-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.party-member-chip {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  color: #ddd;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.party-member-chip.host {
-  border: 1px solid rgba(255, 0, 51, 0.5);
-  color: #fff;
-}
-
-/* Party Chat Box */
-.party-chat-box {
-  background: #111;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  height: 200px;
+}
+.import-progress-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
   overflow: hidden;
+  position: relative;
 }
-.party-chat-messages {
-  flex: 1;
-  padding: 10px 14px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 12.5px;
+.import-progress-bar-fill {
+  height: 100%;
+  width: 15%;
+  background: linear-gradient(90deg, var(--accent-red, #ff0033), #ff4d6d);
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(255, 0, 51, 0.7);
+  transition: width 0.35s ease;
+  animation: import-bar-pulse 1.8s infinite ease-in-out;
 }
-.party-chat-msg {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+@keyframes import-bar-pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; filter: drop-shadow(0 0 4px #ff0033); }
+  100% { opacity: 0.8; }
 }
-.party-chat-sender {
-  font-size: 11px;
-  font-weight: 600;
-  color: #ff0033;
-}
-.party-chat-text {
-  color: #eee;
-  word-break: break-word;
-}
-.party-chat-input-row {
+.import-loading-details {
   display: flex;
   align-items: center;
-  padding: 6px 10px;
-  background: #161616;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
 }
-.party-chat-input-row input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 13px;
-  outline: none;
-  padding: 6px;
-}
-
-@media (max-width: 768px) {
-  .visualizer-container {
-    bottom: calc(56px + 64px); /* above mobile bottom navigation & mini player */
-    height: 38px;
-  }
+.import-loading-details p {
+  font-size: 13.5px;
+  color: #eee;
+  margin: 0;
 }

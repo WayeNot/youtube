@@ -37,16 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     handleRoute() {
-      // 0. Check for ?party=roomId parameter
-      const urlParams = new URLSearchParams(window.location.search);
-      const partyParam = urlParams.get('party');
-      if (partyParam) {
-        setTimeout(() => {
-          this.joinPartyRoom(partyParam);
-          this.openPartyModal();
-        }, 500);
-      }
-
       const pathname = decodeURIComponent(window.location.pathname);
       const hash = window.location.hash.replace('#', '');
       const path = pathname !== '/' ? pathname : (hash ? '/' + hash : '/');
@@ -369,80 +359,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       });
 
-      // Submit YouTube URL Import
+      // Submit YouTube / Spotify / Deezer URL Import
       if (this.dom.submitImportYtBtn) {
-        this.dom.submitImportYtBtn.onclick = async () => {
-          const url = (this.dom.importYtUrlInput.value || '').trim();
-          const name = (this.dom.importYtNameInput.value || '').trim();
-          if (!url) {
-            alert('Veuillez entrer une URL de playlist YouTube ou YouTube Music.');
-            return;
-          }
-
-          this.dom.importLoadingIndicator.classList.remove('hidden');
-          this.dom.submitImportYtBtn.disabled = true;
-          this.dom.importLoadingText.textContent = 'Extraction des titres depuis YouTube en cours...';
-
-          try {
-            const data = await API.importPlaylist({ url, name });
-            if (!data.tracks || data.tracks.length === 0) {
-              throw new Error('Aucun titre trouvé dans cette playlist');
-            }
-
-            // Create persistent playlist with all imported tracks
-            const newPl = Storage.createPlaylistWithTracks(data.name || 'Playlist YouTube Importée', data.tracks);
-
-            this.dom.modalImportPlaylist.classList.add('hidden');
-            this.dom.importYtUrlInput.value = '';
-            this.dom.importYtNameInput.value = '';
-            this.showToast(`Playlist "${newPl.name}" importée avec succès (${data.tracks.length} titres) ! 🎉`);
-            this.renderPlaylists();
-            this.openPlaylistView(newPl.id);
-          } catch (err) {
-            alert(`Erreur d'importation : ${err.message}`);
-          } finally {
-            this.dom.importLoadingIndicator.classList.add('hidden');
-            this.dom.submitImportYtBtn.disabled = false;
-          }
-        };
+        this.dom.submitImportYtBtn.onclick = () => this.submitImportYouTube();
       }
 
-      // Submit Text Tracklist Import (Spotify, Deezer, etc.)
+      // Submit Text Tracklist Import
       if (this.dom.submitImportTextBtn) {
-        this.dom.submitImportTextBtn.onclick = async () => {
-          const text = (this.dom.importTextInput.value || '').trim();
-          const name = (this.dom.importTextNameInput.value || '').trim() || 'Ma Playlist Importée';
-          if (!text) {
-            alert('Veuillez coller au moins un titre de morceau.');
-            return;
-          }
-
-          this.dom.importLoadingIndicator.classList.remove('hidden');
-          this.dom.submitImportTextBtn.disabled = true;
-          this.dom.importLoadingText.textContent = 'Recherche automatique des morceaux sur YouTube...';
-
-          try {
-            const data = await API.importPlaylist({ text, name });
-            if (!data.tracks || data.tracks.length === 0) {
-              throw new Error('Aucun titre correspondant trouvé');
-            }
-
-            // Create persistent playlist with all imported tracks
-            const newPl = Storage.createPlaylistWithTracks(name, data.tracks);
-
-            this.dom.modalImportPlaylist.classList.add('hidden');
-            this.dom.importTextInput.value = '';
-            this.dom.importTextNameInput.value = '';
-            this.showToast(`Playlist "${name}" créée avec ${data.tracks.length} titres ! 🎉`);
-            this.renderPlaylists();
-            this.openPlaylistView(newPl.id);
-          } catch (err) {
-            alert(`Erreur d'importation : ${err.message}`);
-          } finally {
-            this.dom.importLoadingIndicator.classList.add('hidden');
-            this.dom.submitImportTextBtn.disabled = false;
-          }
-        };
+        this.dom.submitImportTextBtn.onclick = () => this.submitImportText();
       }
 
       // Clear recent searches button
@@ -1492,16 +1416,20 @@ document.addEventListener('DOMContentLoaded', () => {
           const track = this.findTrackInMemory(id);
           if (!track) return;
 
-          // Collect sibling tracks in the same shelf or list for seamless queueing
+          // Collect sibling tracks in the same shelf or list for seamless queueing (deduplicated)
           const parentGroup = el.closest('.shelf-carousel') || el.closest('.tracks-list');
           let queueTracks = null;
           if (parentGroup) {
             const trackEls = parentGroup.querySelectorAll('[data-track-id]');
             const siblings = [];
+            const seenIds = new Set();
             trackEls.forEach((item) => {
               const tId = item.getAttribute('data-track-id');
-              const t = this.findTrackInMemory(tId);
-              if (t) siblings.push(t);
+              if (tId && !seenIds.has(tId)) {
+                seenIds.add(tId);
+                const t = this.findTrackInMemory(tId);
+                if (t) siblings.push(t);
+              }
             });
             if (siblings.length > 1) {
               queueTracks = siblings;
@@ -2392,10 +2320,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // SIDE PANEL (QUEUE & LYRICS)
     // -------------------------------------------------------------
     toggleSidePanel(panelName) {
+      if (!this.dom.sidePanel) return;
       if (!this.dom.sidePanel.classList.contains('hidden') && this.currentSideTab === panelName) {
         this.dom.sidePanel.classList.add('hidden');
-        this.dom.toggleLyricsBtn.classList.remove('active');
-        this.dom.toggleQueueBtn.classList.remove('active');
+        if (this.dom.toggleLyricsBtn) this.dom.toggleLyricsBtn.classList.remove('active');
+        if (this.dom.toggleQueueBtn) this.dom.toggleQueueBtn.classList.remove('active');
         return;
       }
 
@@ -2415,8 +2344,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const activeContent = document.getElementById(`panel-${panelName}-content`);
       if (activeContent) activeContent.classList.add('active');
 
-      this.dom.toggleLyricsBtn.classList.toggle('active', panelName === 'lyrics');
-      this.dom.toggleQueueBtn.classList.toggle('active', panelName === 'queue');
+      if (this.dom.toggleLyricsBtn) this.dom.toggleLyricsBtn.classList.toggle('active', panelName === 'lyrics');
+      if (this.dom.toggleQueueBtn) this.dom.toggleQueueBtn.classList.toggle('active', panelName === 'queue');
 
       if (panelName === 'lyrics') {
         LyricsManager.setContainer(this.dom.sideLyricsContainer);
@@ -2618,6 +2547,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const submitBtn = document.getElementById('submit-import-yt-btn');
       const loader = document.getElementById('import-loading-indicator');
       const loaderText = document.getElementById('import-loading-text');
+      const progressBarFill = document.getElementById('import-progress-bar-fill');
 
       const url = (urlInput?.value || '').trim();
       const name = (nameInput?.value || '').trim();
@@ -2630,12 +2560,25 @@ document.addEventListener('DOMContentLoaded', () => {
       if (loader) loader.classList.remove('hidden');
       if (submitBtn) submitBtn.disabled = true;
       if (loaderText) loaderText.textContent = 'Extraction des titres depuis YouTube en cours...';
+      if (progressBarFill) progressBarFill.style.width = '20%';
+
+      this.startLoadingBar(20);
+
+      let progressInterval = setInterval(() => {
+        if (progressBarFill) {
+          const current = parseInt(progressBarFill.style.width, 10) || 20;
+          if (current < 90) progressBarFill.style.width = (current + 10) + '%';
+        }
+      }, 500);
 
       try {
         const data = await API.importPlaylist({ url, name });
         if (!data || !data.tracks || data.tracks.length === 0) {
           throw new Error('Aucun titre trouvé dans cette playlist.');
         }
+
+        if (progressBarFill) progressBarFill.style.width = '100%';
+        this.setProgressBar(100);
 
         const newPl = Storage.createPlaylistWithTracks(data.name || 'Playlist YouTube Importée', data.tracks);
 
@@ -2648,7 +2591,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         alert(`Erreur d'importation : ${err.message || 'Impossible de charger la playlist'}`);
       } finally {
+        clearInterval(progressInterval);
+        this.stopLoadingBar();
         if (loader) loader.classList.add('hidden');
+        if (progressBarFill) progressBarFill.style.width = '15%';
         if (submitBtn) submitBtn.disabled = false;
       }
     },
@@ -2659,6 +2605,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const submitBtn = document.getElementById('submit-import-text-btn');
       const loader = document.getElementById('import-loading-indicator');
       const loaderText = document.getElementById('import-loading-text');
+      const progressBarFill = document.getElementById('import-progress-bar-fill');
 
       const text = (textInput?.value || '').trim();
       const name = (nameInput?.value || '').trim() || 'Ma Playlist Importée';
@@ -2671,12 +2618,25 @@ document.addEventListener('DOMContentLoaded', () => {
       if (loader) loader.classList.remove('hidden');
       if (submitBtn) submitBtn.disabled = true;
       if (loaderText) loaderText.textContent = 'Recherche automatique des morceaux sur YouTube...';
+      if (progressBarFill) progressBarFill.style.width = '20%';
+
+      this.startLoadingBar(20);
+
+      let progressInterval = setInterval(() => {
+        if (progressBarFill) {
+          const current = parseInt(progressBarFill.style.width, 10) || 20;
+          if (current < 90) progressBarFill.style.width = (current + 10) + '%';
+        }
+      }, 500);
 
       try {
         const data = await API.importPlaylist({ text, name });
         if (!data || !data.tracks || data.tracks.length === 0) {
           throw new Error('Aucun morceau trouvé correspondant aux titres indiqués.');
         }
+
+        if (progressBarFill) progressBarFill.style.width = '100%';
+        this.setProgressBar(100);
 
         const newPl = Storage.createPlaylistWithTracks(name, data.tracks);
 
@@ -2689,7 +2649,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         alert(`Erreur d'importation : ${err.message}`);
       } finally {
+        clearInterval(progressInterval);
+        this.stopLoadingBar();
         if (loader) loader.classList.add('hidden');
+        if (progressBarFill) progressBarFill.style.width = '15%';
         if (submitBtn) submitBtn.disabled = false;
       }
     },
@@ -2724,6 +2687,45 @@ document.addEventListener('DOMContentLoaded', () => {
     async playTrackById(id) {
       const track = this.findTrackInMemory(id);
       Player.playTrack(track);
+    },
+
+    // Global Top Loading Progress Bar Controller
+    startLoadingBar(initialPercent = 25) {
+      const bar = document.getElementById('global-progress-bar');
+      const fill = document.getElementById('global-progress-fill');
+      if (!bar || !fill) return;
+      bar.classList.add('loading');
+      fill.style.width = `${initialPercent}%`;
+      if (this._loadingBarInterval) clearInterval(this._loadingBarInterval);
+      let p = initialPercent;
+      this._loadingBarInterval = setInterval(() => {
+        if (p < 88) {
+          p += Math.random() * 8 + 2;
+          fill.style.width = `${Math.min(90, p)}%`;
+        }
+      }, 300);
+    },
+
+    setProgressBar(percent) {
+      const fill = document.getElementById('global-progress-fill');
+      if (fill) fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    },
+
+    stopLoadingBar() {
+      if (this._loadingBarInterval) {
+        clearInterval(this._loadingBarInterval);
+        this._loadingBarInterval = null;
+      }
+      const bar = document.getElementById('global-progress-bar');
+      const fill = document.getElementById('global-progress-fill');
+      if (!bar || !fill) return;
+      fill.style.width = '100%';
+      setTimeout(() => {
+        bar.classList.remove('loading');
+        setTimeout(() => {
+          fill.style.width = '0%';
+        }, 200);
+      }, 250);
     },
 
     // Toast Notifications
@@ -3384,91 +3386,6 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     // ==========================================================================
-    // Dynamic Audio Visualizer Engine (Spectre & Waveform Canvas)
-    // ==========================================================================
-    isVisualizerActive: false,
-    visualizerAnimId: null,
-
-    toggleVisualizer() {
-      this.isVisualizerActive = !this.isVisualizerActive;
-      const container = document.getElementById('visualizer-container');
-      const toggleBtn = document.getElementById('visualizer-toggle-btn');
-      if (container) container.classList.toggle('active', this.isVisualizerActive);
-      if (toggleBtn) toggleBtn.classList.toggle('active', this.isVisualizerActive);
-
-      if (this.isVisualizerActive) {
-        if (window.Player) window.Player.initEqualizer();
-        this.startVisualizer();
-        this.showToast('Visualiseur audio dynamique activé 🎶');
-      } else {
-        this.stopVisualizer();
-        this.showToast('Visualiseur audio désactivé');
-      }
-    },
-
-    startVisualizer() {
-      const canvas = document.getElementById('audio-visualizer-canvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-
-      const draw = () => {
-        if (!this.isVisualizerActive) return;
-        this.visualizerAnimId = requestAnimationFrame(draw);
-
-        // Adjust canvas resolution dynamically
-        if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
-          canvas.width = canvas.clientWidth;
-          canvas.height = canvas.clientHeight;
-        }
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const freqData = window.Player && window.Player.getFrequencyData();
-        if (!freqData || freqData.length === 0 || !window.Player.isPlaying) {
-          // Subtle idle gentle glow
-          return;
-        }
-
-        const barCount = 48;
-        const barWidth = (canvas.width / barCount) * 0.75;
-        const gap = (canvas.width / barCount) * 0.25;
-
-        for (let i = 0; i < barCount; i++) {
-          const val = freqData[Math.floor((i / barCount) * freqData.length)] || 0;
-          const percent = val / 255;
-          const barHeight = Math.max(3, percent * canvas.height * 0.95);
-          const x = i * (barWidth + gap);
-          const y = canvas.height - barHeight;
-
-          // Gradient from Red to Purple to Blue
-          const hue = 350 + (i / barCount) * 60;
-          ctx.fillStyle = `hsla(${hue}, 95%, 55%, ${0.6 + percent * 0.4})`;
-          ctx.shadowBlur = 12 * percent;
-          ctx.shadowColor = '#ff0033';
-
-          // Rounded bar tops
-          ctx.beginPath();
-          ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
-          ctx.fill();
-        }
-      };
-
-      draw();
-    },
-
-    stopVisualizer() {
-      if (this.visualizerAnimId) {
-        cancelAnimationFrame(this.visualizerAnimId);
-        this.visualizerAnimId = null;
-      }
-      const canvas = document.getElementById('audio-visualizer-canvas');
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    },
-
-    // ==========================================================================
     // Crossfade Settings Prompt
     // ==========================================================================
     openCrossfadePrompt() {
@@ -3480,194 +3397,6 @@ document.addEventListener('DOMContentLoaded', () => {
         Storage.saveSetting('crossfade', val);
         this.showToast(val > 0 ? `Fondu enchaîné réglé à ${val}s (transitions fluides) ⏳` : 'Fondu enchaîné désactivé');
       }
-    },
-
-    // ==========================================================================
-    // Party Mode / Écoute Synchronisée en direct (WebSockets)
-    // ==========================================================================
-    partyWs: null,
-    currentPartyRoomId: null,
-    isPartyHost: false,
-
-    openPartyModal() {
-      const modal = document.getElementById('modal-party');
-      if (modal) modal.classList.remove('hidden');
-    },
-
-    initPartyWs() {
-      if (this.partyWs && this.partyWs.readyState === WebSocket.OPEN) return;
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${proto}//${window.location.host}/api/party-ws`;
-      this.partyWs = new WebSocket(wsUrl);
-
-      this.partyWs.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.handlePartyWsMessage(data);
-        } catch (e) { }
-      };
-
-      this.partyWs.onclose = () => {
-        this.partyWs = null;
-      };
-    },
-
-    handlePartyWsMessage(data) {
-      if (data.type === 'room_state') {
-        this.isPartyHost = data.isHost;
-        this.updatePartyUI(data);
-
-        // Sync playback from room state if not host
-        if (!this.isPartyHost && data.currentTrack) {
-          window.Player.playTrack(data.currentTrack);
-          if (typeof data.currentTime === 'number') {
-            setTimeout(() => window.Player.seek(data.currentTime), 300);
-          }
-        }
-      } else if (data.type === 'playback_sync') {
-        // Synchronize track and time
-        if (data.currentTrack && (!window.Player.currentTrack || window.Player.currentTrack.id !== data.currentTrack.id)) {
-          window.Player.playTrack(data.currentTrack);
-        }
-        if (typeof data.currentTime === 'number' && Math.abs(window.Player.audio.currentTime - data.currentTime) > 1.5) {
-          window.Player.seek(data.currentTime);
-        }
-        if (data.isPlaying && !window.Player.isPlaying) {
-          window.Player.play();
-        } else if (!data.isPlaying && window.Player.isPlaying) {
-          window.Player.pause();
-        }
-      } else if (data.type === 'member_joined' || data.type === 'member_left') {
-        this.updatePartyMembers(data.members || [], data.memberCount || 1);
-        this.showToast(`${data.username} a ${data.type === 'member_joined' ? 'rejoint' : 'quitté'} le Salon 🎉`);
-      } else if (data.type === 'chat_message') {
-        this.appendPartyChatMessage(data.sender, data.text);
-      }
-    },
-
-    createPartyRoom() {
-      const code = 'room-' + Math.random().toString(36).substr(2, 6);
-      this.joinPartyRoom(code);
-    },
-
-    joinPartyRoomByInput() {
-      const input = document.getElementById('party-room-code-input');
-      const code = (input?.value || '').trim();
-      if (!code) {
-        alert('Veuillez entrer un code de salon valide.');
-        return;
-      }
-      this.joinPartyRoom(code);
-    },
-
-    joinPartyRoom(roomId) {
-      this.initPartyWs();
-      this.currentPartyRoomId = roomId;
-
-      const user = Storage.getUser();
-      const username = user ? user.username : ('Auditeur ' + Math.floor(Math.random() * 900 + 100));
-
-      const sendJoin = () => {
-        this.partyWs.send(JSON.stringify({
-          type: 'join',
-          roomId,
-          username
-        }));
-      };
-
-      if (this.partyWs.readyState === WebSocket.OPEN) {
-        sendJoin();
-      } else {
-        this.partyWs.onopen = sendJoin;
-      }
-
-      // Hook player events to broadcast when playing in room
-      window.Player.on('track_change', (e) => this.broadcastPartyPlayback());
-      window.Player.on('playback_change', (e) => this.broadcastPartyPlayback());
-
-      document.getElementById('party-not-in-room')?.classList.add('hidden');
-      document.getElementById('party-in-room')?.classList.remove('hidden');
-      const badge = document.getElementById('party-active-room-id');
-      if (badge) badge.textContent = roomId;
-    },
-
-    broadcastPartyPlayback() {
-      if (!this.partyWs || this.partyWs.readyState !== WebSocket.OPEN || !this.currentPartyRoomId) return;
-      this.partyWs.send(JSON.stringify({
-        type: 'sync_playback',
-        roomId: this.currentPartyRoomId,
-        track: window.Player.currentTrack,
-        currentTime: window.Player.audio.currentTime || 0,
-        isPlaying: window.Player.isPlaying
-      }));
-    },
-
-    updatePartyUI(data) {
-      document.getElementById('party-not-in-room')?.classList.add('hidden');
-      document.getElementById('party-in-room')?.classList.remove('hidden');
-      const badge = document.getElementById('party-active-room-id');
-      if (badge) badge.textContent = data.roomId;
-      this.updatePartyMembers(data.members || [], data.memberCount || 1);
-    },
-
-    updatePartyMembers(members, count) {
-      const countEl = document.getElementById('party-member-count');
-      if (countEl) countEl.textContent = count;
-      const listEl = document.getElementById('party-members-list');
-      if (!listEl) return;
-      listEl.innerHTML = members
-        .map(m => `<div class="party-member-chip ${m.id === this.partyHostId ? 'host' : ''}">🎧 ${this.escapeHtml(m.username)}</div>`)
-        .join('');
-    },
-
-    copyPartyRoomLink() {
-      if (!this.currentPartyRoomId) return;
-      const shareUrl = `${window.location.origin}/?party=${this.currentPartyRoomId}`;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          this.showToast('Lien du Salon Party copié ! Invitez vos amis 🎧');
-        });
-      } else {
-        prompt('Lien du Salon :', shareUrl);
-      }
-    },
-
-    sendPartyChatMessage() {
-      const input = document.getElementById('party-chat-input');
-      const text = (input?.value || '').trim();
-      if (!text || !this.partyWs || this.partyWs.readyState !== WebSocket.OPEN) return;
-
-      this.partyWs.send(JSON.stringify({
-        type: 'chat_message',
-        roomId: this.currentPartyRoomId,
-        message: text
-      }));
-      if (input) input.value = '';
-    },
-
-    appendPartyChatMessage(sender, text) {
-      const box = document.getElementById('party-chat-messages');
-      if (!box) return;
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'party-chat-msg';
-      msgDiv.innerHTML = `
-        <span class="party-chat-sender">${this.escapeHtml(sender)}</span>
-        <span class="party-chat-text">${this.escapeHtml(text)}</span>
-      `;
-      box.appendChild(msgDiv);
-      box.scrollTop = box.scrollHeight;
-    },
-
-    leavePartyRoom() {
-      if (this.partyWs) {
-        this.partyWs.close();
-        this.partyWs = null;
-      }
-      this.currentPartyRoomId = null;
-      document.getElementById('party-not-in-room')?.classList.remove('hidden');
-      document.getElementById('party-in-room')?.classList.add('hidden');
-      document.getElementById('modal-party')?.classList.add('hidden');
-      this.showToast('Vous avez quitté le Salon d\'écoute');
     },
 
     escapeHtml(str) {
