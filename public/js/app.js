@@ -2541,61 +2541,151 @@ document.addEventListener('DOMContentLoaded', () => {
             const queue = Player.queue || [];
             const curIdx = Player.currentIndex;
 
+            // Update badge counters
+            const countText = queue.length <= 1 ? `${queue.length} titre` : `${queue.length} titres`;
+            const sideBadge = document.getElementById('side-queue-count');
+            if (sideBadge) sideBadge.textContent = countText;
+            const mobileBadge = document.getElementById('mobile-queue-count');
+            if (mobileBadge) mobileBadge.textContent = countText;
+
+            // Update shuffle buttons active state
+            const sideShuffle = document.getElementById('side-queue-shuffle-btn');
+            if (sideShuffle) sideShuffle.classList.toggle('active', !!Player.isShuffled);
+            const mobileShuffle = document.getElementById('mobile-queue-shuffle-btn');
+            if (mobileShuffle) mobileShuffle.classList.toggle('active', !!Player.isShuffled);
+
             const containers = [this.dom.sideQueueList, this.dom.mobileQueueList].filter(Boolean);
             if (containers.length === 0) return;
 
-            // Check if queue items are already rendered and only active index needs updating
-            let canJustUpdateActive = true;
-            containers.forEach(container => {
-                const renderedCount = container.querySelectorAll('.queue-item').length;
-                if (renderedCount !== queue.length) canJustUpdateActive = false;
-            });
-
-            if (canJustUpdateActive && queue.length > 0) {
+            if (queue.length === 0) {
                 containers.forEach(container => {
-                    const items = container.querySelectorAll('.queue-item');
-                    items.forEach((item, idx) => {
-                        const isCur = idx === curIdx;
-                        item.classList.toggle('active', isCur);
-                        if (isCur) {
-                            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }
-                    });
+                    container.innerHTML = `
+                        <div class="empty-queue-box">
+                            <svg viewBox="0 0 24 24" class="empty-queue-icon"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+                            <p class="empty-queue-title">Votre file d'attente est vide</p>
+                            <p class="empty-queue-sub">Ajoutez des morceaux depuis l'accueil, une recherche ou une playlist pour les écouter à la suite.</p>
+                        </div>
+                    `;
                 });
                 return;
             }
 
-            const html = queue.length === 0
-                ? '<p class="empty-msg" style="padding: 20px 0; text-align: center; color: var(--text-muted);">La file d\'attente est vide.</p>'
-                : queue
-                    .map((track, idx) => {
-                        const isCurrent = idx === curIdx;
-                        return `
-              <div class="queue-item ${isCurrent ? 'active' : ''}" data-queue-index="${idx}">
-                <img src="${track.thumbnail || '/icons/icon.svg'}" alt="" class="queue-thumb" loading="lazy">
-                <div class="queue-info">
-                  <div class="queue-title" title="${this.escapeHtml(track.title)}">${this.escapeHtml(track.title)}</div>
-                  <div class="queue-artist">${this.escapeHtml(track.artist)}</div>
-                </div>
-                <button class="icon-btn small remove-queue-btn" data-index="${idx}" title="Retirer de la file">
-                  <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                </button>
-              </div>
-            `;
-                    })
-                    .join('');
+            const html = queue.map((track, idx) => {
+                const isCurrent = idx === curIdx;
+                const isFav = Storage.isFavorite(track.id);
+                return `
+                    <div class="queue-item ${isCurrent ? 'active' : ''}" data-queue-index="${idx}" draggable="true">
+                        <div class="queue-drag-handle" title="Glisser pour réorganiser">
+                            <svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                        </div>
+                        <div class="queue-thumb-wrapper">
+                            <img src="${track.thumbnail || '/icons/icon.svg'}" alt="" class="queue-thumb" loading="lazy">
+                            ${isCurrent ? `
+                                <div class="queue-playing-waves">
+                                    <span class="wave-bar"></span>
+                                    <span class="wave-bar"></span>
+                                    <span class="wave-bar"></span>
+                                </div>
+                            ` : `
+                                <div class="queue-play-hover-btn" title="Lire maintenant">
+                                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                            `}
+                        </div>
+                        <div class="queue-info">
+                            <div class="queue-title" title="${this.escapeHtml(track.title)}">${this.escapeHtml(track.title)}</div>
+                            <div class="queue-artist" title="${this.escapeHtml(track.artist)}">${this.escapeHtml(track.artist)}</div>
+                        </div>
+                        <div class="queue-item-actions">
+                            <button class="icon-btn small queue-fav-btn ${isFav ? 'favorited' : ''}" data-track-id="${track.id}" data-index="${idx}" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
+                                <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                            </button>
+                            <button class="icon-btn small queue-add-pl-btn" data-index="${idx}" title="Ajouter à une playlist">
+                                <svg viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
+                            </button>
+                            <button class="icon-btn small remove-queue-btn" data-index="${idx}" title="Retirer de la file">
+                                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
             containers.forEach(container => {
                 container.innerHTML = html;
 
-                // Click on queue item
+                // Click on queue item to play
                 container.querySelectorAll('.queue-item').forEach((item) => {
                     item.addEventListener('click', (e) => {
-                        if (e.target.closest('.remove-queue-btn')) return;
+                        if (e.target.closest('.queue-item-actions') || e.target.closest('.queue-drag-handle')) return;
                         const idx = parseInt(item.getAttribute('data-queue-index'), 10);
                         if (!isNaN(idx) && Player.queue[idx]) {
                             Player.playTrack(Player.queue[idx], null, idx);
                             this.renderQueueUI();
+                        }
+                    });
+
+                    // Drag & Drop HTML5 Reordering
+                    item.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', item.getAttribute('data-queue-index'));
+                        item.classList.add('dragging');
+                    });
+                    item.addEventListener('dragend', () => {
+                        item.classList.remove('dragging');
+                        container.querySelectorAll('.queue-item').forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+                    });
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        const rect = item.getBoundingClientRect();
+                        const next = (e.clientY - rect.top) > (rect.height / 2);
+                        item.classList.toggle('drag-over-bottom', next);
+                        item.classList.toggle('drag-over-top', !next);
+                    });
+                    item.addEventListener('dragleave', () => {
+                        item.classList.remove('drag-over-top', 'drag-over-bottom');
+                    });
+                    item.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        item.classList.remove('drag-over-top', 'drag-over-bottom');
+                        const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                        let toIdx = parseInt(item.getAttribute('data-queue-index'), 10);
+                        const rect = item.getBoundingClientRect();
+                        if ((e.clientY - rect.top) > (rect.height / 2)) {
+                            toIdx++;
+                        }
+                        if (fromIdx < toIdx) toIdx--;
+                        if (!isNaN(fromIdx) && !isNaN(toIdx) && fromIdx !== toIdx) {
+                            Player.moveInQueue(fromIdx, toIdx);
+                            this.renderQueueUI();
+                        }
+                    });
+                });
+
+                // Favorite toggle in queue
+                container.querySelectorAll('.queue-fav-btn').forEach((btn) => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const idx = parseInt(btn.getAttribute('data-index'), 10);
+                        const track = Player.queue[idx];
+                        if (!track) return;
+                        const isFav = Storage.toggleFavorite(track);
+                        btn.classList.toggle('favorited', isFav);
+                        btn.title = isFav ? 'Retirer des favoris' : 'Ajouter aux favoris';
+                        if (Player.currentTrack && Player.currentTrack.id === track.id) {
+                            this.updateFavoriteUI(isFav);
+                        }
+                        this.showToast(isFav ? 'Ajouté aux favoris ❤️' : 'Retiré des favoris');
+                    });
+                });
+
+                // Add to playlist from queue
+                container.querySelectorAll('.queue-add-pl-btn').forEach((btn) => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const idx = parseInt(btn.getAttribute('data-index'), 10);
+                        const track = Player.queue[idx];
+                        if (track) {
+                            this.openPlaylistPicker(track);
                         }
                     });
                 });

@@ -520,6 +520,20 @@ class PlayerEngine {
     this.emit('queue_change', { queue: this.queue });
   }
 
+  moveInQueue(fromIdx, toIdx) {
+    if (fromIdx < 0 || fromIdx >= this.queue.length || toIdx < 0 || toIdx >= this.queue.length || fromIdx === toIdx) return;
+    const item = this.queue.splice(fromIdx, 1)[0];
+    this.queue.splice(toIdx, 0, item);
+    if (this.currentIndex === fromIdx) {
+      this.currentIndex = toIdx;
+    } else if (fromIdx < this.currentIndex && toIdx >= this.currentIndex) {
+      this.currentIndex--;
+    } else if (fromIdx > this.currentIndex && toIdx <= this.currentIndex) {
+      this.currentIndex++;
+    }
+    this.emit('queue_change', { queue: this.queue });
+  }
+
   clearQueue() {
     if (this.currentTrack) {
       this.queue = [this.currentTrack];

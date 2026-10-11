@@ -937,13 +937,22 @@
                 <div class="side-panel-body">
                     <div id="panel-queue-content" class="panel-tab-content active">
                         <div class="queue-toolbar">
-                            <label class="toggle-label">
-                                <input type="checkbox" id="autoplay-radio-checkbox" checked
-                                    onchange="window.Player && (window.Player.autoplayRadio = this.checked)">
-                                <span>Radio infinie</span>
-                            </label>
-                            <button id="clear-queue-btn" class="text-link-btn"
-                                onclick="window.Player && window.Player.clearQueue()">Vider</button>
+                            <div class="queue-toolbar-left">
+                                <span class="queue-count-badge" id="side-queue-count">0 titres</span>
+                                <label class="toggle-label queue-radio-toggle" title="Générer automatiquement des morceaux similaires à la fin de la file">
+                                    <input type="checkbox" id="autoplay-radio-checkbox" checked
+                                        onchange="window.Player && (window.Player.autoplayRadio = this.checked)">
+                                    <span>Radio infinie</span>
+                                </label>
+                            </div>
+                            <div class="queue-toolbar-actions">
+                                <button id="side-queue-shuffle-btn" class="icon-btn small queue-action-btn" title="Mélanger la file"
+                                    onclick="window.Player && window.Player.toggleShuffle()">
+                                    <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                                </button>
+                                <button id="clear-queue-btn" class="text-link-btn queue-clear-btn"
+                                    onclick="window.Player && window.Player.clearQueue()">Vider</button>
+                            </div>
                         </div>
                         <div id="side-queue-list" class="queue-list"></div>
                     </div>
@@ -1293,11 +1302,20 @@
                 <!-- Tab 3: Queue -->
                 <div id="mobile-tab-queue" class="mobile-tab-content">
                     <div class="queue-toolbar">
-                        <label class="toggle-label">
-                            <input type="checkbox" id="mobile-autoplay-radio-checkbox" checked>
-                            <span>Radio infinie</span>
-                        </label>
-                        <button id="mobile-clear-queue-btn" class="text-link-btn">Vider</button>
+                        <div class="queue-toolbar-left">
+                            <span class="queue-count-badge" id="mobile-queue-count">0 titres</span>
+                            <label class="toggle-label queue-radio-toggle">
+                                <input type="checkbox" id="mobile-autoplay-radio-checkbox" checked>
+                                <span>Radio infinie</span>
+                            </label>
+                        </div>
+                        <div class="queue-toolbar-actions">
+                            <button id="mobile-queue-shuffle-btn" class="icon-btn small queue-action-btn" title="Mélanger la file"
+                                onclick="window.Player && window.Player.toggleShuffle()">
+                                <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                            </button>
+                            <button id="mobile-clear-queue-btn" class="text-link-btn queue-clear-btn">Vider</button>
+                        </div>
                     </div>
                     <div id="mobile-queue-list" class="queue-list"></div>
                 </div>
