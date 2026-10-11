@@ -43,7 +43,6 @@
                     root.style.setProperty('--accent-light', c);
                     root.style.setProperty('--accent-gradient-liked', 'linear-gradient(135deg, ' + c + ', rgba(' + r + ',' + g + ',' + b + ',0.35))');
                 }
-            } catch (e) { }
                 var u = JSON.parse(localStorage.getItem('ytm_auth_user'));
                 var token = localStorage.getItem('ytm_auth_token');
                 if ((!u || !u.username) && token) {
@@ -55,10 +54,10 @@
                 }
                 if (u && u.username) {
                     document.addEventListener('DOMContentLoaded', function () {
-                        var l = document.getElementById('auth-btn-label');
-                        var d = document.getElementById('dropdown-username-display');
-                        var b = document.getElementById('auth-btn');
-                        var a = document.getElementById('auth-dropdown-arrow');
+                        const l = document.getElementById('auth-btn-label');
+                        const d = document.getElementById('dropdown-username-display');
+                        const b = document.getElementById('auth-btn');
+                        const a = document.getElementById('auth-dropdown-arrow');
                         if (l) l.textContent = u.username;
                         if (d) d.textContent = u.username;
                         if (b) b.classList.add('logged-in');
@@ -1843,51 +1842,61 @@
 
         <!-- Modal: Modifier la Cover de la Playlist (Upload Fichier OU Lien URL) -->
         <div id="modal-playlist-cover" class="modal-overlay hidden">
-            <div class="modal-card">
+            <div class="modal-card cover-edit-modal-card">
                 <div class="modal-header">
                     <h3>🖼️ Modifier la couverture</h3>
                     <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-playlist-cover').classList.add('hidden')">
                         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <p class="modal-desc">Personnalisez l'image principale de votre playlist en téléversant un fichier ou en indiquant une URL d'image.</p>
+                <div class="modal-body cover-edit-modal-body">
+                    <p class="modal-desc cover-edit-desc">Personnalisez l'image principale de votre playlist en téléversant un fichier ou en indiquant une URL d'image.</p>
                     
                     <div class="cover-modal-preview-wrapper">
-                        <img id="playlist-cover-modal-preview" src="/icons/icon.svg" class="cover-modal-preview-img" alt="Aperçu Cover">
+                        <div class="cover-modal-preview-frame">
+                            <img id="playlist-cover-modal-preview" src="/icons/icon.svg" class="cover-modal-preview-img" alt="Aperçu Cover">
+                        </div>
                     </div>
 
                     <div class="cover-source-tabs">
-                        <button type="button" class="cover-tab-btn active" id="cover-tab-upload-btn" onclick="window.App && window.App.switchCoverTab('upload')">📁 Fichier local</button>
-                        <button type="button" class="cover-tab-btn" id="cover-tab-url-btn" onclick="window.App && window.App.switchCoverTab('url')">🔗 Lien URL</button>
+                        <button type="button" class="cover-tab-btn active" id="cover-tab-upload-btn" onclick="window.App && window.App.switchCoverTab('upload')">
+                            📁 Fichier local
+                        </button>
+                        <button type="button" class="cover-tab-btn" id="cover-tab-url-btn" onclick="window.App && window.App.switchCoverTab('url')">
+                            🔗 Lien URL
+                        </button>
                     </div>
 
                     <div id="cover-section-upload" class="cover-section-content active">
                         <label class="cover-upload-dropzone" for="playlist-modal-file-input">
-                            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-                            <span>Cliquez pour choisir une photo</span>
+                            <div class="dropzone-icon-wrap">
+                                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                            </div>
+                            <span class="dropzone-title">Cliquez pour choisir une photo</span>
                             <span class="dropzone-hint">JPG, PNG ou WEBP (redimensionnée automatiquement)</span>
                         </label>
                         <input type="file" id="playlist-modal-file-input" accept="image/*" style="display: none;">
                     </div>
 
                     <div id="cover-section-url" class="cover-section-content">
-                        <div class="input-row">
-                            <label>URL de l'image :</label>
-                            <input type="text" id="playlist-modal-url-input" placeholder="https://exemple.com/image.jpg" oninput="window.App && window.App.previewCoverUrl(this.value)">
+                        <div class="cover-url-input-wrap">
+                            <label class="cover-url-label">URL de l'image :</label>
+                            <input type="text" id="playlist-modal-url-input" class="cover-url-input" placeholder="https://exemple.com/image.jpg" oninput="window.App && window.App.previewCoverUrl(this.value)">
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
-                    <button type="button" class="btn secondary small" id="remove-custom-cover-btn" onclick="window.App && window.App.removePlaylistCustomCover()">
+                <div class="modal-footer cover-edit-modal-footer">
+                    <button type="button" class="btn secondary small cover-reset-btn" id="remove-custom-cover-btn" onclick="window.App && window.App.removePlaylistCustomCover()">
                         🗑️ Réinitialiser (Cover 1er titre)
                     </button>
-                    <button type="button" class="btn secondary small" onclick="document.getElementById('modal-playlist-cover').classList.add('hidden')">
-                        Annuler
-                    </button>
-                    <button type="button" class="btn primary small" onclick="window.App && window.App.savePlaylistCoverModal()">
-                        Enregistrer
-                    </button>
+                    <div class="cover-footer-actions">
+                        <button type="button" class="btn secondary small" onclick="document.getElementById('modal-playlist-cover').classList.add('hidden')">
+                            Annuler
+                        </button>
+                        <button type="button" class="btn primary small" onclick="window.App && window.App.savePlaylistCoverModal()">
+                            Enregistrer
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

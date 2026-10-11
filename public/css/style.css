@@ -4902,14 +4902,12 @@ textarea#import-text-input:focus {
   height: 26px;
   fill: #fff;
 }
-.profile-avatar-tabs,
-.cover-source-tabs {
+.profile-avatar-tabs {
   display: flex;
   gap: 8px;
   margin: 16px 0 12px 0;
 }
-.avatar-tab-btn,
-.cover-tab-btn {
+.avatar-tab-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-secondary);
@@ -4920,28 +4918,23 @@ textarea#import-text-input:focus {
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.avatar-tab-btn:hover,
-.cover-tab-btn:hover {
+.avatar-tab-btn:hover {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
-.avatar-tab-btn.active,
-.cover-tab-btn.active {
+.avatar-tab-btn.active {
   background: #fff;
   color: #030303;
   border-color: #fff;
   font-weight: 600;
 }
-.profile-tab-content,
-.cover-section-content {
+.profile-tab-content {
   display: none;
 }
-.profile-tab-content.active,
-.cover-section-content.active {
+.profile-tab-content.active {
   display: block;
 }
-.avatar-upload-dropzone,
-.cover-upload-dropzone {
+.avatar-upload-dropzone {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4956,33 +4949,218 @@ textarea#import-text-input:focus {
   text-align: center;
   margin-bottom: 14px;
 }
-.avatar-upload-dropzone:hover,
-.cover-upload-dropzone:hover {
+.avatar-upload-dropzone:hover {
   border-color: rgba(255, 255, 255, 0.45);
   background: rgba(255, 255, 255, 0.06);
 }
-.avatar-upload-dropzone svg,
-.cover-upload-dropzone svg {
+.avatar-upload-dropzone svg {
   width: 32px;
   height: 32px;
   fill: rgba(255, 255, 255, 0.7);
+}
+
+/* ==========================================================================
+   Redesigned Playlist Cover Modal
+   ========================================================================== */
+.cover-edit-modal-card {
+  max-width: 480px;
+  width: 92%;
+  border-radius: 20px;
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+}
+
+.cover-edit-modal-body {
+  padding: 24px 28px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cover-edit-desc {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  max-width: 380px;
+}
+
+.cover-modal-preview-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.cover-modal-preview-frame {
+  width: 160px;
+  height: 160px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+.cover-modal-preview-frame:hover {
+  border-color: var(--accent-red, #ff0033);
+  box-shadow: 0 16px 40px var(--accent-glow, rgba(255, 0, 51, 0.35));
+  transform: scale(1.02);
+}
+
+.cover-modal-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-source-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.cover-tab-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  padding: 8px 20px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.cover-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.cover-tab-btn.active {
+  background: #ffffff;
+  color: #030303;
+  border-color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+.cover-section-content {
+  display: none;
+  width: 100%;
+}
+.cover-section-content.active {
+  display: block;
+}
+
+.cover-upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 30px 20px;
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+  width: 100%;
+}
+.cover-upload-dropzone:hover {
+  border-color: var(--accent-red, #ff0033);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 16px var(--accent-subtle, rgba(255, 0, 51, 0.15));
+}
+.dropzone-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  transition: transform 0.2s ease;
+}
+.cover-upload-dropzone:hover .dropzone-icon-wrap {
+  transform: scale(1.1);
+  background: var(--accent-subtle, rgba(255, 0, 51, 0.2));
+}
+.cover-upload-dropzone svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--text-primary);
+}
+.dropzone-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 .dropzone-hint {
   font-size: 12px;
   color: var(--text-muted);
 }
-.cover-modal-preview-wrapper {
+
+.cover-url-input-wrap {
   display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
 }
-.cover-modal-preview-img {
-  width: 140px;
-  height: 140px;
-  border-radius: 12px;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+.cover-url-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.cover-url-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.cover-url-input:focus {
+  border-color: var(--accent-red, #ff0033);
+  box-shadow: 0 0 10px var(--accent-subtle, rgba(255, 0, 51, 0.25));
+}
+
+.cover-edit-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px 24px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.15);
+}
+.cover-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cover-reset-btn {
+  color: var(--text-secondary) !important;
+  transition: all 0.2s ease;
+}
+.cover-reset-btn:hover {
+  color: #ff6b6b !important;
+  background: rgba(255, 0, 51, 0.12) !important;
 }
 
 /* Artist Subscribe Button & Subscriptions Grid */
