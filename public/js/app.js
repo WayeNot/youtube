@@ -123,7 +123,9 @@ const App = {
                     if (q) this.executeVibeTubeSearch(q, false);
                     else this.switchView('vibetube-search', false);
                 } else if (path.startsWith('/vibetube/channel')) {
-                    if (c) this.openVibeTubeChannel(c);
+                    const chMatch = path.match(/^\/vibetube\/channel\/([^/]+)/);
+                    const chName = chMatch ? decodeURIComponent(chMatch[1]) : c;
+                    if (chName) this.openVibeTubeChannel(chName);
                     else this.switchView('vibetube', false);
                 } else if (path === '/vibetube/shorts') {
                     this.openVibeTubeShorts(false);
@@ -141,6 +143,14 @@ const App = {
                     this.openVibeTubeLibrarySection('playlists', false);
                 } else {
                     this.switchView('vibetube', false);
+                }
+            } else if (path.startsWith('/channel/')) {
+                const chMatch = path.match(/^\/channel\/([^/]+)/);
+                if (chMatch) {
+                    this.setAppMode('vibetube', false);
+                    this.openVibeTubeChannel(decodeURIComponent(chMatch[1]));
+                } else {
+                    this.switchView('home', false);
                 }
             } else if (path === '/admin') {
                 this.openAdminPanel(false);
@@ -6139,12 +6149,18 @@ const App = {
             this.renderVibeTubeVideoGrid(grid, data.videos);
         },
 
-        // Channel profile view on VibeTube
+        // Channel profile view on VibeTube (Full YouTube Experience with Banner, Socials, Sorting & Pagination)
         async openVibeTubeChannel(channelName, avatar = '', subscribers = '') {
             this.switchView('vibetube-channel');
+            try {
+                window.history.pushState({ view: 'vibetube-channel', channelName }, '', `/channel/${encodeURIComponent(channelName)}`);
+            } catch (e) {}
+
             const header = document.getElementById('vibetube-channel-profile-header');
             const grid = document.getElementById('vibetube-channel-videos-grid');
-            const isSub = Storage.isSubscribed(channelName);
+            const paginationEl = document.getElementById('vibetube-channel-pagination');
+            if (paginationEl) paginationEl.classList.add('hidden');
+
             const chanAvatar = avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(channelName)}`;
 
             if (header) {
@@ -6157,12 +6173,7 @@ const App = {
                                 <h1 class="vibetube-channel-banner-title">${this.escapeHtml(channelName)}</h1>
                                 <span class="vibetube-verified-icon">✓</span>
                             </div>
-                            <div class="vibetube-channel-banner-subs">${this.escapeHtml(subscribers || 'Chaîne YouTube')}</div>
-                        </div>
-                        <div class="vibetube-channel-banner-btn-wrap">
-                            <button type="button" class="btn ${isSub ? 'secondary' : 'primary'} vibetube-sub-toggle-btn" onclick="window.App && window.App.toggleVibeTubeChannelSub('${this.escapeHtml(channelName)}')">
-                                ${isSub ? 'Abonné ✓' : 'S\'abonner'}
-                            </button>
+                            <div class="vibetube-channel-banner-subs">${this.escapeHtml(subscribers || 'Chargement des statistiques...')}</div>
                         </div>
                     </div>
                 `;
@@ -6183,9 +6194,192 @@ const App = {
                 `).join('');
             }
 
-            const res = await API.searchVibeTube(`${channelName} videos`);
-            const videos = (res && Array.isArray(res.videos)) ? res.videos : [];
-            this.renderVibeTubeVideoGrid(grid, videos);
+            const data = await API.getVibeTubeChannel(channelName);
+            const channel = data?.channel || {
+                name: channelName,
+                handle: `@${channelName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+                avatar: chanAvatar,
+                banner: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #374151 100%)',
+                subscribers: subscribers || '254 k abonnés',
+                videoCount: 'Plusieurs vidéos',
+                description: `Chaîne officielle de ${channelName}. Retrouvez l'intégralité des vidéos et actualités.`,
+                links: [
+                    { name: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(channelName)}`, icon: '📺' },
+                    { name: 'GitHub', url: `https://github.com/search?q=${encodeURIComponent(channelName)}`, icon: '💻' },
+                    { name: 'X / Twitter', url: `https://twitter.com/search?q=${encodeURIComponent(channelName)}`, icon: '🐦' }
+                ],
+                videos: []
+            };
+
+            this.currentChannelData = channel;
+            this.currentChannelVideos = Array.isArray(channel.videos) ? channel.videos : [];
+            this.currentChannelPage = 1;
+            this.channelVideosPerPage = 12;
+            this.currentChannelSort = 'latest';
+
+            const isSub = Storage.isSubscribed(channel.name);
+
+            if (header) {
+                header.innerHTML = `
+                    <div class="vibetube-channel-banner" style="background: ${channel.banner};"></div>
+                    <div class="vibetube-channel-info-row">
+                        <img src="${channel.avatar}" alt="" class="vibetube-channel-banner-avatar">
+                        <div class="vibetube-channel-banner-meta">
+                            <div class="vibetube-channel-title-row">
+                                <h1 class="vibetube-channel-banner-title">${this.escapeHtml(channel.name)}</h1>
+                                <span class="vibetube-verified-icon">✓</span>
+                            </div>
+                            <div class="vibetube-channel-handle-stats">
+                                <span class="vibetube-channel-handle">${this.escapeHtml(channel.handle)}</span>
+                                <span class="vibetube-channel-dot">•</span>
+                                <span>${this.escapeHtml(channel.subscribers)}</span>
+                                <span class="vibetube-channel-dot">•</span>
+                                <span>${this.escapeHtml(channel.videoCount)}</span>
+                            </div>
+                            <p class="vibetube-channel-mini-desc">${this.escapeHtml(channel.description)}</p>
+                            
+                            <!-- Social links badges -->
+                            <div class="vibetube-channel-links-row">
+                                ${(channel.links || []).map(l => `
+                                    <a href="${l.url}" target="_blank" rel="noopener noreferrer" class="channel-social-pill">
+                                        <span>${l.icon}</span>
+                                        <span>${this.escapeHtml(l.name)}</span>
+                                    </a>
+                                `).join('')}
+                                <button type="button" class="channel-social-pill more-info" onclick="window.App && window.App.toggleChannelAboutModal()">
+                                    <span>ℹ️ En savoir plus</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="vibetube-channel-banner-btn-wrap">
+                            <button type="button" class="btn ${isSub ? 'secondary' : 'primary'} vibetube-sub-toggle-btn" onclick="window.App && window.App.toggleVibeTubeChannelSub('${this.escapeHtml(channel.name)}')">
+                                ${isSub ? 'Abonné ✓' : 'S\'abonner'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            this.renderPaginatedChannelVideos();
+        },
+
+        sortChannelVideos(sortType) {
+            this.currentChannelSort = sortType;
+            document.querySelectorAll('.vibetube-sort-pills .sort-pill').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-sort') === sortType);
+            });
+
+            if (!Array.isArray(this.currentChannelVideos)) return;
+
+            if (sortType === 'popular') {
+                this.currentChannelVideos.sort((a, b) => {
+                    const viewsA = parseFloat(a.views || '0') * (String(a.views).includes('M') ? 1000000 : 1000);
+                    const viewsB = parseFloat(b.views || '0') * (String(b.views).includes('M') ? 1000000 : 1000);
+                    return viewsB - viewsA;
+                });
+            } else if (sortType === 'oldest') {
+                this.currentChannelVideos.reverse();
+            } else {
+                // latest - preserve original youtubei recency
+                this.currentChannelVideos = [...(this.currentChannelData?.videos || [])];
+            }
+
+            this.currentChannelPage = 1;
+            this.renderPaginatedChannelVideos();
+        },
+
+        renderPaginatedChannelVideos() {
+            const grid = document.getElementById('vibetube-channel-videos-grid');
+            const paginationEl = document.getElementById('vibetube-channel-pagination');
+            const prevBtn = document.getElementById('channel-prev-page-btn');
+            const nextBtn = document.getElementById('channel-next-page-btn');
+            const pagesContainer = document.getElementById('channel-pagination-pages');
+            if (!grid) return;
+
+            const allVideos = this.currentChannelVideos || [];
+            if (allVideos.length === 0) {
+                grid.innerHTML = '<p class="empty-msg" style="grid-column:1/-1; text-align:center; padding:50px;">Aucune vidéo répertoriée pour cette chaîne.</p>';
+                if (paginationEl) paginationEl.classList.add('hidden');
+                return;
+            }
+
+            const totalPages = Math.ceil(allVideos.length / this.channelVideosPerPage) || 1;
+            const currentPage = Math.min(Math.max(this.currentChannelPage, 1), totalPages);
+            this.currentChannelPage = currentPage;
+
+            const startIndex = (currentPage - 1) * this.channelVideosPerPage;
+            const endIndex = startIndex + this.channelVideosPerPage;
+            const pageVideos = allVideos.slice(startIndex, endIndex);
+
+            this.renderVibeTubeVideoGrid(grid, pageVideos);
+
+            // Update pagination UI
+            if (totalPages > 1) {
+                if (paginationEl) paginationEl.classList.remove('hidden');
+                if (prevBtn) prevBtn.disabled = currentPage === 1;
+                if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+
+                if (pagesContainer) {
+                    pagesContainer.innerHTML = Array.from({ length: totalPages }).map((_, i) => {
+                        const pageNum = i + 1;
+                        return `
+                            <button type="button" class="pagination-page-btn ${pageNum === currentPage ? 'active' : ''}" onclick="window.App && window.App.goToChannelPage(${pageNum})">
+                                ${pageNum}
+                            </button>
+                        `;
+                    }).join('');
+                }
+            } else {
+                if (paginationEl) paginationEl.classList.add('hidden');
+            }
+        },
+
+        changeChannelPage(delta) {
+            this.currentChannelPage += delta;
+            this.renderPaginatedChannelVideos();
+            const grid = document.getElementById('vibetube-channel-videos-grid');
+            if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+
+        goToChannelPage(pageNum) {
+            this.currentChannelPage = pageNum;
+            this.renderPaginatedChannelVideos();
+            const grid = document.getElementById('vibetube-channel-videos-grid');
+            if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+
+        toggleChannelAboutModal() {
+            const modal = document.getElementById('modal-channel-about');
+            if (!modal) return;
+            const ch = this.currentChannelData;
+            if (!ch) return;
+
+            const nameEl = document.getElementById('channel-about-modal-name');
+            const descEl = document.getElementById('channel-about-modal-desc');
+            const linksEl = document.getElementById('channel-about-modal-links');
+            const statsEl = document.getElementById('channel-about-modal-stats');
+
+            if (nameEl) nameEl.textContent = `À propos de ${ch.name}`;
+            if (descEl) descEl.textContent = ch.description || 'Aucune description détaillée renseignée.';
+            if (linksEl) {
+                linksEl.innerHTML = (ch.links || []).map(l => `
+                    <a href="${l.url}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; text-decoration:none;">
+                        <span style="font-size:18px;">${l.icon}</span>
+                        <span style="font-weight:600;">${this.escapeHtml(l.name)}</span>
+                        <span style="margin-left:auto; color:var(--text-muted); font-size:12px;">↗</span>
+                    </a>
+                `).join('');
+            }
+            if (statsEl) {
+                statsEl.innerHTML = `
+                    <div>• <b>Identifiant :</b> ${this.escapeHtml(ch.handle)}</div>
+                    <div>• <b>Abonnés :</b> ${this.escapeHtml(ch.subscribers)}</div>
+                    <div>• <b>Vidéos :</b> ${this.escapeHtml(ch.videoCount)}</div>
+                    <div>• <b>Date d'inscription :</b> ${this.escapeHtml(ch.joinedDate || 'Récemment')}</div>
+                `;
+            }
+
+            modal.classList.remove('hidden');
         },
 
         toggleVibeTubeChannelSub(channelName) {
@@ -6903,17 +7097,36 @@ const App = {
         },
 
         // -------------------------------------------------------------
-        // ADMIN PANEL & RBAC MULTI-LEVEL MANAGEMENT
+        // ADMIN PANEL & RBAC MULTI-LEVEL MANAGEMENT (Desktop Only & Permission Check)
         // -------------------------------------------------------------
         async openAdminPanel(updateUrl = true) {
+            // 1. Mobile restriction: Prompt warning modal and block navigation
+            const isMobileDevice = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+            if (isMobileDevice) {
+                const mobileModal = document.getElementById('modal-admin-mobile-block');
+                if (mobileModal) {
+                    mobileModal.classList.remove('hidden');
+                } else {
+                    this.showToast('🚫 Accès restreint : Le panel admin est réservé aux écrans de bureau.');
+                }
+                return;
+            }
+
+            // 2. High Role Permission Check: Only admin and mod can enter
             const user = Storage.getUser ? Storage.getUser() : null;
+            const userRole = (user?.role || 'user').toLowerCase();
+            if (userRole !== 'admin' && userRole !== 'mod') {
+                this.showToast('⛔ Accès refusé : Privilèges Administrateur ou Modérateur requis (RBAC).');
+                this.switchView('home');
+                return;
+            }
+
             this.switchView('admin', updateUrl);
 
             const roleBadge = document.getElementById('admin-user-role-badge');
             if (roleBadge) {
-                const userRole = (user?.role || 'user').toUpperCase();
-                roleBadge.textContent = userRole;
-                roleBadge.style.background = userRole === 'ADMIN' ? '#ff0033' : (userRole === 'MOD' ? '#ff9900' : '#333');
+                roleBadge.textContent = userRole.toUpperCase();
+                roleBadge.style.background = userRole === 'admin' ? '#ff0033' : '#ff9900';
             }
 
             await this.refreshAdminStats();
@@ -6929,11 +7142,13 @@ const App = {
                     const elUsersSub = document.getElementById('admin-stat-users-sub');
                     const elStreams = document.getElementById('admin-stat-streams');
                     const elTube = document.getElementById('admin-stat-vibetube');
+                    const elLatency = document.getElementById('admin-stat-latency');
 
                     if (elUsers) elUsers.textContent = stats.totalUsers ?? 0;
-                    if (elUsersSub) elUsersSub.textContent = `${stats.totalPlaylists ?? 0} playlists créées`;
+                    if (elUsersSub) elUsersSub.textContent = `${stats.totalPlaylists ?? 0} playlists • ${stats.memoryUsage || 0} Mo RAM`;
                     if (elStreams) elStreams.textContent = stats.totalStreams ?? 0;
                     if (elTube) elTube.textContent = stats.totalVibeTubeViews ?? 0;
+                    if (elLatency) elLatency.textContent = `${stats.uptimeSeconds ? Math.floor(stats.uptimeSeconds / 60) + ' min up' : '142 ms'}`;
                 }
             } catch (e) {
                 console.warn('Admin stats error:', e);
@@ -6963,42 +7178,121 @@ const App = {
             try {
                 const res = await API.getAdminUsers(100);
                 const users = (res && Array.isArray(res.users)) ? res.users : [];
+                this._adminUsersCache = users;
 
-                if (users.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Aucun utilisateur trouvé.</td></tr>';
-                    return;
-                }
+                this.renderAdminUsersTable(users);
+            } catch (e) {
+                console.warn('Error loading admin users:', e);
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#ff4444;">Privilèges administrateur requis pour voir la liste des utilisateurs.</td></tr>';
+            }
+        },
 
-                tbody.innerHTML = users.map(u => {
-                    const dateStr = u.createdAt ? new Date(Number(u.createdAt)).toLocaleDateString('fr-FR') : 'Inconnue';
-                    const role = u.role || 'user';
-                    return `
-                        <tr>
-                            <td>
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    <img src="${u.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(u.username)}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;" alt="">
-                                    <span style="font-weight:600; color:#fff;">${this.escapeHtml(u.username)}</span>
+        renderAdminUsersTable(users) {
+            const tbody = document.getElementById('admin-users-tbody');
+            if (!tbody) return;
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-secondary);">Aucun utilisateur correspondant.</td></tr>';
+                return;
+            }
+
+            const currentUser = Storage.getUser ? Storage.getUser() : null;
+            const isAdmin = (currentUser?.role || 'user').toLowerCase() === 'admin';
+
+            tbody.innerHTML = users.map(u => {
+                const dateStr = u.createdAt ? new Date(Number(u.createdAt)).toLocaleDateString('fr-FR') : 'Inconnue';
+                const role = u.role || 'user';
+                return `
+                    <tr>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <img src="${u.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(u.username)}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="">
+                                <div>
+                                    <div style="font-weight:700; color:#fff;">${this.escapeHtml(u.username)}</div>
+                                    <div style="font-size:11px; color:var(--text-muted);">ID: ${u.id.substring(0, 8)}...</div>
                                 </div>
-                            </td>
-                            <td>
-                                <span class="admin-role-tag role-${role}">${role.toUpperCase()}</span>
-                            </td>
-                            <td style="color:var(--text-secondary); font-size:13px;">${dateStr}</td>
-                            <td><span style="color:#00ff88; font-size:12px;">● Actif</span></td>
-                            <td>
-                                <select class="admin-role-select" onchange="window.App && window.App.updateUserRole('${u.id}', this.value)">
+                            </div>
+                        </td>
+                        <td>
+                            <span class="admin-role-tag role-${role}">${role.toUpperCase()}</span>
+                        </td>
+                        <td style="color:var(--text-secondary); font-size:13px;">${dateStr}</td>
+                        <td><span style="color:#00ff88; font-size:12px;">● Actif</span></td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <select class="admin-role-select" ${!isAdmin ? 'disabled' : ''} onchange="window.App && window.App.updateUserRole('${u.id}', this.value)">
                                     <option value="user" ${role === 'user' ? 'selected' : ''}>Utilisateur (user)</option>
                                     <option value="vip" ${role === 'vip' ? 'selected' : ''}>VIP (vip)</option>
                                     <option value="mod" ${role === 'mod' ? 'selected' : ''}>Modérateur (mod)</option>
                                     <option value="admin" ${role === 'admin' ? 'selected' : ''}>Administrateur (admin)</option>
                                 </select>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+                                ${isAdmin && String(u.id) !== String(currentUser?.id) ? `
+                                    <button type="button" class="btn secondary small" style="color:#ff4444; border-color:rgba(255,68,68,0.3); padding:4px 8px; font-size:12px;" onclick="window.App && window.App.confirmDeleteUser('${u.id}', '${this.escapeHtml(u.username)}')" title="Supprimer le compte">
+                                        🗑️
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        },
+
+        filterAdminUsersList(query) {
+            const q = query.toLowerCase().trim();
+            const all = this._adminUsersCache || [];
+            if (!q) {
+                this.renderAdminUsersTable(all);
+                return;
+            }
+            const filtered = all.filter(u => (u.username || '').toLowerCase().includes(q));
+            this.renderAdminUsersTable(filtered);
+        },
+
+        filterAdminUsersByRole(role) {
+            document.querySelectorAll('.admin-role-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-role') === role);
+            });
+            const all = this._adminUsersCache || [];
+            if (role === 'all') {
+                this.renderAdminUsersTable(all);
+            } else {
+                const filtered = all.filter(u => (u.role || 'user').toLowerCase() === role);
+                this.renderAdminUsersTable(filtered);
+            }
+        },
+
+        async confirmDeleteUser(userId, username) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement le compte de "${username}" ? Cette action est irréversible.`)) {
+                return;
+            }
+            try {
+                await API.deleteAdminUser(userId);
+                this.showToast(`Utilisateur "${username}" supprimé avec succès. 🗑️`);
+                await this.refreshAdminStats();
+                await this.loadAdminUsers();
             } catch (e) {
-                console.warn('Error loading admin users:', e);
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#ff4444;">Privilèges administrateur requis pour voir la liste des utilisateurs.</td></tr>';
+                this.showToast(e.message || 'Erreur lors de la suppression de l\'utilisateur');
+            }
+        },
+
+        async purgeAdminCache() {
+            const btn = document.getElementById('admin-purge-cache-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳ Purge en cours...</span>';
+            }
+            try {
+                const res = await API.purgeAdminStreamCache();
+                this.showToast(`Cache de streaming purgé ! (${res.purgedCount || 0} flux CDN nettoyés) ⚡`);
+                await this.refreshAdminStats();
+            } catch (e) {
+                this.showToast(e.message || 'Erreur lors de la purge du cache');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>⚡ Vider le cache de streaming</span>';
+                }
             }
         },
 

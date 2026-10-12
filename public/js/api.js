@@ -313,6 +313,53 @@ const API = {
       console.warn('Admin audit logs error:', e);
       return null;
     }
+  },
+
+  async getVibeTubeChannel(channelName) {
+    try {
+      const res = await fetch(`/api/vibetube/channel?name=${encodeURIComponent(channelName)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('VibeTube channel API error:', e);
+      return null;
+    }
+  },
+
+  async deleteAdminUser(userId) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('Delete user error:', e);
+      throw e;
+    }
+  },
+
+  async purgeAdminStreamCache() {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch('/api/admin/purge-cache', {
+        method: 'POST',
+        headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('Purge cache error:', e);
+      throw e;
+    }
   }
 };
 

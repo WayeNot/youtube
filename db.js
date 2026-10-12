@@ -1335,6 +1335,25 @@ const db = {
       `).all(limit);
       return rows;
     }
+  },
+
+  async adminDeleteUser(userId) {
+    if (isNeon) {
+      await neonSql`DELETE FROM users WHERE id = ${userId}`;
+    } else {
+      sqliteDb.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    }
+    return true;
+  },
+
+  async adminPurgeStreamCache() {
+    if (isNeon) {
+      const res = await neonSql`DELETE FROM stream_cache RETURNING video_id`;
+      return res.length;
+    } else {
+      const info = sqliteDb.prepare('DELETE FROM stream_cache').run();
+      return info.changes;
+    }
   }
 };
 

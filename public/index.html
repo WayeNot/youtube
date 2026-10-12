@@ -525,13 +525,39 @@
                     <div id="vibetube-search-results-grid" class="vibetube-video-grid" style="margin-top:20px;"></div>
                 </section>
 
-                <!-- VIEW: VIBETUBE CHANNEL PROFILE -->
+                <!-- VIEW: VIBETUBE CHANNEL PROFILE (Full YouTube Style Experience) -->
                 <section id="view-vibetube-channel" class="view-section">
                     <div id="vibetube-channel-profile-header" class="vibetube-channel-header"></div>
-                    <div class="section-header" style="margin-top:24px;">
-                        <h2 class="section-title">Vidéos de la chaîne</h2>
+                    
+                    <!-- Channel Navigation Tabs & Sort Controls -->
+                    <div class="vibetube-channel-tabs-bar">
+                        <div class="vibetube-channel-tabs">
+                            <button type="button" class="channel-tab-btn active" data-tab="videos">Vidéos</button>
+                            <button type="button" class="channel-tab-btn" data-tab="about" onclick="window.App && window.App.toggleChannelAboutModal()">À propos & Réseaux</button>
+                        </div>
+                        <div class="vibetube-channel-sort-wrap">
+                            <span class="vibetube-sort-label">Trier par :</span>
+                            <div class="vibetube-sort-pills">
+                                <button type="button" class="sort-pill active" data-sort="latest" onclick="window.App && window.App.sortChannelVideos('latest')">Plus récentes</button>
+                                <button type="button" class="sort-pill" data-sort="popular" onclick="window.App && window.App.sortChannelVideos('popular')">Populaires</button>
+                                <button type="button" class="sort-pill" data-sort="oldest" onclick="window.App && window.App.sortChannelVideos('oldest')">Plus anciennes</button>
+                            </div>
+                        </div>
                     </div>
-                    <div id="vibetube-channel-videos-grid" class="vibetube-video-grid"></div>
+
+                    <!-- Channel Videos Grid -->
+                    <div id="vibetube-channel-videos-grid" class="vibetube-video-grid" style="margin-top:20px;"></div>
+
+                    <!-- Stylish Pagination Controls in VibeTube Aesthetic -->
+                    <div id="vibetube-channel-pagination" class="vibetube-pagination-wrapper hidden">
+                        <button type="button" class="btn secondary small pagination-nav-btn" id="channel-prev-page-btn" onclick="window.App && window.App.changeChannelPage(-1)">
+                            <span>← Précédent</span>
+                        </button>
+                        <div id="channel-pagination-pages" class="pagination-page-numbers"></div>
+                        <button type="button" class="btn secondary small pagination-nav-btn" id="channel-next-page-btn" onclick="window.App && window.App.changeChannelPage(1)">
+                            <span>Suivant →</span>
+                        </button>
+                    </div>
                 </section>
 
                 <!-- VIEW: VIBETUBE WATCH (Full YouTube Cinema & Community Experience) -->
@@ -744,30 +770,69 @@
                             </div>
                         </div>
 
-                        <!-- Admin Tabs (Users, Live Streams, Audit Logs) -->
+                        <!-- Admin Tabs (Users, Live Streams, Maintenance & CDN, Audit Logs) -->
                         <div class="admin-tabs-nav">
                             <button type="button" class="admin-tab-btn active" data-admin-tab="users" onclick="window.App && window.App.switchAdminTab('users')">👥 Utilisateurs & Rôles</button>
+                            <button type="button" class="admin-tab-btn" data-admin-tab="maintenance" onclick="window.App && window.App.switchAdminTab('maintenance')">⚙️ Maintenance & Cache</button>
                             <button type="button" class="admin-tab-btn" data-admin-tab="live" onclick="window.App && window.App.switchAdminTab('live')">⚡ Live Pulse & Jam</button>
                             <button type="button" class="admin-tab-btn" data-admin-tab="audit" onclick="window.App && window.App.switchAdminTab('audit')">🛡️ Audit Logs & Sécurité</button>
                         </div>
 
-                        <!-- Tab: Users & Roles -->
+                        <!-- Tab: Users & Roles (Advanced User Management) -->
                         <div id="admin-tab-users" class="admin-tab-content active">
+                            <div class="admin-users-filter-bar">
+                                <div class="admin-users-search-box">
+                                    <span>🔍</span>
+                                    <input type="text" id="admin-users-search-input" placeholder="Filtrer les utilisateurs par pseudo..." oninput="window.App && window.App.filterAdminUsersList(this.value)">
+                                </div>
+                                <div class="admin-users-role-filter">
+                                    <button type="button" class="admin-role-filter-btn active" data-role="all" onclick="window.App && window.App.filterAdminUsersByRole('all')">Tous</button>
+                                    <button type="button" class="admin-role-filter-btn" data-role="admin" onclick="window.App && window.App.filterAdminUsersByRole('admin')">Admins</button>
+                                    <button type="button" class="admin-role-filter-btn" data-role="mod" onclick="window.App && window.App.filterAdminUsersByRole('mod')">Modérateurs</button>
+                                    <button type="button" class="admin-role-filter-btn" data-role="vip" onclick="window.App && window.App.filterAdminUsersByRole('vip')">VIP</button>
+                                </div>
+                            </div>
                             <div class="admin-table-container">
                                 <table class="admin-table">
                                     <thead>
                                         <tr>
                                             <th>Utilisateur</th>
                                             <th>Rôle</th>
-                                            <th>Inscription</th>
+                                            <th>Date d'inscription</th>
                                             <th>Statut</th>
-                                            <th>Actions RBAC</th>
+                                            <th>Permissions RBAC & Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="admin-users-tbody">
                                         <tr><td colspan="5" style="text-align:center; padding:20px;">Chargement des utilisateurs...</td></tr>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Maintenance & System Cache -->
+                        <div id="admin-tab-maintenance" class="admin-tab-content hidden">
+                            <div class="admin-panel-card">
+                                <h3>⚙️ Infrastructure & Cache Haute Performance</h3>
+                                <p style="color:var(--text-secondary); font-size:14px; margin-top:6px; line-height:1.5;">Gérez la mémoire vive, les flux CDN YouTube et l'intégrité de la base de données NeonDB.</p>
+                                
+                                <div class="admin-maintenance-grid" style="margin-top:20px;">
+                                    <div class="admin-maint-box">
+                                        <h4>🚀 Cache de Streaming (stream_cache)</h4>
+                                        <p style="font-size:13px; color:var(--text-secondary); margin:8px 0 16px;">Purge les URLs expirées et libère les connexions actives vers les serveurs CDN.</p>
+                                        <button type="button" class="btn primary small" id="admin-purge-cache-btn" onclick="window.App && window.App.purgeAdminCache()">
+                                            <span>⚡ Vider le cache de streaming</span>
+                                        </button>
+                                    </div>
+                                    <div class="admin-maint-box">
+                                        <h4>🛡️ Politique RBAC Multi-Niveaux</h4>
+                                        <p style="font-size:13px; color:var(--text-secondary); margin:8px 0;">
+                                            <b>• Admin :</b> Accès total, modification des rôles, suppression de comptes, purge du cache.<br>
+                                            <b>• Modérateur :</b> Vue d'ensemble, monitoring des Jam Rooms, consultation des logs.<br>
+                                            <b>• VIP / Utilisateur :</b> Accès refusé au panel d'administration.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -2685,6 +2750,51 @@
                             Enregistrer
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: ADMIN MOBILE RESTRICTION WARNING -->
+        <div id="modal-admin-mobile-block" class="modal-overlay hidden" style="z-index: 100010;">
+            <div class="modal-card admin-mobile-modal-card">
+                <div class="modal-header">
+                    <h3 style="display:flex; align-items:center; gap:8px; color:#ff4444;">
+                        <span>🚫</span> Accès Restreint sur Mobile
+                    </h3>
+                    <button class="icon-btn" onclick="document.getElementById('modal-admin-mobile-block').classList.add('hidden')" title="Fermer">✕</button>
+                </div>
+                <div class="modal-body" style="padding: 24px; text-align:center;">
+                    <div style="font-size: 54px; margin-bottom: 14px;">🖥️</div>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Panneau d'Administration Dédié Desktop</h2>
+                    <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                        Pour des raisons strictes de sécurité, de lisibilité des tables RBAC et de manipulation de l'infrastructure, le <b>Panneau d'Administration</b> n'est pas accessible depuis un smartphone ou un écran tactile mobile.<br><br>
+                        Veuillez vous connecter depuis un ordinateur de bureau ou un écran large.
+                    </p>
+                    <button type="button" class="btn primary full-width" onclick="document.getElementById('modal-admin-mobile-block').classList.add('hidden'); window.App && window.App.switchView('vibetube');">
+                        <span>Compris, retourner sur VibeTube</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: CHANNEL ABOUT & SOCIAL LINKS -->
+        <div id="modal-channel-about" class="modal-overlay hidden" style="z-index: 100005;">
+            <div class="modal-card" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3 style="display:flex; align-items:center; gap:8px;">
+                        <span>ℹ️</span> <span id="channel-about-modal-name">À propos de la chaîne</span>
+                    </h3>
+                    <button class="icon-btn" onclick="document.getElementById('modal-channel-about').classList.add('hidden')" title="Fermer">✕</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <h4 style="font-size:13px; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Description</h4>
+                    <p id="channel-about-modal-desc" style="color:var(--text-secondary); font-size:14px; line-height:1.6; white-space:pre-wrap; margin-bottom:20px;"></p>
+                    
+                    <h4 style="font-size:13px; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Liens & Réseaux Sociaux</h4>
+                    <div id="channel-about-modal-links" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;"></div>
+                    
+                    <h4 style="font-size:13px; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Informations de la chaîne</h4>
+                    <div id="channel-about-modal-stats" style="color:var(--text-secondary); font-size:13px; line-height:1.6;"></div>
                 </div>
             </div>
         </div>
