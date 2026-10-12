@@ -1873,7 +1873,7 @@ const App = {
         // -------------------------------------------------------------
         // SEARCH & AUTOCOMPLETE
         // -------------------------------------------------------------
-        showRecentSearchSuggestions() {
+        showRecentSearchSuggestions(targetDropdown = null) {
             const recent = Storage.getRecentSearches();
             const history = Storage.getHistory();
 
@@ -1897,12 +1897,15 @@ const App = {
             });
 
             if (queryItems.length === 0 && trackItems.length === 0) {
-                this.dom.suggestionsDropdown.innerHTML = `
+                const emptyTarget = targetDropdown || this.dom.suggestionsDropdown;
+                if (emptyTarget) {
+                    emptyTarget.innerHTML = `
           <div style="padding: 16px; color: var(--text-muted); font-size: 13px; text-align: center;">
             Recherchez des morceaux, artistes ou albums
           </div>
         `;
-                this.dom.suggestionsDropdown.classList.remove('hidden');
+                    emptyTarget.classList.remove('hidden');
+                }
                 return;
             }
 

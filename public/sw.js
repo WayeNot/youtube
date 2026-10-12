@@ -37,8 +37,15 @@ self.addEventListener('fetch', (e) => {
                 }
                 return networkRes;
             })
-            .catch(() => {
-                return caches.match(e.request);
+            .catch(async () => {
+                const cached = await caches.match(e.request);
+                if (cached) return cached;
+                // For SPA navigation routes (e.g. /library/liked, /playlist/...) fallback to cached index.html
+                if (e.request.mode === 'navigate') {
+                    const indexCached = await caches.match('/');
+                    if (indexCached) return indexCached;
+                }
+                return new Response('Offline', { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'text/plain' } });
             })
     );
 });

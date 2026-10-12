@@ -86,14 +86,14 @@ const EMBEDDED_COOKIES = `# Netscape HTTP Cookie File
 .youtube.com	TRUE	/	TRUE	1824327253	__Secure-1PSID	g.a000CwlGSxSsZLGrciLFpghDuH0BfvUAjWB9wi3PNebdZQ0k2hf4K1UzIFn6iTLQeyggs04LSAACgYKARcSARQSFQHGX2MiTU-5sG9-iooXFiJwcFXE0BoVAUF8yKqG52zj2CKZ5z25hjn-k7760076
 .youtube.com	TRUE	/	TRUE	1806174293	__Secure-BUCKET	CKwH
 .youtube.com	TRUE	/	TRUE	1825328429	__Secure-3PSID	g.a000CwlGSxSsZLGrciLFpghDuH0BfvUAjWB9wi3PNebdZQ0k2hf46IRJgisnpkLY618O8fPCzQACgYKAfoSARQSFQHGX2MimRJHX3Nh4z4wsjvK6Sw3bhoVAUF8yKre-P5kfxOlBi2wqFBIcsDI0076
-.youtube.com	TRUE	/	TRUE	1812836363	PREF	f6=40000000&volume=9&f7=100&hl=en&tz=UTC&repeat=NONE&autoplay=true&f5=30000
+.youtube.com	TRUE	/	FALSE	0	PREF	f6=40000000&volume=9&f7=100&hl=en&tz=UTC&repeat=NONE&autoplay=true&f5=30000
 .youtube.com	TRUE	/	TRUE	1807480831	NID	CpgCCAESygEBOxGDSJktElIWt-ZQ1F4M2PTuPfBtHs_JZT2cY4qREs_xr0Ab6X92TsGZl-z1WnmDyjOUiVMDCh9G4l4qZ_J0iIJnVQD4s0lMnsr7grj8WQKktSwASpLJ6C9bO6L7CfpuVm4KjUwO16jWY0AVlDEeMngnXc9WId68uixXKhSmWN7Jmjx5zZiIElk8PixXXGnLKArhDiiu0LOl3C0xGenMQ9XaL5AnkhopMUOXlhmZXivSI2dVk2qHoeZRdJHSkWnSr-ZE5DAVb6EEKAEyRQHSrAfPDaT1iBcnDK2F_wM3UO3wBhNCRrdk5bLNd5ZvTjebVT79UT-8TRl7qcCcTU7t_itPCf06YEx1A93rmkP39yFsAQ
 .youtube.com	TRUE	/	TRUE	1823270428	__Secure-1PSIDTS	sidts-CjcBkldj_xwrzWNl-soOH5MDuWfHPAtpEOBIRbtWXVEPHOdEYuxNjNrFxFJzS-kEo63WSqKj8VBIEAA
 .youtube.com	TRUE	/	TRUE	1823270428	__Secure-3PSIDTS	sidts-CjcBkldj_xwrzWNl-soOH5MDuWfHPAtpEOBIRbtWXVEPHOdEYuxNjNrFxFJzS-kEo63WSqKj8VBIEAA
-.youtube.com	TRUE	/	FALSE	1823334384	SIDCC	AKEyXzWSkYhEpqUpSOpokfieJH_5ivWxuWYRC8rTyiVY1pc_bWYni5XxraCLxnrkD8T-IT7rBcQ
-.youtube.com	TRUE	/	TRUE	1823334384	__Secure-1PSIDCC	AKEyXzXwR5EKteaR2VPz2-FyWmrJURvUQZp5AexupxmWk-bNMOt1RmVGWLn650k_7oAE9fLF6fE
-.youtube.com	TRUE	/	TRUE	1823334384	__Secure-3PSIDCC	AKEyXzW7X9JpPGObEUb7sBo45JUsIJZXmbXB-gAmxJMYAR8Q-emsjrVDU1MUetX382R5LYkyUeQ
-.youtube.com	TRUE	/	TRUE	1807350384	VISITOR_INFO1_LIVE	1u6DaO729Pg
+.youtube.com	TRUE	/	FALSE	1823356201	SIDCC	AKEyXzWe1STPHbkJWzi_ZYEpUpYp2nq6D-v6xyBg2F-YsgFQtStyqY5dzuAN0xJThKIr6u-70Uo
+.youtube.com	TRUE	/	TRUE	1823356201	__Secure-1PSIDCC	AKEyXzV0r2cuf8Rndi3tL6kVTJB2WLEjAPdmOlO2AqGkT0Mt1wV7-frimXchiRDntxIVhCzq5i4
+.youtube.com	TRUE	/	TRUE	1823356201	__Secure-3PSIDCC	AKEyXzVpizbcfLKns41IEqKwILnWni-fY7rNa7PKQ4GmGc-M1mO-KpKMDMkgu_AW5cQvAKKayLE
+.youtube.com	TRUE	/	TRUE	1807372201	VISITOR_INFO1_LIVE	1u6DaO729Pg
 .youtube.com	TRUE	/	TRUE	1807306605	__Secure-YNID	22.YT=GZqeC0vZRJvYhQNV2XxYri-1OQzYcH-MPi1-srV_Wa2Pm8u7LSNlti4s3obWpZ9QEuM2_2UmXGtz62YEeyu6shJzX3xwzScGIFd-1ztsXXusI0-ZdxB-IJ8VMn3twXLpyuEQKbIxWMzTmUpqAyb9YZQuPaiQWON4nlQ8RKi7P2Cuf4NBir2u89oA_MYq-M5oOYbXZhnOWOA5at0fqqQ_7a0XmcrPqeIV6NLgfzn0pfGv8YIts_R7GQ6gi7h4ijJKSqSs4kNgHFs_m9oqUH50X6Arccp3tACx0Od_naAxxWZyMHWVDGUcljPKuQ9uyEsntLOrimnclQQkWUSXLpAFZg
 .youtube.com	TRUE	/	TRUE	1807306605	__Secure-ROLLOUT_TOKEN	CK2z96vz7vPWQRDPyez6r_GVAxiLi5aG9rKXAw%3D%3D
 .youtube.com	TRUE	/	TRUE	0	YSC	qfcIooPtm-8
@@ -196,7 +196,7 @@ async function getAudioStreamUrl(videoId) {
     const cookiesPath = getCookiesPath();
 
     // Concurrency queue for yt-dlp to avoid CPU starvation / 500 on Render
-    const runYtDlp = (extraArgs = [], format = '140/251/ba/b') => {
+    const runYtDlp = (extraArgs = [], format = '18/bestaudio/best/ba/b', timeoutMs = 8000) => {
         return ytDlpQueue.run(() => {
             return new Promise((resolve, reject) => {
                 const args = [
@@ -214,7 +214,7 @@ async function getAudioStreamUrl(videoId) {
                 execFile(
                     YTDLP_PATH,
                     args,
-                    { timeout: 15000 },
+                    { timeout: timeoutMs },
                     (err, stdout, stderr) => {
                         if (err) {
                             const errMsg = (stderr || stdout || err.message || '').trim();
@@ -239,67 +239,42 @@ async function getAudioStreamUrl(videoId) {
         const format = '18/bestaudio/best/ba/b';
         const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Authenticated session with desktop cookies and matching Chrome UA
+        // Attempt 1: Authenticated session with desktop cookies and matching Chrome UA (works in 1-2s)
         if (hasCookies) {
             try {
-                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format);
+                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 8000);
             } catch (err) {
-                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying with android_music...`);
+                console.warn(`yt-dlp cookies web attempt 1 failed for ${videoId}: ${err.message}. Retrying web once...`);
                 lastErr = err;
+                // Quick retry: on cold start EJS components just downloaded, second call is immediate
+                try {
+                    return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 8000);
+                } catch (retryErr) {
+                    console.warn(`yt-dlp cookies web attempt 2 failed: ${retryErr.message}`);
+                    lastErr = retryErr;
+                }
             }
         }
 
         // Attempt 2: Android Music + Android client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=android_music,android'], format);
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=android_music,android'], format, 5000);
         } catch (err) {
             console.warn(`yt-dlp android_music attempt failed for ${videoId}: ${err.message}. Retrying...`);
             lastErr = err;
         }
 
-        // Attempt 3: Standard Android client
+        // Attempt 3: TV Embedded client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=android'], format);
-        } catch (err) {
-            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying...`);
-            lastErr = err;
-        }
-
-        // Attempt 4: iOS client
-        try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=ios'], format);
-        } catch (err) {
-            console.warn(`yt-dlp ios attempt failed for ${videoId}: ${err.message}. Retrying...`);
-            lastErr = err;
-        }
-
-        // Attempt 5: TV Embedded client
-        try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=tv_embedded'], format);
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=tv_embedded'], format, 4000);
         } catch (err) {
             console.warn(`yt-dlp tv_embedded attempt failed for ${videoId}: ${err.message}. Retrying...`);
             lastErr = err;
         }
 
-        // Attempt 6: Web Embedded client
+        // Attempt 4: Default fallback
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], format);
-        } catch (err) {
-            console.warn(`yt-dlp web_embedded attempt failed for ${videoId}: ${err.message}. Retrying...`);
-            lastErr = err;
-        }
-
-        // Attempt 7: MWeb client
-        try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=mweb'], format);
-        } catch (err) {
-            console.warn(`yt-dlp mweb attempt failed for ${videoId}: ${err.message}. Retrying...`);
-            lastErr = err;
-        }
-
-        // Attempt 8: Default
-        try {
-            return await runYtDlp([], format);
+            return await runYtDlp([], format, 4000);
         } catch (err) {
             console.error(`yt-dlp all attempts failed for ${videoId}: ${err.message}`);
             throw lastErr || err;
