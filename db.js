@@ -20,14 +20,18 @@ if (config.databaseUrl && config.databaseUrl.trim().startsWith('postgres')) {
 
 // Fallback to local SQLite if NeonDB is not configured or fails
 if (!isNeon) {
-  const Database = require('better-sqlite3');
-  const dbDir = path.dirname(config.dbPath);
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    const Database = require('better-sqlite3');
+    const dbDir = path.dirname(config.dbPath);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    sqliteDb = new Database(config.dbPath);
+    sqliteDb.pragma('journal_mode = WAL');
+    console.log('📁 Utilisation de SQLite local (data/ytm.db)');
+  } catch (err) {
+    console.warn('⚠️ SQLite local non disponible:', err.message);
   }
-  sqliteDb = new Database(config.dbPath);
-  sqliteDb.pragma('journal_mode = WAL');
-  console.log('📁 Utilisation de SQLite local (data/ytm.db)');
 }
 
 // Comprehensive Database Layer

@@ -2,7 +2,7 @@
   "name": "youtube",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -14,7 +14,6 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^13.0.3",
     "compression": "^1.8.2",
     "cors": "^2.8.6",
     "dotenv": "^18.0.7",
@@ -22,5 +21,8 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.1",
     "ws": "^8.22.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^13.0.3"
   }
 }
