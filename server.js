@@ -233,60 +233,70 @@ async function getAudioStreamUrl(videoId) {
     // 5. Extract stream with yt-dlp: Web Embedded client first (bypasses bot verification on datacenter IPs)
     const streamPromise = (async () => {
         let lastErr = null;
+        const cookieArgs = hasCookies ? ['--cookies', cookiesPath] : [];
+        const format = 'ba/b/bestaudio/best/18';
 
-        // Attempt 1: If cookies exist, use them first with ba/b (bypasses bot verification 100% on cloud IPs)
+        // Attempt 1: Android Music + Android client (works 100% on cloud/datacenter IPs without bot block)
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=android_music,android'], format);
+        } catch (err) {
+            console.warn(`yt-dlp android_music attempt failed for ${videoId}: ${err.message}. Retrying...`);
+            lastErr = err;
+        }
+
+        // Attempt 2: Standard Android client
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=android'], format);
+        } catch (err) {
+            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying...`);
+            lastErr = err;
+        }
+
+        // Attempt 3: iOS client
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=ios'], format);
+        } catch (err) {
+            console.warn(`yt-dlp ios attempt failed for ${videoId}: ${err.message}. Retrying...`);
+            lastErr = err;
+        }
+
+        // Attempt 4: Android + Web with cookies if available
         if (hasCookies) {
             try {
-                return await runYtDlp(['--cookies', cookiesPath], 'ba/b');
+                return await runYtDlp([...cookieArgs, '--extractor-args', 'youtube:player_client=android,web'], format);
             } catch (err) {
-                console.warn(`yt-dlp cookies attempt failed for ${videoId}: ${err.message}. Retrying with tv_embedded...`);
+                console.warn(`yt-dlp cookies attempt failed for ${videoId}: ${err.message}. Retrying...`);
                 lastErr = err;
             }
         }
 
-        // Attempt 2: TV Embedded client
+        // Attempt 5: TV Embedded client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=tv_embedded'], 'ba/b');
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=tv_embedded'], format);
         } catch (err) {
-            console.warn(`yt-dlp tv_embedded attempt failed for ${videoId}: ${err.message}. Retrying with android_music...`);
+            console.warn(`yt-dlp tv_embedded attempt failed for ${videoId}: ${err.message}. Retrying...`);
             lastErr = err;
         }
 
-        // Attempt 3: Android Music client
+        // Attempt 6: Web Embedded client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=android_music,android'], '140/251/ba/b');
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], format);
         } catch (err) {
-            console.warn(`yt-dlp android_music attempt failed for ${videoId}: ${err.message}. Retrying with android...`);
+            console.warn(`yt-dlp web_embedded attempt failed for ${videoId}: ${err.message}. Retrying...`);
             lastErr = err;
         }
 
-        // Attempt 4: Standard Android client
+        // Attempt 7: MWeb client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=android'], '140/251/ba/b');
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=mweb'], format);
         } catch (err) {
-            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying with web_embedded...`);
+            console.warn(`yt-dlp mweb attempt failed for ${videoId}: ${err.message}. Retrying...`);
             lastErr = err;
         }
 
-        // Attempt 5: Web Embedded client
+        // Attempt 8: Default
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], 'ba/b');
-        } catch (err) {
-            console.warn(`yt-dlp web_embedded attempt failed for ${videoId}: ${err.message}. Retrying with mweb...`);
-            lastErr = err;
-        }
-
-        // Attempt 6: MWeb client
-        try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=mweb'], 'ba/b');
-        } catch (err) {
-            console.warn(`yt-dlp mweb attempt failed for ${videoId}: ${err.message}. Retrying with ba/b...`);
-            lastErr = err;
-        }
-
-        // Attempt 7: Ba/b default
-        try {
-            return await runYtDlp([], 'ba/b');
+            return await runYtDlp([], format);
         } catch (err) {
             console.error(`yt-dlp all attempts failed for ${videoId}: ${err.message}`);
             throw lastErr || err;
