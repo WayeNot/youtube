@@ -16,6 +16,7 @@ Application web moderne, progressive (PWA) et haute performance de streaming mus
 8. [Fonctionnalités Sociales, Profils & Partage](#8-fonctionnalités-sociales-profils--partage)
 9. [Mode Hors-Ligne & Support PWA](#9-mode-hors-ligne--support-pwa)
 10. [Base de Données & Modèle Relationnel (NeonDB)](#10-base-de-données--modèle-relationnel-neondb)
+11. [🚀 Roadmap & Fonctionnalités Futures à Développer](#11--roadmap--fonctionnalités-futures-à-développer)
 
 ---
 
@@ -26,14 +27,14 @@ L'application repose sur une séparation claire entre un backend léger et rési
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Navigateur Web / Mobile PWA                     │
-│  (Vanilla JS modulaire, Service Worker, MediaSession API, HTML5 Audio)  │
+│  (Vanilla JS modulaire, Service Worker, MediaSession API, HTML5 Audio) │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ Requêtes HTTP / Cache SW
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │                  Serveur Node.js / Express (Vercel)                    │
 │  - /api/search, /api/stream-url/:id, /api/stream/:id                   │
 │  - /api/prefetch (Batch), /api/lyrics, /api/user/sync                  │
-│  - File d'attente yt-dlp & Gestionnaire de sessions cookies Netscape   │
+│  - Extraction yt-dlp Android/TV & Cache LRU Haute Disponibilité       │
 └───────────────────┬────────────────────────────────┬───────────────────┘
                     │                                │
     ┌───────────────▼──────────────┐  ┌──────────────▼───────────────────┐
@@ -44,11 +45,11 @@ L'application repose sur une séparation claire entre un backend léger et rési
     └──────────────────────────────┘  └──────────────────────────────────┘
 ```
 
-- **Backend** : Node.js avec Express, compression Gzip/Brotli, CORS sécurisé.
-- **Extraction Audio** : Binaire `yt-dlp` optimisé avec options `--extractor-args "youtube:player_skip=configs"`, multi-clients (`web`, `android_music`, `tv_embedded`).
-- **Base de données** : NeonDB (PostgreSQL Serverless) avec requêtes paramétrées SQL natives et connexion SSL.
-- **Frontend** : Vanilla JavaScript ES6+ orienté modules (`App`, `Player`, `API`, `Storage`, `LyricsManager`), CSS3 avec variables, animations matérielles 60fps.
-- **PWA** : Service Worker (`sw.js`) avec stratégie *Stale-While-Revalidate* pour les assets et *Network-First* avec cache pour l'API.
+- **Backend** : Node.js avec Express, compression Gzip/Brotli sélective (les flux audio bypassent la compression pour éviter tout buffering de chunks), CORS sécurisé.
+- **Extraction Audio** : Binaire `yt-dlp` optimisé avec options `--extractor-args "youtube:player_skip=configs;player_client=android"`, sautant le chargement des configs web lourdes et contournant nativement les blocages bot sur les IP de datacenters.
+- **Base de données** : NeonDB (PostgreSQL Serverless) avec requêtes SQL paramétrées natives et pool SSL.
+- **Frontend** : Vanilla JavaScript ES6+ orienté modules (`App`, `Player`, `API`, `Storage`, `LyricsManager`), CSS3 avec variables CSS modernes et animations GPU 60fps.
+- **PWA** : Service Worker (`sw.js`) avec stratégie *Stale-While-Revalidate* pour les assets et *Network-First* pour les données dynamiques.
 
 ---
 
@@ -56,17 +57,20 @@ L'application repose sur une séparation claire entre un backend léger et rési
 
 ### Pipeline d'optimisation (< 200 ms au clic)
 1. **Préchargement Prédictif au Survol & Toucher (`Predictive Pre-warming`)** :
-   - Sur ordinateur, le survol (`mouseover`) d'une carte musicale déclenche silencieusement la résolution de l'URL du flux sur le serveur 300 à 800 ms avant le clic.
-   - Sur mobile, l'événement tactile `touchstart` amorce la requête dès la pose du doigt, devançant l'événement `click` de 150 à 300 ms.
+   - Sur desktop, le survol (`mouseover`, `pointerdown`) d'une carte musicale déclenche silencieusement la résolution du flux sur le serveur **300 à 800 ms avant le clic**.
+   - Sur mobile, l'événement tactile `touchstart`/`pointerdown` amorce la requête dès la pose du doigt, devançant l'événement `click` de **150 à 300 ms**.
 2. **Double Niveau de Cache (In-Memory + NeonDB)** :
    - **Cache mémoire** : Map LRU locale Node.js avec expiration automatique.
    - **Cache persistant PostgreSQL** : Table `stream_cache` conservant les URLs de flux CDN Google valides pendant 5 heures.
-   - Un morceau déjà résolu répond en **moins de 200 millisecondes**.
-3. **Résolution yt-dlp Accélérée** :
-   - Utilisation de `--extractor-args "youtube:player_skip=configs"` et `--no-check-certificates` réduisant le temps d'extraction à froid de 8s à moins de 3s.
-   - Contournement des restrictions bot YouTube via un fichier de cookies Netscape injecté dynamiquement.
-4. **Préchargement en File d'Attente (`Queue Lookahead`)** :
-   - Dès que le morceau courant atteint 80% de sa lecture, les 2 morceaux suivants de la playlist sont automatiquement préchauffés en arrière-plan via `/api/prefetch`.
+   - Un morceau déjà résolu ou préchauffé démarre en **moins de 200 millisecondes**.
+3. **Résolution yt-dlp Priorité Android Client** :
+   - Utilisation du client `android` en première tentative sans cookies de session web, évitant le piège des vérifications antibot "Sign in to confirm you're not a bot" sur les datacenters Vercel.
+   - Arguments `--extractor-args "youtube:player_skip=configs;player_client=android"` et `--no-check-certificates` réduisant l'extraction à froid de 15s à moins de 2,5s.
+4. **Streaming Direct sans Buffering (`X-Accel-Buffering: no` & `res.flushHeaders()`)** :
+   - Dès la première poignée de main avec le CDN Google, les en-têtes HTTP 206 / 200 sont immédiatement envoyés à la balise `<audio>` du navigateur avec `res.flushHeaders()`.
+   - Les premiers octets de musique arrivent instantanément dans le buffer du navigateur.
+5. **Préchargement en File d'Attente (`Queue Lookahead`)** :
+   - Dès que le morceau courant atteint la moitié de sa durée, les morceaux suivants de la playlist sont automatiquement préchauffés en arrière-plan via `/api/prefetch`.
    - Transition entre pistes consécutives : **0 milliseconde de latence perçue**.
 
 ---
@@ -143,12 +147,13 @@ L'application est conçue pour fonctionner comme une application native iOS/Andr
 ## 7. Effets Audio, Égaliseur & Crossfade
 
 - **Égaliseur Paramétrique Multi-Bandes** :
-  - Presets intégrés : Pop, Rock, Bass Boost, Électro, Vocal, Acoustique.
+  - Presets intégrés : Pop, Rock, Bass Boost, Mega Bass, Électro, Vocal, Acoustique Salon, Club 3D.
   - Réglage manuel fin des fréquences (basses, médiums, aigus) sur environnement Desktop.
 - **Fondu Enchaîné (Crossfade Automatique)** :
   - Fondu sonore progressif configurable (1 à 6 secondes) entre la fin d'une piste et le début de la suivante pour une transition fluide sans silence.
-- **Normalisation Audio** :
+- **Normalisation Audio & Réverbération Spatiale** :
   - Égalisation du volume pour éviter les écarts sonores entre différents enregistrements.
+  - Moteur convolver pour simuler une acoustique de salle ou de club.
 
 ---
 
@@ -189,6 +194,71 @@ Le schéma PostgreSQL repose sur des tables normalisées optimisées pour les re
 | `listen_history` | Historique chronologique des écoutes pour les recommandations. |
 | `stream_cache` | Cache persistant des URLs de flux CDN Google (videoId, streamUrl, expiresAt). |
 | `artist_subscriptions` | Abonnements des utilisateurs aux artistes. |
+
+---
+
+## 11. 🚀 Roadmap & Fonctionnalités Futures à Développer
+
+Voici une sélection complète et détaillée de fonctionnalités à forte valeur ajoutée à intégrer dans les prochaines évolutions de l'application :
+
+### 🎛️ A. Expérience Audio & Moteur Musical
+1. **Mode DJ & Beatmatching Automatique** :
+   - Analyse du BPM (tempo) et de la tonalité harmonique (Camelot Wheel).
+   - Transitions fluides synchronisées sur les temps musicaux (synchro 4 ou 8 temps) entre deux morceaux de tempo compatible.
+2. **Suppression Vocale en Temps Réel (AI Vocal Remover / Mode Karaoké Pur)** :
+   - Algorithme WebAssembly (Spleeter / Demucs allégé ou API temps réel) pour atténuer ou couper la piste vocale et ne laisser que l'instrumentale, transformant n'importe quel son en karaoké.
+3. **Audio Spatialisé 3D & Head Tracking** :
+   - Simulation d'audio binaural 360° avec Web Audio PannerNode, offrant une immersion immersive au casque.
+4. **Visualiseur Audio 3D Réactif (WebGL / Three.js)** :
+   - Écran de veille ou mode plein écran avec sphère de particules, néons ou ondes spectrales ondulant au rythme des fréquences de la musique.
+
+---
+
+### 🤖 B. Intelligence Artificielle & Découverte
+5. **Générateur de Playlist par Prompt IA ("Smart DJ Prompt")** :
+   - Champ de saisie : *"Fais-moi une playlist chill rap français des années 2010 pour rouler la nuit sous la pluie"*.
+   - L'IA génère instantanément une playlist de 20 titres cohérents avec cover thématique générée.
+6. **Mode "Flow Infini" / Autoplay Intelligent** :
+   - Lorsque la file d'attente se termine, le lecteur enchaîne automatiquement avec des morceaux similaires (analyse des artistes, genres et signatures acoustiques) sans jamais couper la musique.
+7. **Reconnaissance Musicale Intégrée (Clone Shazam)** :
+   - Bouton avec icône micro permettant à l'utilisateur de fredonner ou de capter un son ambiant pour l'identifier en 3 secondes et l'ajouter immédiatement à sa bibliothèque.
+
+---
+
+### 👥 C. Fonctionnalités Sociales & Temps Réel
+8. **Sessions d'Écoute Partagée ("Jam Session" / Listening Party)** :
+   - Synchronisation multi-utilisateurs via WebSockets / WebRTC : un utilisateur crée un salon, partage un code ou un lien, et tous les participants écoutent la musique exactement à la même milliseconde.
+   - File d'attente collaborative : chaque invité peut ajouter ou voter pour les morceaux suivants.
+   - Mini chat en direct avec réactions émojis éphémères synchronisées sur les refrains.
+9. **Commentaires Temporels sur les Morceaux (façon SoundCloud)** :
+   - Possibilité de laisser un commentaire rattaché à une seconde précise du morceau (ex: *"Ce drop à 1:42 est incroyable 🔥"*).
+10. **Statistiques Annuelles & Mensuelles ("Mon YTM Wrapped")** :
+    - Page de rétrospective avec infographies animées : temps total d'écoute, top 5 artistes, top genres, titres les plus écoutés, badge de fan (ex: *"Top 1% des auditeurs de Daft Punk"*).
+    - Export en 1 clic sous format Story Instagram / TikTok / X.
+
+---
+
+### 📱 D. Intégration Écosystème & Mobilité
+11. **Support Chromecast & AirPlay (Google Cast / Apple AirPlay)** :
+    - Bouton "Diffuser" dans le lecteur pour streamer l'audio directement sur une enceinte connectée (Sonos, Google Home, Apple TV, ampli Wi-Fi).
+12. **Discord Rich Presence & Last.fm Scrobbling** :
+    - Affichage en temps réel du morceau en cours d'écoute sur le profil Discord de l'utilisateur avec bouton "Écouter avec".
+    - Envoi automatique des écoutes vers Last.fm pour les audiophiles.
+13. **Minilecteur Flottant (Picture-in-Picture Audio)** :
+    - Widget flottant permettant de contrôler la musique tout en naviguant sur d'autres onglets ou sur son bureau.
+14. **Mode Sommeil / Minuteur d'Arrêt (Sleep Timer)** :
+    - Réglage d'un compte à rebours (15 min, 30 min, fin du morceau) pour couper la musique en douceur avec baisse progressive du volume avant de s'endormir.
+
+---
+
+### 📁 E. Organisation & Gestion Avancée
+15. **Dossiers de Playlists & Système de Tags** :
+    - Possibilité de classer ses playlists dans des dossiers hiérarchiques (ex: *Entraînement*, *Soirée*, *Travail*).
+    - Tags colorés et filtres rapides par humeur (*Énergie*, *Concentration*, *Nostalgie*).
+16. **Détection des Doublons dans les Playlists** :
+    - Alerte intelligente lors de l'ajout d'un morceau déjà présent dans la playlist avec option pour ignorer ou ajouter quand même.
+17. **Historique des Versions & Restauration de Playlists** :
+    - Corbeille et historique des modifications permettant d'annuler une suppression accidentelle de titre ou de playlist.
 
 ---
 

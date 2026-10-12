@@ -23,7 +23,14 @@ function getCookiesPath() {
 }
 
 app.use(cors());
-app.use(compression());
+app.use(compression({
+    filter: (req, res) => {
+        if (req.path.startsWith('/api/stream') || req.path.startsWith('/api/download')) {
+            return false;
+        }
+        return compression.filter(req, res);
+    }
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -142,7 +149,7 @@ function syncCookiesFile() {
 // Simple concurrency limiter for yt-dlp to protect server CPU/RAM
 const ytDlpQueue = {
     running: 0,
-    maxConcurrent: 2,
+    maxConcurrent: 4,
     queue: [],
     run(task) {
         return new Promise((resolve, reject) => {
@@ -195,8 +202,8 @@ async function getAudioStreamUrl(videoId) {
     const hasCookies = syncCookiesFile();
     const cookiesPath = getCookiesPath();
 
-    // Concurrency queue for yt-dlp to avoid CPU starvation / 500 on Render
-    const runYtDlp = (extraArgs = [], format = '18/bestaudio/best/ba/b', timeoutMs = 8000) => {
+    // Concurrency queue for yt-dlp to avoid CPU starvation
+    const runYtDlp = (extraArgs = [], format = '18/bestaudio/ba/b', timeoutMs = 4500) => {
         return ytDlpQueue.run(() => {
             return new Promise((resolve, reject) => {
                 const args = [
@@ -234,47 +241,46 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: Web session with cookies first (bypasses bot verification on datacenter IPs)
+    // 5. Extract stream with yt-dlp: Android client FIRST (2s, no bot confirmation on datacenter IPs)
     const streamPromise = (async () => {
         let lastErr = null;
-        const cookieArgs = hasCookies ? ['--cookies', cookiesPath] : [];
-        const format = '18/bestaudio/best/ba/b';
+        const format = '18/bestaudio/ba/b';
         const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Authenticated session with desktop cookies and matching Chrome UA
-        if (hasCookies) {
-            try {
-                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua], format, 7000);
-            } catch (err) {
-                console.warn(`yt-dlp cookies attempt 1 failed for ${videoId}: ${err.message}. Retrying...`);
-                lastErr = err;
-                // Quick retry: on cold start EJS components just downloaded, second call is immediate
-                try {
-                    return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua], format, 7000);
-                } catch (retryErr) {
-                    console.warn(`yt-dlp cookies attempt 2 failed: ${retryErr.message}`);
-                    lastErr = retryErr;
-                }
-            }
-        }
-
-        // Attempt 2: Android Music + Android client
+        // Attempt 1: Ultra-fast Android client (instant 2s extraction, no datacenter bot checks, no cookie required)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=android_music,android'], format, 5000);
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=android'], format, 4000);
         } catch (err) {
-            console.warn(`yt-dlp android_music attempt failed for ${videoId}: ${err.message}. Retrying...`);
+            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying tv_embedded...`);
             lastErr = err;
         }
 
-        // Attempt 3: TV Embedded client
+        // Attempt 2: TV Embedded client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=tv_embedded'], format, 4000);
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=tv_embedded'], format, 3500);
         } catch (err) {
             console.warn(`yt-dlp tv_embedded attempt failed for ${videoId}: ${err.message}. Retrying...`);
             lastErr = err;
         }
 
-        // Attempt 4: Default fallback
+        // Attempt 3: Android Music client
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=android_music'], format, 3500);
+        } catch (err) {
+            console.warn(`yt-dlp android_music attempt failed for ${videoId}: ${err.message}.`);
+            lastErr = err;
+        }
+
+        // Attempt 4: Authenticated session with desktop cookies
+        if (hasCookies) {
+            try {
+                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua], format, 4000);
+            } catch (err) {
+                console.warn(`yt-dlp cookies attempt failed: ${err.message}`);
+                lastErr = err;
+            }
+        }
+        // Attempt 5: Default fallback
         try {
             return await runYtDlp([], format, 4000);
         } catch (err) {
@@ -945,6 +951,8 @@ app.get('/api/stream/:id', async (req, res) => {
             if (val) res.setHeader(h, val);
         });
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('X-Accel-Buffering', 'no');
+        if (res.flushHeaders) res.flushHeaders();
 
         const { Readable } = require('stream');
         if (upstreamRes.body) {
@@ -992,13 +1000,12 @@ app.post('/api/prefetch', (req, res) => {
     if (!Array.isArray(ids) || ids.length === 0) {
         return res.json({ success: true, count: 0 });
     }
-    // Limit to 1 track max and only enqueue if server has low load
-    const cleanIds = ids.filter(id => typeof id === 'string' && /^[\w-]{11}$/.test(id)).slice(0, 1);
-    if (ytDlpQueue.running < 1 && ytDlpQueue.queue.length === 0) {
-        cleanIds.forEach(id => {
+    const cleanIds = ids.filter(id => typeof id === 'string' && /^[\w-]{11}$/.test(id)).slice(0, 6);
+    cleanIds.forEach(id => {
+        if (!streamCache.has(id) && !inFlightStreams.has(id)) {
             getAudioStreamUrl(id).catch(() => {});
-        });
-    }
+        }
+    });
     res.json({ success: true, count: cleanIds.length });
 });
 

@@ -1216,6 +1216,10 @@ const App = {
             document.addEventListener('touchstart', (e) => {
                 prewarmFromElement(e.target);
             }, { passive: true });
+
+            document.addEventListener('pointerdown', (e) => {
+                prewarmFromElement(e.target);
+            }, { passive: true });
         },
 
         bindPlayerEvents() {
@@ -1749,7 +1753,7 @@ const App = {
 
             // Background pre-warm popular starters so initial playback starts in < 200ms
             if (window.API?.prefetchBatch) {
-                const starterIds = [...defaultStarters.slice(0, 2), ...topHits.slice(0, 2)].map(t => t.id).filter(Boolean);
+                const starterIds = [...defaultStarters.slice(0, 3), ...topHits.slice(0, 3)].map(t => t.id).filter(Boolean);
                 API.prefetchBatch(starterIds);
             }
         },
@@ -2167,9 +2171,9 @@ const App = {
             }
             this.renderRecentSearches();
 
-            // Background pre-warm top 3 results for instant click response (< 200ms)
+            // Background pre-warm top 5 results for instant click response (< 200ms)
             if (results && results.length > 0 && window.API?.prefetchBatch) {
-                const topIds = results.slice(0, 3).map(r => r.id).filter(Boolean);
+                const topIds = results.slice(0, 5).map(r => r.id).filter(Boolean);
                 API.prefetchBatch(topIds);
             }
 

@@ -541,9 +541,6 @@ class PlayerEngine {
     this._userPaused = false;
     this.audio.muted = false;
     if (this.audio.volume <= 0.05) this.audio.volume = this._lastVolume || 0.9;
-    try {
-      this.audio.load();
-    } catch (e) {}
 
     // Play immediately in the synchronous user gesture tick (vital for Mobile Safari & Android Chrome)
     const playPromise = this.audio.play();
