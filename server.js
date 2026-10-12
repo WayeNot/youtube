@@ -1055,6 +1055,95 @@ app.get('/api/vibetube/feed', async (req, res) => {
     }
 });
 
+// 4d. VibeTube Dedicated Video & Channel Search Engine
+async function searchVibeTube(query) {
+    try {
+        const res = await fetch('https://www.youtube.com/youtubei/v1/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            },
+            body: JSON.stringify({
+                context: {
+                    client: {
+                        clientName: 'WEB',
+                        clientVersion: '2.20240401.01.00',
+                        hl: 'fr',
+                        gl: 'FR',
+                    },
+                },
+                query: query,
+            }),
+        });
+
+        if (!res.ok) throw new Error(`Innertube HTTP ${res.status}`);
+        const data = await res.json();
+        const contents =
+            data?.contents?.twoColumnSearchResultsRenderer?.primaryContents
+                ?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents ||
+            [];
+
+        const videos = [];
+        const channels = [];
+
+        for (const item of contents) {
+            if (item.channelRenderer) {
+                const cr = item.channelRenderer;
+                const name = cr.title?.simpleText || cr.title?.runs?.map(r => r.text).join('') || 'Chaîne YouTube';
+                const avatar = cr.thumbnail?.thumbnails?.slice(-1)[0]?.url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name)}`;
+                const subscribers = cr.subscriberCountText?.simpleText || cr.videoCountText?.simpleText || '';
+                const desc = cr.descriptionSnippet?.runs?.map(r => r.text).join('') || '';
+                channels.push({
+                    id: cr.channelId,
+                    name,
+                    avatar,
+                    subscribers,
+                    description: desc
+                });
+            }
+
+            if (item.videoRenderer && item.videoRenderer.videoId) {
+                const vr = item.videoRenderer;
+                const title = vr.title?.runs?.map(r => r.text).join('') || '';
+                const channel = vr.ownerText?.runs?.map(r => r.text).join('') || 'Créateur';
+                const duration = vr.lengthText?.simpleText || '3:30';
+                const views = vr.shortViewCountText?.simpleText || '';
+                const thumb = vr.thumbnail?.thumbnails?.slice(-1)[0]?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
+                const publishedTime = vr.publishedTimeText?.simpleText || '';
+                const channelAvatar = vr.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(channel)}`;
+
+                videos.push({
+                    id: vr.videoId,
+                    title,
+                    channel,
+                    duration,
+                    thumbnail: thumb,
+                    views,
+                    publishedTime,
+                    channelAvatar,
+                });
+            }
+        }
+
+        return { channels, videos };
+    } catch (err) {
+        console.error('searchVibeTube error:', err.message);
+        return { channels: [], videos: [] };
+    }
+}
+
+app.get('/api/vibetube/search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.json({ channels: [], videos: [] });
+    try {
+        const results = await searchVibeTube(q);
+        res.json(results);
+    } catch (e) {
+        res.status(500).json({ error: e.message, channels: [], videos: [] });
+    }
+});
+
 // 5. Download track as MP3 file
 app.get('/api/download/:id', async (req, res) => {
     const videoId = req.params.id;

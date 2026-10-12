@@ -321,19 +321,43 @@ Voici une sélection de noms percutants, modernes et mémorables classés par un
 
 ---
 
-## 14. 🚀 Roadmap Visionnaire : Prochaines Fonctionnalités à Développer
+---
 
-1. **Séparation de Source IA (Karaoké Instrumental Pur)** :
-   - Algorithme WebAssembly permettant d'isoler ou supprimer la voix en direct d'un simple curseur.
-2. **Commentaires Temporels sur Waveform (Style SoundCloud)** :
-   - Visualisation de la forme d'onde audio complète avec avatars et commentaires épinglés à la seconde exacte (ex: *"Ce drop à 1:42 🔥"*).
-3. **Reconnaissance Audio Micro (Clone Shazam Web)** :
-   - Identification d'une musique ambiante en 3 secondes via capture microphone et empreinte acoustique.
-4. **Mix Automatisé Intelligent (AI Beatmatching Transition)** :
-   - Enchaînement parfait au tempo entre deux morceaux sans aucun temps mort ni coupure.
-5. **Rétrospective Annuelle Animée ("Mon Wrapped")** :
-   - Générateur de bilan annuel d'écoute interactif avec infographies et export Story Instagram / TikTok.
+## 15. 🛡️ Spécifications du Panneau d'Administration (Admin Panel)
+
+*Cette section regroupe l'ensemble des modules prévus pour le futur tableau de bord d'administration centralisé de VibeStream & VibeTube.*
+
+### 📊 A. Dashboard Temps Réel (Live Pulse)
+- **Compteur d'utilisateurs connectés en direct** (séparation invités anonymes vs membres connectés avec pseudo).
+- **Lectures par seconde (Audio VibeStream & Vidéo VibeTube)** : Graphique interactif en streaming des lectures instantanées.
+- **Morceau le plus écouté en direct** avec pochette, nombre d'auditeurs synchrones et temps restant.
+- **Carte des écoutes en direct** : Visualisation géographique globale anonymisée des sessions actives.
+
+### ⚡ B. Performance CDN, Streaming & Santé yt-dlp
+- **Latence de premier octet (TTFB)** : Mesure précise du temps entre le clic utilisateur et la première seconde de lecture.
+- **Taux de succès du Cache** : Ratio Hit Rate mémoire Node.js vs Hit Rate PostgreSQL NeonDB vs requêtes fraîches yt-dlp.
+- **Détecteur d'erreurs 403 Forbidden & Rate-Limit YouTube** : Alertes automatiques en cas de rejet d'IP ou d'expiration de cookies.
+- **Bouton d'action "Purge Immédiate du Cache Streaming"** : Nettoyage en un clic de la table `stream_cache` dans NeonDB.
+- **Gestionnaire de Cookies YouTube à chaud** : Interface sécurisée pour téléverser ou coller un nouveau `cookies.txt` sans redéployer l'application sur Vercel.
+
+### 🔍 C. Analytics & Recherches Utilisateurs
+- **Top 50 des morceaux et vidéos les plus streamés** (filtres 24h, 7 jours, 30 jours, tout temps).
+- **Top des requêtes tapées dans la barre de recherche** :
+  - *Recherches fructueuses* (ayant mené à une écoute ou un like).
+  - *Recherches sans résultats / infructueuses* (permet de déceler les attentes utilisateurs non comblées).
+- **Taux de conversion d'engagement** : Pourcentage d'écoutes converties en Likes (Favoris) ou en ajouts dans une playlist.
+
+### 👥 D. Gestion des Utilisateurs & Sécurité
+- **Annuaire des membres** : Liste paginée des comptes enregistrés (pseudo, date d'inscription, dernier titre écouté, nombre de playlists).
+- **Attribution des Rôles & Badges** : `Utilisateur`, `VIP / Donateur`, `Modérateur`, `Admin`.
+- **Modération & Bannissement** : Blocage temporaire ou définitif par pseudo ou identifiant de session.
+- **Révocation de sessions** : Déconnexion forcée d'un compte compromis.
+
+### 🎧 E. Monitoring des Jam Sessions & Salles Partagées
+- **Liste des salons d'écoute partagée en cours** : Nom du salon, créateur hôte, morceau en cours, nombre de participants connectés.
+- **Volume des réactions émojis** : Fréquence des émojis envoyés en temps réel (détection des moments forts).
+- **Option de fermeture administrative** d'un salon en cas d'abus.
 
 ---
 
-*Documentation mise à jour — Version 3.7*
+*Documentation mise à jour — Version 3.9*

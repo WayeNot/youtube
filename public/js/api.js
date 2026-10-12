@@ -197,6 +197,18 @@ const API = {
       console.warn('VibeTube feed API error:', e);
       return { category, videos: [] };
     }
+  },
+
+  // VibeTube Video & Channel Search
+  async searchVibeTube(query) {
+    try {
+      const res = await fetch(`/api/vibetube/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('VibeTube search API error:', e);
+      return { channels: [], videos: [] };
+    }
   }
 };
 

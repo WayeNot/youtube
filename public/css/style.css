@@ -7400,6 +7400,189 @@ textarea#import-text-input:focus {
 }
 
 /* ==========================================================================
+   VIBETUBE STRICT ENTITY ISOLATION & DEDICATED STYLES
+   ========================================================================== */
+.vibetube-mode-active #desktop-player-bar,
+.vibetube-mode-active .desktop-player-bar,
+.vibetube-mode-active #mobile-mini-player,
+.vibetube-mode-active .mobile-mini-player {
+  display: none !important;
+}
+
+.vibetube-mode-active .app-main {
+  padding-bottom: 24px !important;
+}
+
+.vibetube-sidebar {
+  border-right: 1px solid rgba(255, 0, 51, 0.15);
+  background: #0a0a0e;
+}
+
+.vibetube-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.vibetube-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.vibetube-nav-item.active {
+  background: rgba(255, 0, 51, 0.15);
+  color: #fff;
+  font-weight: 600;
+  border-left: 3px solid #ff0033;
+}
+
+.vibetube-nav-item svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+/* VibeTube Search View & Channel Match Card */
+.vibetube-search-header {
+  margin-bottom: 20px;
+}
+
+.vibetube-search-pills {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.vibetube-search-channel-box {
+  margin-bottom: 24px;
+}
+
+.vibetube-channel-hit-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, rgba(255, 0, 51, 0.08), rgba(20, 20, 28, 0.8));
+  border: 1px solid rgba(255, 0, 51, 0.2);
+  border-radius: 16px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.vibetube-channel-hit-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 0, 51, 0.4);
+}
+
+.vibetube-channel-hit-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 0, 51, 0.4);
+  box-shadow: 0 4px 14px rgba(255, 0, 51, 0.2);
+}
+
+.vibetube-channel-hit-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.vibetube-channel-hit-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.vibetube-channel-hit-subs {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 3px;
+}
+
+.vibetube-channel-hit-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 6px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vibetube-channel-hit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* VibeTube Channel Profile Header */
+.vibetube-channel-header {
+  margin-bottom: 28px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vibetube-channel-banner {
+  height: 160px;
+  background: linear-gradient(135deg, #ff0055 0%, #7928ca 50%, #111 100%);
+  position: relative;
+}
+
+.vibetube-channel-info-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  position: relative;
+  margin-top: -40px;
+}
+
+.vibetube-channel-banner-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 4px solid #0d0d12;
+  object-fit: cover;
+  background: #111;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.vibetube-channel-banner-meta {
+  flex: 1;
+  min-width: 0;
+  padding-top: 24px;
+}
+
+.vibetube-channel-banner-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.vibetube-channel-banner-subs {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 4px;
+}
+
+.vibetube-channel-banner-btn-wrap {
+  padding-top: 24px;
+}
+
+/* ==========================================================================
    GLOBAL RESPONSIVE OPTIMIZATIONS (Mobile, Phablet & Tablet)
    ========================================================================== */
 @media (max-width: 768px) {
@@ -7429,6 +7612,29 @@ textarea#import-text-input:focus {
   .vibetube-video-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .vibetube-channel-hit-card {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+    padding: 16px;
+  }
+  .vibetube-channel-hit-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  .vibetube-channel-info-row {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+    margin-top: -44px;
+  }
+  .vibetube-channel-banner-meta {
+    padding-top: 8px;
+  }
+  .vibetube-channel-banner-btn-wrap {
+    padding-top: 0;
   }
 
   /* Safe Area Inset Support for iPhone / Android */

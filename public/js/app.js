@@ -104,21 +104,30 @@ const App = {
                 return;
             }
 
-            // 5. Standard views (/explore, /library, /settings, /profile)
-            if (path === '/explore') {
+            // 5. Standard views (/vibetube, /explore, /library, /settings, /profile)
+            if (path.startsWith('/vibetube')) {
+                this.setAppMode('vibetube', false);
+                this.switchView('vibetube', false);
+            } else if (path === '/explore') {
+                this.setAppMode('vibestream', false);
                 this.switchView('explore', false);
             } else if (path === '/library' || path === '/library/liked') {
+                this.setAppMode('vibestream', false);
                 if (path === '/library/liked') {
                     this.openPlaylistView('liked_tracks');
                 } else {
                     this.switchView('library', false);
                 }
             } else if (path === '/settings') {
+                this.setAppMode('vibestream', false);
                 this.openSettings(null, false);
             } else if (path === '/profile') {
+                this.setAppMode('vibestream', false);
                 this.openMyProfile();
             } else {
-                this.switchView('home', false);
+                const savedMode = localStorage.getItem('vibe_app_mode') || 'vibestream';
+                this.setAppMode(savedMode, false);
+                this.switchView(savedMode === 'vibetube' ? 'vibetube' : 'home', false);
             }
         },
 
@@ -1436,6 +1445,16 @@ const App = {
 
         switchView(viewName, updatePath = true) {
             this.currentView = viewName;
+            const videoViews = ['vibetube', 'vibetube-search', 'vibetube-channel'];
+            const isVideoView = videoViews.includes(viewName);
+
+            // Automatically synchronize app mode with active view
+            if (isVideoView && this.currentAppMode !== 'vibetube') {
+                this.setAppMode('vibetube', false);
+            } else if (!isVideoView && this.currentAppMode === 'vibetube') {
+                this.setAppMode('vibestream', false);
+            }
+
             if (updatePath) {
                 const pathMap = {
                     home: '/',
@@ -1445,21 +1464,12 @@ const App = {
                     search: '/search',
                     album: '/album',
                     vibetube: '/vibetube',
+                    'vibetube-search': '/vibetube/search',
+                    'vibetube-channel': '/vibetube/channel',
                     error: '/error'
                 };
                 const newPath = pathMap[viewName] || `/${viewName}`;
                 this.updateURL(newPath);
-            }
-
-            // Update VibeTube switch button appearance
-            const switchBtn = document.getElementById('switch-vibetube-btn');
-            if (switchBtn) {
-                const isTube = viewName === 'vibetube';
-                switchBtn.classList.toggle('active-mode', isTube);
-                const textEl = switchBtn.querySelector('.vibetube-btn-text');
-                const badgeEl = switchBtn.querySelector('.vibetube-badge');
-                if (textEl) textEl.textContent = isTube ? 'VibeStream' : 'VibeTube';
-                if (badgeEl) badgeEl.textContent = isTube ? 'MUSIQUE' : 'VIDÉO';
             }
 
             // Hide mood/filter chips on any page that is NOT home
@@ -1467,12 +1477,18 @@ const App = {
                 this.dom.chipsContainer.classList.toggle('hidden', viewName !== 'home');
             }
 
-            // Update Nav links
+            // Update Music Nav links
             document.querySelectorAll('.nav-item').forEach(el => {
                 el.classList.toggle('active', el.getAttribute('data-view') === viewName);
             });
             document.querySelectorAll('.mobile-nav-item').forEach(el => {
                 el.classList.toggle('active', el.getAttribute('data-view') === viewName);
+            });
+
+            // Update VibeTube Sidebar Nav links
+            document.querySelectorAll('.vibetube-nav-item').forEach(el => {
+                const navKey = el.getAttribute('data-vibetube-nav');
+                el.classList.toggle('active', navKey === viewName || (viewName === 'vibetube' && navKey === 'home'));
             });
 
             // If switching away from playlist view, clear active playlist highlight
@@ -1495,8 +1511,10 @@ const App = {
             const appMain = document.getElementById('app-main');
             if (appMain) appMain.scrollTop = 0;
 
-            // Always render sidebar playlists so they are visible and up to date on all pages
-            this.renderPlaylists();
+            // Always render sidebar playlists on music pages
+            if (!isVideoView) {
+                this.renderPlaylists();
+            }
 
             if (viewName === 'home') {
                 if (!this.dom.homeSectionsContainer || !this.dom.homeSectionsContainer.hasChildNodes() || this.dom.homeSectionsContainer.children.length === 0) {
@@ -2226,6 +2244,9 @@ const App = {
         },
 
         async executeSearch(query, shouldSwitchView = true) {
+            if (this.currentAppMode === 'vibetube') {
+                return this.executeVibeTubeSearch(query, shouldSwitchView);
+            }
             if (shouldSwitchView && this.currentView !== 'search') {
                 this.switchView('search');
             }
@@ -5634,18 +5655,112 @@ const App = {
         },
 
         // -------------------------------------------------------------
-        // VIBETUBE (YouTube à notre sauce)
+        // ENTITY SEPARATION: VIBESTREAM (Music) vs VIBETUBE (Video)
         // -------------------------------------------------------------
-        toggleVibeTubeMode() {
-            if (this.currentView === 'vibetube') {
-                this.switchView('home');
+        setAppMode(mode, save = true) {
+            this.currentAppMode = mode;
+            if (save) {
+                try { localStorage.setItem('vibe_app_mode', mode); } catch (e) {}
+            }
+
+            const isTube = mode === 'vibetube';
+            const container = document.querySelector('.app-container');
+            if (container) {
+                container.classList.toggle('vibetube-mode-active', isTube);
+            }
+
+            // Sidebars separation: each entity has its own dedicated sidebar
+            const musicSidebar = document.getElementById('vibestream-sidebar');
+            const tubeSidebar = document.getElementById('vibetube-sidebar');
+            if (musicSidebar) musicSidebar.classList.toggle('hidden', isTube);
+            if (tubeSidebar) tubeSidebar.classList.toggle('hidden', !isTube);
+
+            // Audio Player Bar STRICT SEPARATION: never visible on VibeTube, never plays during videos
+            const desktopPlayer = document.getElementById('desktop-player-bar');
+            const mobilePlayer = document.getElementById('mobile-mini-player');
+            if (isTube) {
+                if (Player.isPlaying) Player.pause();
+                if (desktopPlayer) desktopPlayer.style.setProperty('display', 'none', 'important');
+                if (mobilePlayer) mobilePlayer.style.setProperty('display', 'none', 'important');
             } else {
-                this.switchView('vibetube');
+                if (desktopPlayer) desktopPlayer.style.removeProperty('display');
+                if (mobilePlayer) mobilePlayer.style.removeProperty('display');
+                this.closeVibeTubePlayer();
+            }
+
+            // Header Branding & Universe Switcher Button
+            const logoImg = document.getElementById('brand-logo-img');
+            const logoName = document.getElementById('brand-logo-name');
+            const logoBadge = document.getElementById('brand-logo-badge');
+            const switchBtn = document.getElementById('switch-mode-btn');
+            const switchIcon = document.getElementById('switch-mode-icon');
+            const switchText = document.getElementById('switch-mode-text');
+            const switchBadge = document.getElementById('switch-mode-badge');
+            const searchInput = this.dom?.searchInput;
+            const mobileSearchInput = this.dom?.mobileSearchInput;
+
+            if (isTube) {
+                if (logoName) logoName.textContent = 'VibeTube';
+                if (logoBadge) {
+                    logoBadge.textContent = 'VIDÉO';
+                    logoBadge.style.background = '#ff0033';
+                }
+                if (switchBtn) switchBtn.classList.add('tube-active');
+                if (switchIcon) switchIcon.textContent = '🎵';
+                if (switchText) switchText.textContent = 'Passer sur VibeStream';
+                if (switchBadge) {
+                    switchBadge.textContent = 'MUSIQUE';
+                    switchBadge.style.background = 'rgba(255, 0, 85, 0.35)';
+                }
+                if (searchInput) searchInput.placeholder = 'Rechercher des vidéos, chaînes YouTube...';
+                if (mobileSearchInput) mobileSearchInput.placeholder = 'Rechercher des vidéos, chaînes...';
+            } else {
+                if (logoName) logoName.textContent = 'VibeStream';
+                if (logoBadge) {
+                    logoBadge.textContent = 'PRO';
+                    logoBadge.style.background = 'var(--accent-red)';
+                }
+                if (switchBtn) switchBtn.classList.remove('tube-active');
+                if (switchIcon) switchIcon.textContent = '🎬';
+                if (switchText) switchText.textContent = 'Passer sur VibeTube';
+                if (switchBadge) {
+                    switchBadge.textContent = 'VIDÉO';
+                    switchBadge.style.background = 'rgba(255, 50, 50, 0.4)';
+                }
+                if (searchInput) searchInput.placeholder = 'Rechercher des titres, artistes, albums...';
+                if (mobileSearchInput) mobileSearchInput.placeholder = 'Rechercher des titres, artistes, albums...';
             }
         },
 
+        toggleAppMode() {
+            const nextMode = this.currentAppMode === 'vibetube' ? 'vibestream' : 'vibetube';
+            this.setAppMode(nextMode);
+            if (nextMode === 'vibetube') {
+                this.switchView('vibetube');
+                this.showToast('🎬 Bienvenue sur VibeTube (Mode Vidéo) !');
+            } else {
+                this.switchView('home');
+                this.showToast('🎵 Retour sur VibeStream (Mode Musique) !');
+            }
+        },
+
+        handleBrandLogoClick() {
+            if (this.currentAppMode === 'vibetube') {
+                this.switchView('vibetube');
+            } else {
+                this.switchView('home');
+                this.loadHome();
+            }
+        },
+
+        // -------------------------------------------------------------
+        // VIBETUBE VIDEO FEED & SECTIONS
+        // -------------------------------------------------------------
         filterVibeTube(category) {
             this.currentVibeTubeCategory = category;
+            if (this.currentView !== 'vibetube') {
+                this.switchView('vibetube');
+            }
             const container = document.getElementById('vibetube-chips');
             if (container) {
                 container.querySelectorAll('.vibetube-chip').forEach(c => {
@@ -5698,52 +5813,7 @@ const App = {
 
             if (countEl) countEl.textContent = `${videos.length} vidéos disponibles`;
 
-            // Enregistrer dans les résultats connus pour la lecture audio
-            if (!Array.isArray(this.currentSearchResults)) this.currentSearchResults = [];
-            videos.forEach(v => {
-                if (v && v.id && !this.currentSearchResults.some(x => x.id === v.id)) {
-                    this.currentSearchResults.push(v);
-                }
-            });
-
-            grid.innerHTML = videos.map(v => `
-                <div class="vibetube-video-card" data-video-id="${v.id}">
-                    <div class="vibetube-thumb-wrap" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')">
-                        <img src="${v.thumbnail || 'https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg'}" alt="${this.escapeHtml(v.title)}" class="vibetube-thumb" loading="lazy">
-                        ${v.duration ? `<span class="vibetube-duration-badge">${this.escapeHtml(v.duration)}</span>` : ''}
-                        <div class="vibetube-thumb-overlay">
-                            <div class="vibetube-play-pill">
-                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-                                <span>Regarder</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="vibetube-card-body">
-                        <img src="${v.channelAvatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(v.artist || 'creator')}" alt="" class="vibetube-creator-avatar">
-                        <div class="vibetube-card-info">
-                            <h3 class="vibetube-video-title" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')" title="${this.escapeHtml(v.title)}">${this.escapeHtml(v.title)}</h3>
-                            <div class="vibetube-channel-row">
-                                <span class="vibetube-channel-name">${this.escapeHtml(v.artist || 'Chaîne YouTube')}</span>
-                                <span class="vibetube-verified-icon" title="Chaîne vérifiée">✓</span>
-                            </div>
-                            <div class="vibetube-stats-row">
-                                <span>${v.views ? this.escapeHtml(v.views) : 'Populaire'}</span>
-                                ${v.publishedTime ? `<span>• ${this.escapeHtml(v.publishedTime)}</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="vibetube-card-actions">
-                        <button type="button" class="btn secondary small vibetube-card-play-btn" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')">
-                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor; margin-right:4px;"><path d="M8 5v14l11-7z"/></svg>
-                            <span>Vidéo</span>
-                        </button>
-                        <button type="button" class="btn secondary small vibetube-card-audio-btn" onclick="window.App && window.App.playVibeTubeAsAudio('${v.id}')" title="Écouter en audio haute vitesse sur VibeStream">
-                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor; margin-right:4px;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                            <span>Audio</span>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+            this.renderVibeTubeVideoGrid(grid, videos);
 
             // Bind chip clicks in VibeTube
             const chipsWrapper = document.getElementById('vibetube-chips');
@@ -5758,30 +5828,262 @@ const App = {
             }
         },
 
+        renderVibeTubeVideoGrid(container, videos) {
+            if (!container || !Array.isArray(videos)) return;
+
+            // Cache in memory for quick retrieval
+            if (!Array.isArray(this._vibetubeVideosCache)) this._vibetubeVideosCache = [];
+            videos.forEach(v => {
+                if (v && v.id && !this._vibetubeVideosCache.some(x => x.id === v.id)) {
+                    this._vibetubeVideosCache.push(v);
+                }
+            });
+
+            container.innerHTML = videos.map(v => `
+                <div class="vibetube-video-card" data-video-id="${v.id}">
+                    <div class="vibetube-thumb-wrap" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')">
+                        <img src="${v.thumbnail || 'https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg'}" alt="${this.escapeHtml(v.title)}" class="vibetube-thumb" loading="lazy">
+                        ${v.duration ? `<span class="vibetube-duration-badge">${this.escapeHtml(v.duration)}</span>` : ''}
+                        <div class="vibetube-thumb-overlay">
+                            <div class="vibetube-play-pill">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+                                <span>Regarder</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vibetube-card-body">
+                        <img src="${v.channelAvatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(v.channel || v.artist || 'creator')}" alt="" class="vibetube-creator-avatar" onclick="event.stopPropagation(); window.App && window.App.openVibeTubeChannel('${this.escapeHtml(v.channel || v.artist)}', '${v.channelAvatar || ''}')" title="Voir la chaîne">
+                        <div class="vibetube-card-info">
+                            <h3 class="vibetube-video-title" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')" title="${this.escapeHtml(v.title)}">${this.escapeHtml(v.title)}</h3>
+                            <div class="vibetube-channel-row" onclick="event.stopPropagation(); window.App && window.App.openVibeTubeChannel('${this.escapeHtml(v.channel || v.artist)}', '${v.channelAvatar || ''}')">
+                                <span class="vibetube-channel-name">${this.escapeHtml(v.channel || v.artist || 'Chaîne YouTube')}</span>
+                                <span class="vibetube-verified-icon" title="Chaîne vérifiée">✓</span>
+                            </div>
+                            <div class="vibetube-stats-row">
+                                <span>${v.views ? this.escapeHtml(v.views) : 'Populaire'}</span>
+                                ${v.publishedTime ? `<span>• ${this.escapeHtml(v.publishedTime)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vibetube-card-actions">
+                        <button type="button" class="btn primary small vibetube-card-play-btn" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')">
+                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor; margin-right:4px;"><path d="M8 5v14l11-7z"/></svg>
+                            <span>Regarder la vidéo</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        // -------------------------------------------------------------
+        // VIBETUBE SEARCH: VIDEOS & CHANNELS
+        // -------------------------------------------------------------
+        async executeVibeTubeSearch(query, shouldSwitchView = true) {
+            if (shouldSwitchView && this.currentView !== 'vibetube-search') {
+                this.switchView('vibetube-search');
+            }
+            this.currentVibeTubeSearchQuery = query;
+            const titleEl = document.getElementById('vibetube-search-title');
+            if (titleEl) titleEl.textContent = `Résultats Vidéos pour "${query}"`;
+
+            const channelBox = document.getElementById('vibetube-search-channel-box');
+            const grid = document.getElementById('vibetube-search-results-grid');
+
+            if (channelBox) channelBox.classList.add('hidden');
+            if (grid) {
+                grid.innerHTML = Array.from({ length: 6 }).map(() => `
+                    <div class="vibetube-video-card skeleton">
+                        <div class="vibetube-thumb-wrap skeleton-box"></div>
+                        <div class="vibetube-card-body">
+                            <div class="vibetube-avatar-skeleton skeleton-box"></div>
+                            <div class="vibetube-meta-skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const res = await API.searchVibeTube(query);
+            const channels = (res && Array.isArray(res.channels)) ? res.channels : [];
+            const videos = (res && Array.isArray(res.videos)) ? res.videos : [];
+            this.currentVibeTubeSearchResults = { channels, videos };
+
+            // Render matched channel card if present
+            if (channels.length > 0 && channelBox) {
+                const topChannel = channels[0];
+                const isSub = Storage.isSubscribed(topChannel.name);
+                channelBox.innerHTML = `
+                    <div class="vibetube-channel-hit-card">
+                        <img src="${topChannel.avatar}" alt="" class="vibetube-channel-hit-avatar">
+                        <div class="vibetube-channel-hit-meta">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <h3 class="vibetube-channel-hit-title">${this.escapeHtml(topChannel.name)}</h3>
+                                <span class="vibetube-verified-icon">✓</span>
+                            </div>
+                            <div class="vibetube-channel-hit-subs">${this.escapeHtml(topChannel.subscribers || 'Chaîne YouTube')}</div>
+                            ${topChannel.description ? `<p class="vibetube-channel-hit-desc">${this.escapeHtml(topChannel.description)}</p>` : ''}
+                        </div>
+                        <div class="vibetube-channel-hit-actions">
+                            <button type="button" class="btn ${isSub ? 'secondary' : 'primary'} vibetube-sub-toggle-btn" onclick="window.App && window.App.toggleVibeTubeChannelSub('${this.escapeHtml(topChannel.name)}')">
+                                ${isSub ? 'Abonné ✓' : 'S\'abonner'}
+                            </button>
+                            <button type="button" class="btn secondary small" onclick="window.App && window.App.openVibeTubeChannel('${this.escapeHtml(topChannel.name)}', '${topChannel.avatar}', '${this.escapeHtml(topChannel.subscribers)}')">
+                                <span>Voir la chaîne</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                channelBox.classList.remove('hidden');
+            }
+
+            // Render video results
+            if (videos.length === 0) {
+                if (grid) grid.innerHTML = '<p class="empty-msg" style="grid-column: 1/-1; padding: 40px; text-align: center;">Aucune vidéo trouvée pour cette recherche.</p>';
+            } else {
+                this.renderVibeTubeVideoGrid(grid, videos);
+            }
+
+            // Bind filter pill clicks
+            const pillsWrap = document.getElementById('vibetube-search-filter-pills');
+            if (pillsWrap && !pillsWrap._hasBound) {
+                pillsWrap._hasBound = true;
+                pillsWrap.querySelectorAll('.filter-pill').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        pillsWrap.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        const type = btn.getAttribute('data-vibetube-search-type');
+                        this.filterVibeTubeSearchResults(type);
+                    });
+                });
+            }
+        },
+
+        filterVibeTubeSearchResults(type = 'all') {
+            const data = this.currentVibeTubeSearchResults || { channels: [], videos: [] };
+            const channelBox = document.getElementById('vibetube-search-channel-box');
+            const grid = document.getElementById('vibetube-search-results-grid');
+            if (!grid) return;
+
+            if (type === 'channels') {
+                if (channelBox) channelBox.classList.toggle('hidden', data.channels.length === 0);
+                grid.innerHTML = data.channels.length === 0 ? '<p class="empty-msg" style="grid-column: 1/-1; padding: 40px; text-align: center;">Aucune chaîne trouvée pour cette recherche.</p>' : '';
+                return;
+            }
+
+            if (type === 'shorts') {
+                if (channelBox) channelBox.classList.add('hidden');
+                const shorts = data.videos.filter(v => {
+                    const dur = v.duration || '';
+                    const isShortDur = dur.startsWith('0:') && parseInt(dur.split(':')[1], 10) <= 60;
+                    const hasShortTag = (v.title || '').toLowerCase().includes('short');
+                    return isShortDur || hasShortTag;
+                });
+                if (shorts.length === 0) {
+                    grid.innerHTML = '<p class="empty-msg" style="grid-column: 1/-1; padding: 40px; text-align: center;">Aucun Short trouvé pour cette recherche.</p>';
+                } else {
+                    this.renderVibeTubeVideoGrid(grid, shorts);
+                }
+                return;
+            }
+
+            // 'all'
+            if (channelBox) channelBox.classList.toggle('hidden', data.channels.length === 0);
+            this.renderVibeTubeVideoGrid(grid, data.videos);
+        },
+
+        // Channel profile view on VibeTube
+        async openVibeTubeChannel(channelName, avatar = '', subscribers = '') {
+            this.switchView('vibetube-channel');
+            const header = document.getElementById('vibetube-channel-profile-header');
+            const grid = document.getElementById('vibetube-channel-videos-grid');
+            const isSub = Storage.isSubscribed(channelName);
+            const chanAvatar = avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(channelName)}`;
+
+            if (header) {
+                header.innerHTML = `
+                    <div class="vibetube-channel-banner"></div>
+                    <div class="vibetube-channel-info-row">
+                        <img src="${chanAvatar}" alt="" class="vibetube-channel-banner-avatar">
+                        <div class="vibetube-channel-banner-meta">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <h1 class="vibetube-channel-banner-title">${this.escapeHtml(channelName)}</h1>
+                                <span class="vibetube-verified-icon">✓</span>
+                            </div>
+                            <div class="vibetube-channel-banner-subs">${this.escapeHtml(subscribers || 'Chaîne YouTube')}</div>
+                        </div>
+                        <div class="vibetube-channel-banner-btn-wrap">
+                            <button type="button" class="btn ${isSub ? 'secondary' : 'primary'} vibetube-sub-toggle-btn" onclick="window.App && window.App.toggleVibeTubeChannelSub('${this.escapeHtml(channelName)}')">
+                                ${isSub ? 'Abonné ✓' : 'S\'abonner'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (grid) {
+                grid.innerHTML = Array.from({ length: 6 }).map(() => `
+                    <div class="vibetube-video-card skeleton">
+                        <div class="vibetube-thumb-wrap skeleton-box"></div>
+                        <div class="vibetube-card-body">
+                            <div class="vibetube-avatar-skeleton skeleton-box"></div>
+                            <div class="vibetube-meta-skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const res = await API.searchVibeTube(`${channelName} videos`);
+            const videos = (res && Array.isArray(res.videos)) ? res.videos : [];
+            this.renderVibeTubeVideoGrid(grid, videos);
+        },
+
+        toggleVibeTubeChannelSub(channelName) {
+            const isNowSub = Storage.toggleSubscription ? Storage.toggleSubscription(channelName) : false;
+            document.querySelectorAll('.vibetube-sub-toggle-btn').forEach(btn => {
+                btn.classList.toggle('primary', !isNowSub);
+                btn.classList.toggle('secondary', isNowSub);
+                btn.textContent = isNowSub ? 'Abonné ✓' : 'S\'abonner';
+            });
+            this.showToast(isNowSub ? `Abonné à ${channelName} ! 📺` : `Abonnement retiré pour ${channelName}`);
+        },
+
+        openVibeTubeSubscriptions() {
+            const subs = Storage.getSubscriptions ? Storage.getSubscriptions() : [];
+            if (subs.length === 0) {
+                this.showToast('Vous n\'êtes abonné à aucune chaîne pour le moment 📺');
+                return;
+            }
+            // Search top videos from subscriptions
+            const firstSub = subs[0];
+            const name = typeof firstSub === 'string' ? firstSub : (firstSub.name || firstSub.artist || '');
+            if (name) {
+                this.openVibeTubeChannel(name);
+            }
+        },
+
         openVibeTubeVideo(videoId) {
-            const track = this.findTrackInMemory(videoId) || { id: videoId, title: 'Vidéo VibeTube', artist: 'YouTube' };
+            let track = (this._vibetubeVideosCache || []).find(v => v.id === videoId);
+            if (!track) track = { id: videoId, title: 'Vidéo YouTube', channel: 'Créateur' };
+
             const modal = document.getElementById('modal-vibetube-player');
             const iframe = document.getElementById('vibetube-iframe');
             const titleEl = document.getElementById('vibetube-player-title');
             const nameEl = document.getElementById('vibetube-channel-name');
             const statsEl = document.getElementById('vibetube-video-stats');
             const avatarEl = document.getElementById('vibetube-channel-avatar');
-            const audioBtn = document.getElementById('vibetube-audio-bridge-btn');
 
             if (titleEl) titleEl.textContent = track.title || 'Vidéo';
-            if (nameEl) nameEl.textContent = track.artist || track.channel || 'Créateur';
+            if (nameEl) nameEl.textContent = track.channel || track.artist || 'Créateur';
             if (statsEl) statsEl.textContent = `${track.views || 'Nombreuses vues'} ${track.publishedTime ? '• ' + track.publishedTime : ''}`;
             if (avatarEl && track.channelAvatar) avatarEl.src = track.channelAvatar;
 
-            if (audioBtn) {
-                audioBtn.onclick = () => {
-                    this.closeVibeTubePlayer();
-                    this.playVibeTubeAsAudio(videoId);
-                };
-            }
-
             if (iframe) {
-                // Pause background audio when user opens full video player
+                // Ensure music is paused
                 if (Player.isPlaying) Player.pause();
                 iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
             }
@@ -5794,17 +6096,6 @@ const App = {
             const iframe = document.getElementById('vibetube-iframe');
             if (iframe) iframe.src = '';
             if (modal) modal.classList.add('hidden');
-        },
-
-        playVibeTubeAsAudio(videoId) {
-            const track = this.findTrackInMemory(videoId) || {
-                id: videoId,
-                title: 'Vidéo YouTube',
-                artist: 'Artiste',
-                thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-            };
-            Player.playTrack(track);
-            this.showToast(`Lancement audio haute vitesse : "${track.title}" ⚡`);
         },
 
         escapeHtml(str) {

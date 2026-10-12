@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="VibeStream">
     <link rel="manifest" href="/manifest.json?v=3.8">
     <link rel="icon" type="image/png" href="/icons/vibestream-logo.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.8">
+    <link rel="stylesheet" href="/css/style.css?v=3.9">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,15 +88,15 @@
                         <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
                     </svg>
                 </button>
-                <a href="#" class="brand-logo" id="brand-home-btn" title="VibeStream Accueil">
-                    <img src="/icons/vibestream-logo.png" alt="VibeStream" style="width:32px; height:32px; object-fit:contain; border-radius:8px; filter:drop-shadow(0 0 10px rgba(255, 30, 80, 0.45));">
-                    <span class="brand-name">VibeStream</span>
-                    <span class="brand-badge">PRO</span>
+                <a href="#" class="brand-logo" id="brand-home-btn" title="Accueil" onclick="event.preventDefault(); window.App && window.App.handleBrandLogoClick()">
+                    <img id="brand-logo-img" src="/icons/vibestream-logo.png" alt="Logo" style="width:32px; height:32px; object-fit:contain; border-radius:8px; filter:drop-shadow(0 0 10px rgba(255, 30, 80, 0.45));">
+                    <span id="brand-logo-name" class="brand-name">VibeStream</span>
+                    <span id="brand-logo-badge" class="brand-badge">PRO</span>
                 </a>
-                <button id="switch-vibetube-btn" class="switch-vibetube-btn" title="Basculer vers VibeTube (Mode Vidéo)" onclick="window.App && window.App.toggleVibeTubeMode()">
-                    <span class="vibetube-icon-pulse">🎬</span>
-                    <span class="vibetube-btn-text">VibeTube</span>
-                    <span class="vibetube-badge">NOUVEAU</span>
+                <button type="button" id="switch-mode-btn" class="switch-mode-btn" title="Changer d'univers" onclick="window.App && window.App.toggleAppMode()">
+                    <span id="switch-mode-icon" class="switch-icon-pulse">🎬</span>
+                    <span id="switch-mode-text" class="switch-mode-text">Passer sur VibeTube</span>
+                    <span id="switch-mode-badge" class="switch-mode-badge">VIDÉO</span>
                 </button>
             </div>
 
@@ -176,8 +176,8 @@
 
         <!-- Main Layout (Sidebar + Content) -->
         <div class="app-body">
-            <!-- Desktop Sidebar -->
-            <aside class="app-sidebar" id="app-sidebar">
+            <!-- VIBESTREAM SIDEBAR (Music Entity) -->
+            <aside class="app-sidebar vibestream-sidebar" id="vibestream-sidebar">
                 <nav class="sidebar-nav">
                     <a href="/" class="nav-item active" data-view="home">
                         <svg viewBox="0 0 24 24">
@@ -206,11 +206,6 @@
                     <a href="javascript:void(0)" class="nav-item" onclick="window.CarMode?.open()">
                         <span style="font-size:18px;">🚗</span>
                         <span>Mode Voiture</span>
-                    </a>
-                    <a href="/vibetube" class="nav-item" data-view="vibetube" id="sidebar-vibetube-link" onclick="event.preventDefault(); window.App && window.App.switchView('vibetube')">
-                        <span style="font-size:18px;">🎬</span>
-                        <span>VibeTube (Vidéos)</span>
-                        <span class="sidebar-new-pill" style="background:linear-gradient(135deg, #ff0055, #ff5500); color:#fff; font-size:9px; font-weight:800; padding:2px 6px; border-radius:10px; margin-left:auto;">NEW</span>
                     </a>
                 </nav>
 
@@ -252,6 +247,61 @@
                     <button id="import-data-btn" class="text-link-btn"
                         onclick="document.getElementById('import-file-input').click()">Restaurer données</button>
                     <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                </div>
+            </aside>
+
+            <!-- VIBETUBE SIDEBAR (Video Entity - 100% Dedicated) -->
+            <aside class="app-sidebar vibetube-sidebar hidden" id="vibetube-sidebar">
+                <nav class="sidebar-nav">
+                    <a href="/vibetube" class="vibetube-nav-item active" data-vibetube-nav="home" onclick="event.preventDefault(); window.App && window.App.switchView('vibetube')">
+                        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+                        <span>Accueil Vidéo</span>
+                    </a>
+                    <a href="javascript:void(0)" class="vibetube-nav-item" data-vibetube-nav="trending" onclick="window.App && window.App.filterVibeTube('trending')">
+                        <span style="font-size:18px;">🔥</span>
+                        <span>Tendances</span>
+                    </a>
+                    <a href="javascript:void(0)" class="vibetube-nav-item" data-vibetube-nav="shorts" onclick="window.App && window.App.filterVibeTube('shorts')">
+                        <span style="font-size:18px;">⚡</span>
+                        <span>Shorts</span>
+                    </a>
+                    <a href="javascript:void(0)" class="vibetube-nav-item" data-vibetube-nav="subscriptions" onclick="window.App && window.App.openVibeTubeSubscriptions()">
+                        <svg viewBox="0 0 24 24"><path d="M20 8H4V6h16v2zm-2-6H6v2h12V2zm4 10v8c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-8c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2zm-6 4l-6-3.27v6.53L16 16z" fill="currentColor"/></svg>
+                        <span>Abonnements</span>
+                    </a>
+                </nav>
+
+                <div class="sidebar-divider"></div>
+
+                <!-- VibeTube Video Categories -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header">
+                        <span>Catégories</span>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('gaming')">
+                            <span style="font-size:18px;">🎮</span>
+                            <span>Gaming</span>
+                        </a>
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('tech')">
+                            <span style="font-size:18px;">💻</span>
+                            <span>Tech & Dev</span>
+                        </a>
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('podcasts')">
+                            <span style="font-size:18px;">🎙️</span>
+                            <span>Podcasts</span>
+                        </a>
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('cinema')">
+                            <span style="font-size:18px;">🍿</span>
+                            <span>Cinéma</span>
+                        </a>
+                    </nav>
+                </div>
+
+                <div class="sidebar-footer">
+                    <button type="button" class="btn secondary small" style="width:100%; justify-content:center; gap:6px;" onclick="window.App && window.App.setAppMode('vibestream')">
+                        <span>🎵 Passer sur VibeStream</span>
+                    </button>
                 </div>
             </aside>
 
@@ -379,15 +429,14 @@
                             </div>
                             <h1 class="vibetube-hero-title">YouTube, réinventé à notre sauce.</h1>
                             <p class="vibetube-hero-desc">
-                                Découvrez vos créateurs et vidéos favorites dans une interface fluide et sans distractions. 
-                                Basculez instantanément n'importe quelle vidéo vers le moteur audio haute fidélité en un clic !
+                                Découvrez vos créateurs, chaînes et vidéos favorites dans un univers vidéo 100% dédié, fluide et sans distractions.
                             </p>
                             <div class="vibetube-hero-actions">
                                 <button type="button" class="btn primary vibetube-hero-btn" onclick="window.App && window.App.filterVibeTube('trending')">
                                     <span>🔥 Vidéos Tendances</span>
                                 </button>
-                                <button type="button" class="btn secondary" onclick="window.App && window.App.switchView('home')">
-                                    <span>🎵 Revenir à la Musique</span>
+                                <button type="button" class="btn secondary" onclick="window.App && window.App.setAppMode('vibestream')">
+                                    <span>🎵 Passer sur VibeStream</span>
                                 </button>
                             </div>
                         </div>
@@ -414,6 +463,38 @@
 
                     <!-- Video Grid 16:9 -->
                     <div id="vibetube-video-grid" class="vibetube-video-grid"></div>
+                </section>
+
+                <!-- VIEW: VIBETUBE SEARCH RESULTS -->
+                <section id="view-vibetube-search" class="view-section">
+                    <div class="vibetube-search-header">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                            <h2 class="section-title" id="vibetube-search-title">Résultats de recherche Vidéo</h2>
+                            <button type="button" class="btn secondary small" onclick="window.App && window.App.switchView('vibetube')">
+                                <span>← Retour à l'accueil VibeTube</span>
+                            </button>
+                        </div>
+                        <div class="vibetube-search-pills" id="vibetube-search-filter-pills">
+                            <button type="button" class="filter-pill active" data-vibetube-search-type="all">Toutes les vidéos</button>
+                            <button type="button" class="filter-pill" data-vibetube-search-type="channels">Chaînes</button>
+                            <button type="button" class="filter-pill" data-vibetube-search-type="shorts">Shorts</button>
+                        </div>
+                    </div>
+
+                    <!-- Channel Top Hit Box (if channel matched) -->
+                    <div id="vibetube-search-channel-box" class="vibetube-search-channel-box hidden"></div>
+
+                    <!-- Video Results Grid 16:9 -->
+                    <div id="vibetube-search-results-grid" class="vibetube-video-grid" style="margin-top:20px;"></div>
+                </section>
+
+                <!-- VIEW: VIBETUBE CHANNEL PROFILE -->
+                <section id="view-vibetube-channel" class="view-section">
+                    <div id="vibetube-channel-profile-header" class="vibetube-channel-header"></div>
+                    <div class="section-header" style="margin-top:24px;">
+                        <h2 class="section-title">Vidéos de la chaîne</h2>
+                    </div>
+                    <div id="vibetube-channel-videos-grid" class="vibetube-video-grid"></div>
                 </section>
 
                 <!-- VIEW 4: LIBRARY -->
@@ -2516,9 +2597,6 @@
                         <h3 id="vibetube-player-title" class="vibetube-player-title">Titre de la vidéo</h3>
                     </div>
                     <div class="vibetube-player-actions">
-                        <button type="button" id="vibetube-audio-bridge-btn" class="btn secondary small vibetube-audio-btn" title="Écouter en audio haute fidélité">
-                            <span>🎧 Écouter en Audio VibeStream</span>
-                        </button>
                         <button type="button" id="vibetube-player-close-btn" class="icon-btn" title="Fermer" onclick="window.App && window.App.closeVibeTubePlayer()">
                             <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                         </button>
@@ -2553,7 +2631,7 @@
     <script src="/js/dj.js?v=3.9"></script>
     <script src="/js/jam.js?v=3.9"></script>
     <script src="/js/carmode.js?v=3.9"></script>
-    <script src="/js/app.js?v=3.9"></script>
+    <script src="/js/app.js?v=4.0"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
