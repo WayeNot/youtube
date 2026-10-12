@@ -283,29 +283,38 @@ async function getAudioStreamUrl(videoId) {
             lastErr = err;
         }
 
-        // Attempt 5: Smart Fallback for Music Premium only or unavailable videos (e.g. wBli7itfyYg, _8DXhtXXTVg)
+        // Attempt 5: Smart Fallback for Music Premium only or unavailable videos (e.g. WMojuNvJtCo, wBli7itfyYg, _8DXhtXXTVg, OO2kPK5-qno)
         // Find public audio / official track on YouTube via oEmbed + Innertube resolution
         try {
             const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+            let query = '';
             if (oembedRes.ok) {
                 const oembedData = await oembedRes.json();
                 const title = (oembedData.title || '').replace(/- Topic$/i, '').trim();
                 const author = (oembedData.author_name || '').replace(/- Topic$/i, '').trim();
                 if (title) {
-                    const query = author ? `${author} ${title} audio` : `${title} audio`;
-                    console.log(`⚡ Recherche alternative pour titre restreint (${videoId}): "${query}"...`);
-                    const searchResults = await searchInnertube(query);
-                    const altVideo = searchResults.find(v => v.videoId && v.videoId !== videoId);
-                    if (altVideo && altVideo.videoId) {
-                        console.log(`⚡ Titre alternatif trouvé: ${altVideo.videoId} (${altVideo.title})`);
-                        // Recursively or directly fetch stream for the public version
-                        const altTarget = `https://www.youtube.com/watch?v=${altVideo.videoId}`;
-                        if (hasCookies) {
-                            try {
-                                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 10000, altTarget);
-                            } catch (e) {}
+                    query = author ? `${author} ${title} audio` : `${title} audio`;
+                }
+            }
+
+            if (query) {
+                console.log(`⚡ Recherche alternative pour titre restreint (${videoId}): "${query}"...`);
+                const searchResults = await searchInnertube(query);
+                for (const altVideo of searchResults) {
+                    const altId = altVideo?.id || altVideo?.videoId;
+                    if (altId && altId !== videoId) {
+                        console.log(`⚡ Titre alternatif testé: ${altId} (${altVideo.title})`);
+                        const altTarget = `https://www.youtube.com/watch?v=${altId}`;
+                        try {
+                            if (hasCookies) {
+                                try {
+                                    return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 8000, altTarget);
+                                } catch (e) {}
+                            }
+                            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], 'bestaudio/140/251/18/ba/b', 6000, altTarget);
+                        } catch (altErr) {
+                            console.warn(`Alternative ${altId} extraction failed:`, altErr.message);
                         }
-                        return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], 'bestaudio/140/251/18/ba/b', 6000, altTarget);
                     }
                 }
             }

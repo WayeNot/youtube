@@ -654,24 +654,34 @@ class PlayerEngine {
     if (!track || !track.id) return;
     console.log('⚡ Basculement automatique sur le moteur haute disponibilité pour:', track.id);
 
+    try {
+      this.audio.pause();
+      this.audio.src = '';
+    } catch (e) {}
+
     let iframe = document.getElementById('yt-fallback-iframe');
     if (!iframe) {
       iframe = document.createElement('iframe');
       iframe.id = 'yt-fallback-iframe';
       iframe.style.position = 'fixed';
-      iframe.style.bottom = '-9999px';
-      iframe.style.left = '-9999px';
-      iframe.style.width = '200px';
-      iframe.style.height = '200px';
-      iframe.style.opacity = '0.01';
+      iframe.style.bottom = '10px';
+      iframe.style.right = '10px';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.opacity = '0.001';
       iframe.style.pointerEvents = 'none';
-      iframe.style.zIndex = '-9999';
-      iframe.setAttribute('allow', 'autoplay *; encrypted-media *; fullscreen *');
+      iframe.style.zIndex = '99999';
+      iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
       document.body.appendChild(iframe);
 
       window.addEventListener('message', (e) => {
         try {
           const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+          if (data && (data.event === 'onReady' || data.event === 'initialDelivery')) {
+            iframe.contentWindow?.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+            iframe.contentWindow?.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+            iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+          }
           if (data && data.event === 'onStateChange') {
             if (data.info === 0) {
               this.handleTrackEnded();
@@ -697,8 +707,17 @@ class PlayerEngine {
     this._currentEmbedTime = 0;
     this._currentDuration = track.durationSec || 200;
 
-    // Load iframe with JS API enabled
-    iframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+    // Load iframe with JS API enabled and un-muted autoplay
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+          iframe.contentWindow?.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+          iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+        } catch (e) {}
+      }, 300);
+    };
+    iframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&playsinline=1`;
     this.emit('playback_change', { isPlaying: true, isLoading: false });
     this.emit('play', { track: this.currentTrack });
 
