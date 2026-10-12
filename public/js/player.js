@@ -1,8 +1,37 @@
 // Full Audio Player Engine with Background Playback, MediaSession, Queue, Radio & Equalizer
+
+// Helper: Detect mobile devices (iOS / Android) where Web Audio breaks background playback
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && !window.MSStream);
+};
+
 class PlayerEngine {
   constructor() {
-    this.audio = new Audio();
+    // Attach to existing DOM audio element or create and attach for rock-solid mobile background & lockscreen persistence
+    this.audio = document.getElementById('ytm-main-audio');
+    if (!this.audio) {
+      this.audio = new Audio();
+      this.audio.id = 'ytm-main-audio';
+      this.audio.style.position = 'fixed';
+      this.audio.style.top = '-9999px';
+      this.audio.style.left = '-9999px';
+      this.audio.style.width = '1px';
+      this.audio.style.height = '1px';
+      this.audio.style.opacity = '0';
+      this.audio.style.pointerEvents = 'none';
+      const attachAudio = () => {
+        if (document.body && !document.getElementById('ytm-main-audio')) {
+          document.body.appendChild(this.audio);
+        }
+      };
+      if (document.body) attachAudio();
+      else document.addEventListener('DOMContentLoaded', attachAudio);
+    }
     this.audio.preload = 'auto';
+    this.audio.setAttribute('playsinline', 'true');
+    this.audio.setAttribute('webkit-playsinline', 'true');
+    this.audio.setAttribute('x-webkit-airplay', 'allow');
 
     this.currentTrack = null;
     this.queue = [];
@@ -27,7 +56,7 @@ class PlayerEngine {
     this.preloadedTrackId = null;
     this.preloadedNextAudio = false;
 
-    // Web Audio Equalizer
+    // Web Audio Equalizer (used on Desktop for audio processing)
     this.audioCtx = null;
     this.sourceNode = null;
     this.eqFilters = [];
@@ -37,11 +66,17 @@ class PlayerEngine {
     this.initMediaSession();
     this.loadSavedSettings();
 
-    // Global mobile audio unlock on first user interaction (unlocks Web Audio & mobile audio pipeline)
+    // Desktop audio gesture unlock (only on desktop when a non-flat equalizer preset is selected)
+    // On mobile devices, Web Audio is NEVER attached to prevent mobile OS background suspension!
     const unlockUserGesture = () => {
-      this.initEqualizer();
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch(() => {});
+      if (!isMobileDevice()) {
+        const s = Storage.getSettings();
+        if (s.eqPreset && s.eqPreset !== 'flat') {
+          this.initEqualizer();
+          if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(() => {});
+          }
+        }
       }
     };
     window.addEventListener('touchstart', unlockUserGesture, { once: true, passive: true });
@@ -156,6 +191,27 @@ class PlayerEngine {
         this.emit('error', { message: 'Impossible de lire ce titre' });
       }
     });
+
+    // Ensure MediaSession & continuous audio streaming when app is backgrounded (e.g. user opens Waze or locks screen)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (this.isPlaying && this.audio) {
+          this.updateMediaSessionState();
+          // Keep audio stream active if not paused by the user
+          if (this.audio.paused && !this._userPaused) {
+            this.audio.play().catch(() => {});
+          }
+        }
+      } else {
+        this.updateMediaSessionState();
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      if (this.isPlaying) {
+        this.updateMediaSessionState();
+      }
+    });
   }
 
   // MediaSession API for Background Playback & Lockscreen controls
@@ -218,9 +274,11 @@ class PlayerEngine {
     }
   }
 
-  // Web Audio Equalizer (5-Band), 3D Convolver Reverb & Analyser
+  // Web Audio Equalizer (5-Band), 3D Convolver Reverb & Analyser (Desktop only)
   initEqualizer() {
     if (this.isEqInitialized) return;
+    // On mobile devices (iOS / Android), Web Audio is bypassed to ensure 100% background playback in Waze and lockscreen
+    if (isMobileDevice()) return;
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
@@ -312,6 +370,7 @@ class PlayerEngine {
   }
 
   setSpatialReverb(durationSec = 0, decay = 2.0, dryLevel = 1.0, wetLevel = 0) {
+    if (isMobileDevice()) return;
     this.initEqualizer();
     if (!this.convolver || !this.convolverGain || !this.dryGain || !this.audioCtx) return;
     try {
@@ -330,6 +389,7 @@ class PlayerEngine {
   }
 
   setEqBand(bandIndex, gainValue) {
+    if (isMobileDevice()) return;
     this.initEqualizer();
     if (this.eqFilters && this.eqFilters[bandIndex]) {
       this.eqFilters[bandIndex].gain.value = gainValue;
@@ -337,6 +397,10 @@ class PlayerEngine {
   }
 
   applyEqPreset(presetName) {
+    if (isMobileDevice()) {
+      Storage.saveSetting('eqPreset', presetName);
+      return;
+    }
     this.initEqualizer();
     const presets = {
       flat: [0, 0, 0, 0, 0],
@@ -450,10 +514,17 @@ class PlayerEngine {
       this.audio.currentTime = 0;
     } catch (e) {}
 
-    // Unlock Web Audio only if equalizer was already initialized
-    if (this.isEqInitialized && this.audioCtx && this.audioCtx.state === 'suspended') {
+    // Unlock Web Audio only if equalizer was already initialized on desktop
+    if (!isMobileDevice() && this.isEqInitialized && this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume().catch(() => {});
     }
+
+    this._userPaused = false;
+    this.audio.muted = false;
+    if (this.audio.volume <= 0.05) this.audio.volume = this._lastVolume || 0.9;
+    try {
+      this.audio.load();
+    } catch (e) {}
 
     // Play immediately in the synchronous user gesture tick (vital for Mobile Safari & Android Chrome)
     const playPromise = this.audio.play();
@@ -462,6 +533,7 @@ class PlayerEngine {
         .then(() => {
           this.isPlaying = true;
           this.isLoading = false;
+          this.updateMediaSessionState();
           this.emit('playback_change', { isPlaying: true, isLoading: false });
         })
         .catch((err) => {
@@ -470,7 +542,7 @@ class PlayerEngine {
             const unlockAndPlay = () => {
               window.removeEventListener('click', unlockAndPlay);
               window.removeEventListener('touchend', unlockAndPlay);
-              if (this.audioCtx && this.audioCtx.state === 'suspended') {
+              if (!isMobileDevice() && this.audioCtx && this.audioCtx.state === 'suspended') {
                 this.audioCtx.resume().catch(() => {});
               }
               this.audio.play().catch(() => {});
@@ -504,12 +576,36 @@ class PlayerEngine {
   async fallbackDirectStream(track) {
     if (!track || !track.id) return;
     try {
-      // Direct high-availability fallback via YouTube Embedded Player
-      this.playViaYouTubeEmbed(track);
+      // 1. Direct CDN streaming fallback: fetch fresh direct audio stream URL from /api/stream-url/:id
+      const res = await fetch(`/api/stream-url/${track.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.url) {
+          console.log('⚡ Basculement sur le flux direct CDN audio haute vitesse:', track.id);
+          this.audio.src = data.url;
+          this.audio.currentTime = 0;
+          this.audio.load();
+          await this.audio.play();
+          this.isPlaying = true;
+          this.isLoading = false;
+          this.updateMediaSessionState();
+          this.emit('playback_change', { isPlaying: true, isLoading: false });
+          return;
+        }
+      }
     } catch (e) {
-      console.warn('Fallback recovery error:', e);
-      this.emit('error', { message: 'Impossible de lire ce titre' });
+      console.warn('Fallback direct CDN stream error:', e);
     }
+
+    // 2. Only on Desktop, attempt YouTube embed iframe as last resort
+    if (!isMobileDevice()) {
+      try {
+        this.playViaYouTubeEmbed(track);
+        return;
+      } catch (e) {}
+    }
+
+    this.emit('error', { message: 'Impossible de lire ce titre' });
   }
 
   playViaYouTubeEmbed(track) {
@@ -602,6 +698,7 @@ class PlayerEngine {
   }
 
   async play() {
+    this._userPaused = false;
     if (this._usingYtEmbed) {
       const iframe = document.getElementById('yt-fallback-iframe');
       if (iframe && iframe.contentWindow) {
@@ -623,14 +720,22 @@ class PlayerEngine {
       }
     }
     try {
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      if (!isMobileDevice() && this.audioCtx && this.audioCtx.state === 'suspended') {
         await this.audioCtx.resume();
       }
+      this.audio.muted = false;
       await this.audio.play();
-    } catch (e) {}
+      this.isPlaying = true;
+      this.isLoading = false;
+      this.updateMediaSessionState();
+      this.emit('playback_change', { isPlaying: true, isLoading: false });
+    } catch (e) {
+      console.warn('Audio play error:', e);
+    }
   }
 
   pause() {
+    this._userPaused = true;
     if (this._usingYtEmbed) {
       const iframe = document.getElementById('yt-fallback-iframe');
       if (iframe && iframe.contentWindow) {

@@ -2136,16 +2136,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/api.js?v=3.1"></script>
-    <script src="/js/storage.js?v=3.1"></script>
-    <script src="/js/lyrics.js?v=3.1"></script>
-    <script src="/js/player.js?v=3.1"></script>
-    <script src="/js/app.js?v=3.1"></script>
+    <script src="/js/api.js?v=3.2"></script>
+    <script src="/js/storage.js?v=3.2"></script>
+    <script src="/js/lyrics.js?v=3.2"></script>
+    <script src="/js/player.js?v=3.2"></script>
+    <script src="/js/app.js?v=3.2"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=3.1').then(reg => {
+                navigator.serviceWorker.register('/sw.js?v=3.2').then(reg => {
                     reg.update();
                 }).catch(err => {
                     console.log('SW note:', err);
@@ -2153,6 +2153,8 @@
             });
         }
     </script>
+    <!-- Dedicated native HTML5 Audio element for background playback & mobile OS lockscreen/Waze persistence -->
+    <audio id="ytm-main-audio" preload="auto" playsinline webkit-playsinline x-webkit-airplay="allow" style="display:none;"></audio>
 </body>
 
 </html>

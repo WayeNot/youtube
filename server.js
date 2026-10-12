@@ -85,7 +85,7 @@ function syncCookiesFile() {
         }
         // If cookies.txt is bundled in the repository, copy it to /tmp/cookies.txt in serverless
         const bundledCookies = path.join(__dirname, 'cookies.txt');
-        if (cookiesPath !== bundledCookies && fs.existsSync(bundledCookies) && (!fs.existsSync(cookiesPath) || fs.statSync(cookiesPath).size < 10)) {
+        if (cookiesPath !== bundledCookies && fs.existsSync(bundledCookies)) {
             try {
                 fs.copyFileSync(bundledCookies, cookiesPath);
                 return true;
@@ -1787,23 +1787,39 @@ async function ensureYtDlp() {
         let targetPath = isServerless ? tmpPath : (fs.existsSync(bundledPath) ? bundledPath : tmpPath);
 
         if (isServerless) {
-            // Check if /tmp/yt-dlp already exists and is valid
-            if (!fs.existsSync(tmpPath) || fs.statSync(tmpPath).size < 1000000) {
-                if (fs.existsSync(bundledPath)) {
+            // Check if /tmp/yt-dlp exists and is the real standalone Linux binary (> 35MB)
+            let needsBinary = !fs.existsSync(tmpPath) || fs.statSync(tmpPath).size < 35000000;
+            if (!needsBinary) {
+                // Verify that /tmp/yt-dlp executes standalone without requiring external python3
+                try {
+                    const { execFileSync } = require('child_process');
+                    execFileSync(tmpPath, ['--version'], { timeout: 2500, stdio: 'pipe' });
+                } catch (testErr) {
+                    console.warn('⚠️ Existing /tmp/yt-dlp failed execution check, will replace:', testErr.message);
+                    needsBinary = true;
+                    try { fs.unlinkSync(tmpPath); } catch (e) {}
+                }
+            }
+
+            if (needsBinary) {
+                // Try copying from bundled repository binary first (fastest)
+                if (fs.existsSync(bundledPath) && fs.statSync(bundledPath).size >= 35000000) {
                     try {
                         console.log('📦 Copie de yt-dlp depuis le bundle vers /tmp/yt-dlp...');
                         fs.copyFileSync(bundledPath, tmpPath);
                         fs.chmodSync(tmpPath, 0o755);
+                        needsBinary = false;
                     } catch (e) {
                         console.warn('⚠️ Échec copie bundled yt-dlp vers /tmp:', e.message);
                     }
                 }
-                if (!fs.existsSync(tmpPath) || fs.statSync(tmpPath).size < 1000000) {
-                    console.log('⬇️ yt-dlp introuvable, téléchargement automatique vers /tmp/yt-dlp...');
+                // Download standalone Linux binary if bundle was unavailable or too small
+                if (needsBinary) {
+                    console.log('⬇️ Téléchargement direct de yt-dlp_linux standalone vers /tmp/yt-dlp...');
                     try {
                         const { execSync } = require('child_process');
                         execSync(`curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o "${tmpPath}" && chmod a+rx "${tmpPath}"`, { timeout: 45000 });
-                        console.log('✅ yt-dlp téléchargé et prêt dans /tmp/yt-dlp !');
+                        console.log('✅ yt-dlp standalone téléchargé et prêt dans /tmp/yt-dlp !');
                     } catch (e) {
                         console.error('❌ Échec du téléchargement de yt-dlp:', e.message);
                     }
@@ -1814,7 +1830,7 @@ async function ensureYtDlp() {
             targetPath = tmpPath;
         } else {
             // Local development
-            if (!fs.existsSync(bundledPath)) {
+            if (!fs.existsSync(bundledPath) || fs.statSync(bundledPath).size < 35000000) {
                 const binDir = path.dirname(bundledPath);
                 if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
                 try {
