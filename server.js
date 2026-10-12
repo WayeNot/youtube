@@ -213,7 +213,6 @@ async function getAudioStreamUrl(videoId) {
                     '--no-warnings',
                     '--no-cache-dir',
                     '--no-check-certificates',
-                    '--extractor-args', 'youtube:player_skip=configs',
                     '--js-runtimes', `node:${process.execPath}`,
                     '--remote-components', 'ejs:github',
                     ...extraArgs,
@@ -250,7 +249,7 @@ async function getAudioStreamUrl(videoId) {
         // Attempt 1: Authenticated session with desktop cookies (tested 100% working on Vercel)
         if (hasCookies) {
             try {
-                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 7500);
+                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 12000);
             } catch (err) {
                 console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying...`);
                 lastErr = err;
