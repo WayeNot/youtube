@@ -1197,6 +1197,25 @@ const App = {
                     }
                 }
             });
+
+            // Predictive audio pre-warming on hover (desktop) & touchstart/pointerdown (mobile)
+            // Begins resolving YouTube stream URL into memory & NeonDB 200-800ms before click finishes
+            const prewarmFromElement = (target) => {
+                const el = target?.closest?.('[data-track-id]');
+                if (!el) return;
+                const trackId = el.getAttribute('data-track-id');
+                if (trackId && window.API?.prefetch) {
+                    window.API.prefetch(trackId);
+                }
+            };
+
+            document.addEventListener('mouseover', (e) => {
+                prewarmFromElement(e.target);
+            }, { passive: true });
+
+            document.addEventListener('touchstart', (e) => {
+                prewarmFromElement(e.target);
+            }, { passive: true });
         },
 
         bindPlayerEvents() {
@@ -1727,6 +1746,12 @@ const App = {
 
             const playChill = document.getElementById('home-play-all-chill-btn');
             if (playChill) playChill.onclick = () => Player.playTrack(chillHits[0], chillHits);
+
+            // Background pre-warm popular starters so initial playback starts in < 200ms
+            if (window.API?.prefetchBatch) {
+                const starterIds = [...defaultStarters.slice(0, 2), ...topHits.slice(0, 2)].map(t => t.id).filter(Boolean);
+                API.prefetchBatch(starterIds);
+            }
         },
 
         createMusicCardHTML(track) {
@@ -2141,6 +2166,12 @@ const App = {
                 Storage.addRecentSearch(results[0]);
             }
             this.renderRecentSearches();
+
+            // Background pre-warm top 3 results for instant click response (< 200ms)
+            if (results && results.length > 0 && window.API?.prefetchBatch) {
+                const topIds = results.slice(0, 3).map(r => r.id).filter(Boolean);
+                API.prefetchBatch(topIds);
+            }
 
             this.renderSearchResults();
         },

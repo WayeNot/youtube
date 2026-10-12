@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="YT Music">
     <link rel="manifest" href="/manifest.json?v=3.1">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-    <link rel="stylesheet" href="/css/style.css?v=3.1">
+    <link rel="stylesheet" href="/css/style.css?v=3.4">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2136,16 +2136,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/api.js?v=3.3"></script>
-    <script src="/js/storage.js?v=3.3"></script>
-    <script src="/js/lyrics.js?v=3.3"></script>
-    <script src="/js/player.js?v=3.3"></script>
-    <script src="/js/app.js?v=3.3"></script>
+    <script src="/js/api.js?v=3.4"></script>
+    <script src="/js/storage.js?v=3.4"></script>
+    <script src="/js/lyrics.js?v=3.4"></script>
+    <script src="/js/player.js?v=3.4"></script>
+    <script src="/js/app.js?v=3.4"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=3.3').then(reg => {
+                navigator.serviceWorker.register('/sw.js?v=3.4').then(reg => {
                     reg.update();
                 }).catch(err => {
                     console.log('SW note:', err);

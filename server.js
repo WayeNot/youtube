@@ -205,6 +205,8 @@ async function getAudioStreamUrl(videoId) {
                     '--no-playlist',
                     '--no-warnings',
                     '--no-cache-dir',
+                    '--no-check-certificates',
+                    '--extractor-args', 'youtube:player_skip=configs',
                     '--js-runtimes', `node:${process.execPath}`,
                     '--remote-components', 'ejs:github',
                     ...extraArgs,
@@ -232,25 +234,25 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: Web Embedded client first (bypasses bot verification on datacenter IPs)
+    // 5. Extract stream with yt-dlp: Web session with cookies first (bypasses bot verification on datacenter IPs)
     const streamPromise = (async () => {
         let lastErr = null;
         const cookieArgs = hasCookies ? ['--cookies', cookiesPath] : [];
         const format = '18/bestaudio/best/ba/b';
         const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Authenticated session with desktop cookies and matching Chrome UA (works in 1-2s)
+        // Attempt 1: Authenticated session with desktop cookies and matching Chrome UA
         if (hasCookies) {
             try {
-                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 8000);
+                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua], format, 7000);
             } catch (err) {
-                console.warn(`yt-dlp cookies web attempt 1 failed for ${videoId}: ${err.message}. Retrying web once...`);
+                console.warn(`yt-dlp cookies attempt 1 failed for ${videoId}: ${err.message}. Retrying...`);
                 lastErr = err;
                 // Quick retry: on cold start EJS components just downloaded, second call is immediate
                 try {
-                    return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 8000);
+                    return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua], format, 7000);
                 } catch (retryErr) {
-                    console.warn(`yt-dlp cookies web attempt 2 failed: ${retryErr.message}`);
+                    console.warn(`yt-dlp cookies attempt 2 failed: ${retryErr.message}`);
                     lastErr = retryErr;
                 }
             }
