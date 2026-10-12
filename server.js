@@ -235,8 +235,19 @@ async function getAudioStreamUrl(videoId) {
         let lastErr = null;
         const cookieArgs = hasCookies ? ['--cookies', cookiesPath] : [];
         const format = 'ba/b/bestaudio/best/18';
+        const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Android Music + Android client (works 100% on cloud/datacenter IPs without bot block)
+        // Attempt 1: Authenticated session with desktop cookies and matching Chrome UA
+        if (hasCookies) {
+            try {
+                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format);
+            } catch (err) {
+                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying with android_music...`);
+                lastErr = err;
+            }
+        }
+
+        // Attempt 2: Android Music + Android client
         try {
             return await runYtDlp(['--extractor-args', 'youtube:player_client=android_music,android'], format);
         } catch (err) {
@@ -244,7 +255,7 @@ async function getAudioStreamUrl(videoId) {
             lastErr = err;
         }
 
-        // Attempt 2: Standard Android client
+        // Attempt 3: Standard Android client
         try {
             return await runYtDlp(['--extractor-args', 'youtube:player_client=android'], format);
         } catch (err) {
@@ -252,22 +263,12 @@ async function getAudioStreamUrl(videoId) {
             lastErr = err;
         }
 
-        // Attempt 3: iOS client
+        // Attempt 4: iOS client
         try {
             return await runYtDlp(['--extractor-args', 'youtube:player_client=ios'], format);
         } catch (err) {
             console.warn(`yt-dlp ios attempt failed for ${videoId}: ${err.message}. Retrying...`);
             lastErr = err;
-        }
-
-        // Attempt 4: Android + Web with cookies if available
-        if (hasCookies) {
-            try {
-                return await runYtDlp([...cookieArgs, '--extractor-args', 'youtube:player_client=android,web'], format);
-            } catch (err) {
-                console.warn(`yt-dlp cookies attempt failed for ${videoId}: ${err.message}. Retrying...`);
-                lastErr = err;
-            }
         }
 
         // Attempt 5: TV Embedded client
