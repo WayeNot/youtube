@@ -661,11 +661,13 @@ class PlayerEngine {
       iframe.style.position = 'fixed';
       iframe.style.bottom = '-9999px';
       iframe.style.left = '-9999px';
-      iframe.style.width = '1px';
-      iframe.style.height = '1px';
-      iframe.style.opacity = '0';
+      iframe.style.width = '200px';
+      iframe.style.height = '200px';
+      iframe.style.opacity = '0.01';
       iframe.style.pointerEvents = 'none';
-      iframe.allow = 'autoplay; encrypted-media';
+      iframe.style.zIndex = '-9999';
+      iframe.setAttribute('allow', 'autoplay *; encrypted-media *; fullscreen *');
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
       document.body.appendChild(iframe);
 
       window.addEventListener('message', (e) => {

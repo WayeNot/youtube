@@ -206,9 +206,10 @@ async function getAudioStreamUrl(videoId) {
     const cookiesPath = getCookiesPath();
 
     // Concurrency queue for yt-dlp to avoid CPU starvation
-    const runYtDlp = (extraArgs = [], format = '18/bestaudio/ba/b', timeoutMs = 4500) => {
+    const runYtDlp = (extraArgs = [], format = '18/bestaudio/ba/b', timeoutMs = 4500, targetUrl = null) => {
         return ytDlpQueue.run(() => {
             return new Promise((resolve, reject) => {
+                const target = targetUrl || `https://www.youtube.com/watch?v=${videoId}`;
                 const args = [
                     '-g',
                     '-f', format,
@@ -220,7 +221,7 @@ async function getAudioStreamUrl(videoId) {
                     '--remote-components', 'ejs:github',
                     ...extraArgs,
                     '--',
-                    `https://www.youtube.com/watch?v=${videoId}`
+                    target
                 ];
                 execFile(
                     YTDLP_PATH,
@@ -279,9 +280,30 @@ async function getAudioStreamUrl(videoId) {
         try {
             return await runYtDlp([], format, 6000);
         } catch (err) {
-            console.error(`yt-dlp all attempts failed for ${videoId}: ${err.message}`);
-            throw lastErr || err;
+            lastErr = err;
         }
+
+        // Attempt 5: Smart Fallback for Music Premium only videos (e.g. wBli7itfyYg)
+        // Find public audio / official track on YouTube via oEmbed metadata
+        try {
+            const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+            if (oembedRes.ok) {
+                const oembedData = await oembedRes.json();
+                const title = (oembedData.title || '').replace(/- Topic$/i, '').trim();
+                const author = (oembedData.author_name || '').replace(/- Topic$/i, '').trim();
+                if (title) {
+                    const query = author ? `${author} ${title} audio` : `${title} audio`;
+                    console.log(`⚡ Recherche alternative pour titre restreint (${videoId}): "${query}"...`);
+                    const altUrl = await runYtDlp([], '18/bestaudio/ba/b', 8000, `ytsearch1:${query}`);
+                    if (altUrl) return altUrl;
+                }
+            }
+        } catch (oembedErr) {
+            console.warn(`Smart audio fallback search failed for ${videoId}:`, oembedErr.message);
+        }
+
+        console.error(`yt-dlp all attempts failed for ${videoId}: ${lastErr?.message}`);
+        throw lastErr || new Error('All stream extraction attempts failed');
     })().then(async (streamUrl) => {
         inFlightStreams.delete(videoId);
         // 5 hours TTL for persistent stream URL
