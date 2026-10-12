@@ -66,9 +66,28 @@ class PlayerEngine {
     this.initMediaSession();
     this.loadSavedSettings();
 
-    // Desktop audio gesture unlock (only on desktop when a non-flat equalizer preset is selected)
-    // On mobile devices, Web Audio is NEVER attached to prevent mobile OS background suspension!
+    // Silent audio data URI for mobile audio pipeline activation (44-byte minimal silent WAV)
+    const SILENT_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    this._audioUnlocked = false;
+
+    // Mobile & Desktop audio gesture unlock: primes the HTML5 audio pipeline on the very first touch
     const unlockUserGesture = () => {
+      if (!this._audioUnlocked && !this.isPlaying && !this.currentTrack) {
+        try {
+          this.audio.src = SILENT_WAV;
+          const p = this.audio.play();
+          if (p !== undefined) {
+            p.then(() => {
+              this.audio.pause();
+              this.audio.currentTime = 0;
+              this._audioUnlocked = true;
+            }).catch(() => {});
+          }
+        } catch (_) {}
+      } else {
+        this._audioUnlocked = true;
+      }
+
       if (!isMobileDevice()) {
         const s = Storage.getSettings();
         if (s.eqPreset && s.eqPreset !== 'flat') {
@@ -79,9 +98,9 @@ class PlayerEngine {
         }
       }
     };
-    window.addEventListener('touchstart', unlockUserGesture, { once: true, passive: true });
-    window.addEventListener('touchend', unlockUserGesture, { once: true, passive: true });
-    window.addEventListener('click', unlockUserGesture, { once: true, passive: true });
+    window.addEventListener('touchstart', unlockUserGesture, { passive: true });
+    window.addEventListener('touchend', unlockUserGesture, { passive: true });
+    window.addEventListener('click', unlockUserGesture, { passive: true });
   }
 
   loadSavedSettings() {
