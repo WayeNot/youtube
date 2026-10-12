@@ -205,6 +205,8 @@ async function getAudioStreamUrl(videoId) {
                     '--no-playlist',
                     '--no-warnings',
                     '--no-cache-dir',
+                    '--js-runtimes', `node:${process.execPath}`,
+                    '--remote-components', 'ejs:github',
                     ...extraArgs,
                     '--',
                     `https://www.youtube.com/watch?v=${videoId}`
@@ -859,8 +861,8 @@ app.get('/api/debug', async (req, res) => {
         const client = req.query.client || 'android';
         const useCookies = req.query.cookies === '1';
         const testArgs = req.query.list_formats === '1'
-            ? ['-F', '--no-playlist', '--no-cache-dir']
-            : ['-g', '-f', req.query.format || '18/bestaudio/best/ba/b', '--no-playlist', '--no-warnings', '--no-cache-dir'];
+            ? ['-F', '--no-playlist', '--no-cache-dir', '--js-runtimes', `node:${process.execPath}`, '--remote-components', 'ejs:github']
+            : ['-g', '-f', req.query.format || '18/bestaudio/best/ba/b', '--no-playlist', '--no-warnings', '--no-cache-dir', '--js-runtimes', `node:${process.execPath}`, '--remote-components', 'ejs:github'];
         if (useCookies && hasCookies) {
             testArgs.push('--cookies', cookiesPath);
         }
