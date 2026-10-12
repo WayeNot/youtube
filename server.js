@@ -832,6 +832,10 @@ app.get('/api/album/:id', async (req, res) => {
     }
 });
 
+app.get('/api/ping', (req, res) => {
+    res.json({ ping: 'pong-v3.3', time: Date.now() });
+});
+
 // Diagnostic endpoint to check environment & yt-dlp binary
 app.get('/api/debug', async (req, res) => {
     if (req.query.force === '1') {
