@@ -186,9 +186,10 @@ async function getAudioStreamUrl(videoId) {
     // 2. Check persistent DB cache (SQLite / Postgres)
     try {
         const dbCached = await db.getStreamCache(videoId);
-        if (dbCached && dbCached.streamUrl && dbCached.expiresAt > now) {
-            streamCache.set(videoId, { url: dbCached.streamUrl, expiresAt: dbCached.expiresAt });
-            return dbCached.streamUrl;
+        const cachedUrl = dbCached?.streamUrl || dbCached?.url;
+        if (cachedUrl && dbCached.expiresAt > now) {
+            streamCache.set(videoId, { url: cachedUrl, expiresAt: dbCached.expiresAt });
+            return cachedUrl;
         }
     } catch (e) { }
 

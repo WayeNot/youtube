@@ -966,10 +966,10 @@ const db = {
     const now = Date.now();
     if (isNeon) {
       const rows = await neonSql`SELECT stream_url, expires_at FROM stream_cache WHERE video_id = ${videoId} AND expires_at > ${now} LIMIT 1`;
-      return rows[0] ? { url: rows[0].stream_url, expiresAt: Number(rows[0].expires_at) } : null;
+      return rows[0] ? { url: rows[0].stream_url, streamUrl: rows[0].stream_url, expiresAt: Number(rows[0].expires_at) } : null;
     } else {
       const row = sqliteDb.prepare('SELECT stream_url, expires_at FROM stream_cache WHERE video_id = ? AND expires_at > ?').get(videoId, now);
-      return row ? { url: row.stream_url, expiresAt: row.expires_at } : null;
+      return row ? { url: row.stream_url, streamUrl: row.stream_url, expiresAt: row.expires_at } : null;
     }
   },
 

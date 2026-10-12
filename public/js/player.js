@@ -733,17 +733,22 @@ class PlayerEngine {
         return;
       }
       if (this.audio.remote && typeof this.audio.remote.prompt === 'function') {
-        await this.audio.remote.prompt();
-        return;
+        try {
+          await this.audio.remote.prompt();
+          return;
+        } catch (promptErr) {
+          if (promptErr.name === 'NotAllowedError') return;
+          // NotFoundError (no device found on network) falls through to instructions modal
+        }
       }
       if (window.App?.showModalAlert) {
         window.App.showModalAlert(
-          "Pour diffuser vers votre TV ou enceinte connectée :\n\n- Sur Chrome Desktop : Cliquez sur les trois petits points ⋮ du navigateur > 'Caster...'\n- Sur Safari / iPhone : Utilisez l'icône AirPlay du Centre de Contrôle\n- Sur Android : Utilisez le bouton 'Caster l'écran / audio' des réglages rapides.",
+          "Pour diffuser vers votre TV ou enceinte connectée :\n\n- Sur Chrome Desktop : Cliquez sur ⋮ (Menu) > 'Caster...'\n- Sur Safari / iOS : Utilisez l'icône AirPlay du Centre de Contrôle\n- Sur Android : Utilisez le bouton 'Caster l'écran / audio' des réglages rapides.\n\nAssurez-vous que votre appareil est connecté au même réseau Wi-Fi.",
           "📺 Diffuser (AirPlay / Chromecast)"
         );
       }
     } catch (e) {
-      if (e.name !== 'NotAllowedError') {
+      if (e.name !== 'NotAllowedError' && e.name !== 'NotFoundError') {
         console.warn('Cast / AirPlay error:', e);
       }
     }
@@ -1315,6 +1320,19 @@ class PlayerEngine {
   // Events dispatcher
   emit(eventName, detail = {}) {
     window.dispatchEvent(new CustomEvent(`player_${eventName}`, { detail }));
+  }
+
+  on(eventName, handler) {
+    if (!handler) return;
+    const wrapped = (e) => handler(e.detail);
+    handler._wrapped = wrapped;
+    window.addEventListener(`player_${eventName}`, wrapped);
+  }
+
+  off(eventName, handler) {
+    if (handler && handler._wrapped) {
+      window.removeEventListener(`player_${eventName}`, handler._wrapped);
+    }
   }
 }
 
