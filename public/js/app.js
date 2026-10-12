@@ -1018,8 +1018,9 @@ const App = {
             }
 
             if (this.dom.clearHistoryBtn) {
-                this.dom.clearHistoryBtn.addEventListener('click', () => {
-                    if (confirm('Effacer tout l\'historique d\'écoute ?')) {
+                this.dom.clearHistoryBtn.addEventListener('click', async () => {
+                    const confirmed = await this.showModalConfirm('Effacer tout votre historique d\'écoute ? Cette action est irréversible.', 'Effacer l\'historique', 'Effacer', 'Annuler');
+                    if (confirmed) {
                         Storage.clearHistory();
                         this.showToast('Historique effacé');
                     }
@@ -1040,11 +1041,11 @@ const App = {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
-                    reader.onload = (evt) => {
+                    reader.onload = async (evt) => {
                         if (Storage.importData(evt.target.result)) {
                             this.showToast('Données restaurées !');
                         } else {
-                            alert('Erreur lors de la lecture du fichier JSON.');
+                            await this.showModalAlert('Le format du fichier JSON est invalide ou corrompu.', 'Erreur d\'importation');
                         }
                     };
                     reader.readAsText(file);
@@ -2831,11 +2832,17 @@ const App = {
                 API.prefetchBatch(pl.tracks.slice(0, 3).map(t => t.id));
             }
 
-            this.dom.playlistDeleteBtn.onclick = () => {
-                if (confirm(`Supprimer définitivement la playlist "${pl.name}" ?`)) {
+            this.dom.playlistDeleteBtn.onclick = async () => {
+                const confirmed = await this.showModalConfirm(
+                    `Voulez-vous déplacer la playlist "${pl.name}" dans la corbeille ?\nVous pourrez la restaurer en 1 clic à tout moment.`,
+                    'Supprimer la playlist',
+                    'Placer dans la corbeille',
+                    'Annuler'
+                );
+                if (confirmed) {
                     Storage.deletePlaylist(pl.id);
                     this.switchView('library');
-                    this.showToast('Playlist supprimée de votre compte');
+                    this.showToast('Playlist archivée dans la corbeille 🗑️');
                 }
             };
 
@@ -2981,9 +2988,23 @@ const App = {
                 .join('');
 
             this.dom.playlistPickerList.querySelectorAll('.playlist-picker-item').forEach((item) => {
-                item.addEventListener('click', () => {
+                item.addEventListener('click', async () => {
                     const plId = item.getAttribute('data-pl-id');
-                    Storage.addTrackToPlaylist(plId, track);
+                    const res = Storage.addTrackToPlaylist(plId, track);
+                    if (res && res.reason === 'duplicate') {
+                        const confirmAdd = await this.showModalConfirm(
+                            `Le morceau "${track.title}" est déjà présent dans la playlist "${res.playlistName}".\n\nSouhaitez-vous quand même l'ajouter en double ?`,
+                            'Morceau déjà dans la playlist',
+                            'Ajouter quand même',
+                            'Annuler'
+                        );
+                        if (confirmAdd) {
+                            Storage.addTrackToPlaylist(plId, track, true);
+                            this.dom.modalPlaylistPicker.classList.add('hidden');
+                            this.showToast('Morceau ajouté en double à la playlist !');
+                        }
+                        return;
+                    }
                     this.dom.modalPlaylistPicker.classList.add('hidden');
                     this.showToast('Ajouté à la playlist !');
                 });
@@ -3516,7 +3537,7 @@ const App = {
             const name = (nameInput?.value || '').trim();
 
             if (!url) {
-                alert('Veuillez entrer une URL de playlist YouTube ou YouTube Music (ex: https://www.youtube.com/playlist?list=...)');
+                await this.showModalAlert('Veuillez entrer une URL de playlist YouTube ou YouTube Music valide (ex: https://www.youtube.com/playlist?list=...)', 'URL manquante');
                 return;
             }
 
@@ -3552,7 +3573,7 @@ const App = {
                 this.renderPlaylists();
                 this.openPlaylistView(newPl.id);
             } catch (err) {
-                alert(`Erreur d'importation : ${err.message || 'Impossible de charger la playlist'}`);
+                await this.showModalAlert(`Erreur d'importation : ${err.message || 'Impossible de charger la playlist'}`, 'Échec de l\'importation');
             } finally {
                 clearInterval(progressInterval);
                 this.stopLoadingBar();
@@ -3574,7 +3595,7 @@ const App = {
             const name = (nameInput?.value || '').trim() || 'Ma Playlist Importée';
 
             if (!text) {
-                alert('Veuillez coller au moins un titre de morceau (ex: Daft Punk - One More Time).');
+                await this.showModalAlert('Veuillez coller au moins un titre de morceau (ex: Daft Punk - One More Time).', 'Texte requis');
                 return;
             }
 
@@ -3610,7 +3631,7 @@ const App = {
                 this.renderPlaylists();
                 this.openPlaylistView(newPl.id);
             } catch (err) {
-                alert(`Erreur d'importation : ${err.message}`);
+                await this.showModalAlert(`Erreur d'importation : ${err.message}`, 'Échec de l\'importation');
             } finally {
                 clearInterval(progressInterval);
                 this.stopLoadingBar();
@@ -3842,10 +3863,15 @@ const App = {
             this.showToast(`Vitesse de lecture : ${rate}x`);
         },
 
-        openSpeedPrompt() {
+        async openSpeedPrompt() {
             const current = window.Player?.audio?.playbackRate || 1;
-            const choice = prompt('Choisissez la vitesse de lecture (0.5, 0.75, 1, 1.25, 1.5, 2) :', current);
-            if (choice !== null) {
+            const choice = await this.showModalPrompt(
+                'Entrez la vitesse souhaitée (ex: 0.5, 0.75, 1, 1.25, 1.5, 2) :',
+                String(current),
+                'Vitesse de lecture',
+                '1.0'
+            );
+            if (choice !== null && choice !== undefined) {
                 const val = parseFloat(choice);
                 if (!isNaN(val) && val >= 0.25 && val <= 4) {
                     this.setPlaybackSpeed(val);
@@ -4444,6 +4470,15 @@ const App = {
                 glowInput.checked = currentSettings.ambientGlow;
             }
 
+            // Sync Last.fm settings UI
+            const lastFmCfg = Storage.getLastFmConfig ? Storage.getLastFmConfig() : null;
+            if (lastFmCfg) {
+                const lfmToggle = document.getElementById('settings-lastfm-toggle');
+                if (lfmToggle) lfmToggle.checked = !!lastFmCfg.enabled;
+                const lfmUser = document.getElementById('settings-lastfm-username');
+                if (lfmUser) lfmUser.value = lastFmCfg.username || '';
+            }
+
             // Highlight current accent dot
             const currentAccent = currentSettings.accentColor || localStorage.getItem('ytm_accent_color') || '#ff0033';
             document.querySelectorAll('.theme-color-dot').forEach(dot => {
@@ -4833,30 +4868,28 @@ const App = {
             this.closeModal('modal-share');
         },
 
-        copyShareModalUrl() {
+        async copyShareModalUrl() {
             if (!this.currentShareUrl) return;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(this.currentShareUrl).then(() => {
+            try {
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(this.currentShareUrl);
                     this.showToast('Lien copié dans le presse-papier ! 📋');
-                }).catch(() => {
-                    prompt('Lien :', this.currentShareUrl);
-                });
-            } else {
-                prompt('Lien :', this.currentShareUrl);
-            }
+                    return;
+                }
+            } catch (e) {}
+            await this.showModalPrompt('Copiez le lien ci-dessous :', this.currentShareUrl, 'Lien de partage');
         },
 
-        inviteCollaborators() {
+        async inviteCollaborators() {
             if (!this.currentShareUrl) return;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(this.currentShareUrl).then(() => {
+            try {
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(this.currentShareUrl);
                     this.showToast('Lien d\'invitation collaborateur copié ! Partagez-le avec vos amis 👥');
-                }).catch(() => {
-                    prompt('Lien d\'invitation :', this.currentShareUrl);
-                });
-            } else {
-                prompt('Lien d\'invitation :', this.currentShareUrl);
-            }
+                    return;
+                }
+            } catch (e) {}
+            await this.showModalPrompt('Copiez le lien d\'invitation ci-dessous :', this.currentShareUrl, 'Lien d\'invitation collaborateur');
         },
 
         // ==========================================================================
@@ -5138,11 +5171,11 @@ const App = {
             } else if (navigator.clipboard) {
                 navigator.clipboard.writeText(shareUrl).then(() => {
                     this.showToast(`Lien du profil copié ! 📋`);
-                }).catch(() => {
-                    prompt('Lien du profil :', shareUrl);
+                }).catch(async () => {
+                    await this.showModalPrompt('Lien du profil :', shareUrl, 'Partager le profil');
                 });
             } else {
-                prompt('Lien du profil :', shareUrl);
+                this.showModalPrompt('Lien du profil :', shareUrl, 'Partager le profil');
             }
         },
 
@@ -5224,13 +5257,19 @@ const App = {
         // ==========================================================================
         // Crossfade Settings Prompt
         // ==========================================================================
-        openCrossfadePrompt() {
+        async openCrossfadePrompt() {
             const current = window.Player?.crossfadeDuration || 4;
-            const input = prompt('Réglez la durée du Fondu Enchaîné (Crossfade en secondes, entre 0 et 8) :', current);
-            if (input !== null) {
+            const input = await this.showModalPrompt(
+                'Réglez la durée du Fondu Enchaîné (Crossfade en secondes, entre 0 et 8) :',
+                String(current),
+                'Fondu Enchaîné (Crossfade)',
+                '4'
+            );
+            if (input !== null && input !== undefined) {
                 const val = Math.max(0, Math.min(8, parseInt(input, 10) || 0));
                 if (window.Player) window.Player.crossfadeDuration = val;
                 Storage.saveSetting('crossfade', val);
+                this.showToast(`Fondu enchaîné configuré à ${val}s`);
             }
         },
 
@@ -5260,6 +5299,256 @@ const App = {
                 window.Player.playTrack(tracks[0], tracks);
                 this.showToast('Lecture aléatoire lancée 🔀');
             }
+        },
+
+        // -------------------------------------------------------------
+        // CUSTOM HTML DIALOG MODALS (ALERT / CONFIRM / PROMPT)
+        // -------------------------------------------------------------
+        _dialogResolver: null,
+
+        showModalAlert(message, title = 'Notification') {
+            return new Promise((resolve) => {
+                this._dialogResolver = resolve;
+                const modal = document.getElementById('modal-app-dialog');
+                if (!modal) {
+                    alert(message);
+                    return resolve(true);
+                }
+                const iconEl = document.getElementById('app-dialog-icon');
+                const titleEl = document.getElementById('app-dialog-title-text');
+                const msgEl = document.getElementById('app-dialog-message');
+                const inputCont = document.getElementById('app-dialog-input-container');
+                const cancelBtn = document.getElementById('app-dialog-cancel-btn');
+                const confirmBtn = document.getElementById('app-dialog-confirm-btn');
+
+                if (iconEl) iconEl.textContent = 'ℹ️';
+                if (titleEl) titleEl.textContent = title;
+                if (msgEl) msgEl.textContent = message;
+                if (inputCont) inputCont.classList.add('hidden');
+                if (cancelBtn) cancelBtn.classList.add('hidden');
+                if (confirmBtn) {
+                    confirmBtn.textContent = 'Compris';
+                    confirmBtn.focus();
+                }
+                modal.classList.remove('hidden');
+            });
+        },
+
+        showModalConfirm(message, title = 'Confirmation', confirmText = 'Confirmer', cancelText = 'Annuler') {
+            return new Promise((resolve) => {
+                this._dialogResolver = resolve;
+                const modal = document.getElementById('modal-app-dialog');
+                if (!modal) {
+                    return resolve(confirm(message));
+                }
+                const iconEl = document.getElementById('app-dialog-icon');
+                const titleEl = document.getElementById('app-dialog-title-text');
+                const msgEl = document.getElementById('app-dialog-message');
+                const inputCont = document.getElementById('app-dialog-input-container');
+                const cancelBtn = document.getElementById('app-dialog-cancel-btn');
+                const confirmBtn = document.getElementById('app-dialog-confirm-btn');
+
+                if (iconEl) iconEl.textContent = '❓';
+                if (titleEl) titleEl.textContent = title;
+                if (msgEl) msgEl.textContent = message;
+                if (inputCont) inputCont.classList.add('hidden');
+                if (cancelBtn) {
+                    cancelBtn.classList.remove('hidden');
+                    cancelBtn.textContent = cancelText;
+                }
+                if (confirmBtn) {
+                    confirmBtn.textContent = confirmText;
+                    confirmBtn.focus();
+                }
+                modal.classList.remove('hidden');
+            });
+        },
+
+        showModalPrompt(message, defaultValue = '', title = 'Saisie requise', placeholder = '') {
+            return new Promise((resolve) => {
+                this._dialogResolver = resolve;
+                const modal = document.getElementById('modal-app-dialog');
+                if (!modal) {
+                    return resolve(prompt(message, defaultValue));
+                }
+                const iconEl = document.getElementById('app-dialog-icon');
+                const titleEl = document.getElementById('app-dialog-title-text');
+                const msgEl = document.getElementById('app-dialog-message');
+                const inputCont = document.getElementById('app-dialog-input-container');
+                const input = document.getElementById('app-dialog-input');
+                const cancelBtn = document.getElementById('app-dialog-cancel-btn');
+                const confirmBtn = document.getElementById('app-dialog-confirm-btn');
+
+                if (iconEl) iconEl.textContent = '✏️';
+                if (titleEl) titleEl.textContent = title;
+                if (msgEl) msgEl.textContent = message;
+                if (inputCont) inputCont.classList.remove('hidden');
+                if (input) {
+                    input.value = defaultValue;
+                    input.placeholder = placeholder;
+                }
+                if (cancelBtn) {
+                    cancelBtn.classList.remove('hidden');
+                    cancelBtn.textContent = 'Annuler';
+                }
+                if (confirmBtn) confirmBtn.textContent = 'Valider';
+
+                modal.classList.remove('hidden');
+                if (input) {
+                    setTimeout(() => {
+                        input.focus();
+                        input.select();
+                    }, 50);
+                    input.onkeydown = (e) => {
+                        if (e.key === 'Enter') {
+                            this.confirmAppDialog();
+                        } else if (e.key === 'Escape') {
+                            this.closeAppDialog(null);
+                        }
+                    };
+                }
+            });
+        },
+
+        closeAppDialog(result = null) {
+            const modal = document.getElementById('modal-app-dialog');
+            if (modal) modal.classList.add('hidden');
+            if (this._dialogResolver) {
+                const cb = this._dialogResolver;
+                this._dialogResolver = null;
+                cb(result);
+            }
+        },
+
+        confirmAppDialog() {
+            const inputCont = document.getElementById('app-dialog-input-container');
+            const isPrompt = inputCont && !inputCont.classList.contains('hidden');
+            let value = true;
+            if (isPrompt) {
+                const input = document.getElementById('app-dialog-input');
+                value = input ? input.value : '';
+            }
+            this.closeAppDialog(value);
+        },
+
+        // -------------------------------------------------------------
+        // TRASH & VERSION HISTORY MANAGER
+        // -------------------------------------------------------------
+        openTrashModal() {
+            const modal = document.getElementById('modal-trash-manager');
+            if (!modal) return;
+            this.renderTrashModal();
+            modal.classList.remove('hidden');
+        },
+
+        renderTrashModal() {
+            const container = document.getElementById('trash-items-list');
+            if (!container) return;
+            const trash = Storage.getTrash ? Storage.getTrash() : [];
+            if (trash.length === 0) {
+                container.innerHTML = `
+                    <div style="padding: 30px; text-align: center; color: var(--text-tertiary);">
+                        <div style="font-size: 32px; margin-bottom: 8px;">🗑️</div>
+                        <p style="font-size: 14px; font-weight: 500;">La corbeille est vide</p>
+                        <p style="font-size: 12px; margin-top: 4px;">Les playlists et morceaux supprimés apparaîtront ici pour être restaurés facilement en 1 clic.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = trash.map((item) => {
+                const date = new Date(item.deletedAt).toLocaleString('fr-FR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short'
+                });
+                const isPl = item.type === 'playlist';
+                const label = isPl
+                    ? `Playlist "${this.escapeHtml(item.data.name)}" (${item.data.tracks ? item.data.tracks.length : 0} titres)`
+                    : `Morceau "${this.escapeHtml(item.data.title)}" (${this.escapeHtml(item.data.artist || 'Artiste inconnu')})`;
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); padding:10px 14px; border-radius:8px;">
+                        <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden; margin-right:12px;">
+                            <span style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${isPl ? '📁' : '🎵'} ${label}
+                            </span>
+                            <span style="font-size:11px; color:var(--text-tertiary);">Supprimé le ${date}</span>
+                        </div>
+                        <button type="button" class="btn primary small" style="font-size:12px; padding:6px 12px; flex-shrink:0;" onclick="window.App && window.App.restoreTrashItem('${item.id}')">
+                            Restaurer
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        },
+
+        restoreTrashItem(trashId) {
+            if (!Storage.restoreFromTrash) return;
+            const res = Storage.restoreFromTrash(trashId);
+            if (res && res.success) {
+                this.showToast('Élément restauré avec succès ! 🎉');
+                this.renderTrashModal();
+                this.renderPlaylists();
+                if (this.currentView === 'library') this.renderLibrary();
+                if (this.currentView === 'playlist' && this.currentActivePlaylistId) {
+                    this.openPlaylistView(this.currentActivePlaylistId);
+                }
+            } else {
+                this.showToast('Impossible de restaurer l\'élément.', 'error');
+            }
+        },
+
+        async emptyTrash() {
+            const confirmed = await this.showModalConfirm(
+                'Voulez-vous vider définitivement toute la corbeille ? Tous les éléments sauvegardés seront supprimés.',
+                'Vider la corbeille',
+                'Vider définitivement',
+                'Annuler'
+            );
+            if (confirmed) {
+                if (Storage.emptyTrash) Storage.emptyTrash();
+                this.renderTrashModal();
+                this.showToast('Corbeille vidée 🗑️');
+            }
+        },
+
+        // -------------------------------------------------------------
+        // DISCORD RICH STATUS & LAST.FM SCROBBLING
+        // -------------------------------------------------------------
+        async copyDiscordStatus() {
+            const track = Player.currentTrack;
+            if (!track) {
+                await this.showModalAlert('Aucun morceau n\'est actuellement en cours de lecture.', 'Discord Rich Status');
+                return;
+            }
+            const listenUrl = `${window.location.origin}/?play=${track.id}`;
+            const discordText = `🎧 Écoute actuellement **${track.title}** de *${track.artist}* sur YouTube Music Clone !\n▶ Écouter avec moi : ${listenUrl}`;
+            try {
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(discordText);
+                    this.showToast('Statut Discord copié dans le presse-papier !');
+                    return;
+                }
+            } catch (e) {}
+            await this.showModalPrompt('Copiez votre message de statut Discord :', discordText, 'Statut Discord');
+        },
+
+        toggleLastFm(enabled) {
+            const cfg = Storage.getLastFmConfig ? Storage.getLastFmConfig() : { enabled: false, username: '' };
+            cfg.enabled = !!enabled;
+            if (Storage.saveLastFmConfig) Storage.saveLastFmConfig(cfg);
+            this.showToast(enabled ? 'Scrobbling Last.fm activé ✅' : 'Scrobbling Last.fm désactivé');
+        },
+
+        saveLastFmUsername() {
+            const input = document.getElementById('settings-lastfm-username');
+            const username = input ? input.value.trim() : '';
+            const cfg = Storage.getLastFmConfig ? Storage.getLastFmConfig() : { enabled: false, username: '' };
+            cfg.username = username;
+            if (username) cfg.enabled = true;
+            if (Storage.saveLastFmConfig) Storage.saveLastFmConfig(cfg);
+            const toggle = document.getElementById('settings-lastfm-toggle');
+            if (toggle && username) toggle.checked = true;
+            this.showToast(username ? `Compte Last.fm "${username}" configuré ! 🎵` : 'Nom d\'utilisateur Last.fm effacé');
         },
 
         escapeHtml(str) {

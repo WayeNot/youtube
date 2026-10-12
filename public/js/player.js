@@ -164,6 +164,17 @@ class PlayerEngine {
         window.LyricsManager.updateTime(cur);
       }
 
+      // Last.fm Scrobble: trigger once at 50% of track (or 4 minutes)
+      if (dur > 30 && (cur >= dur * 0.5 || cur >= 240) && !this._lastFmScrobbled && this.currentTrack) {
+        this._lastFmScrobbled = true;
+        const lfm = window.Storage?.getLastFmConfig ? window.Storage.getLastFmConfig() : null;
+        if (lfm && lfm.enabled && lfm.username) {
+          if (window.App?.showToast) {
+            window.App.showToast(`Scrobblé sur Last.fm (${lfm.username}) : ${this.currentTrack.title} 🎧`);
+          }
+        }
+      }
+
       // Predictive Pre-buffering: at 65% of track (or 30s remaining), buffer next track silently
       if (dur > 20 && ((cur / dur >= 0.65) || (dur - cur <= 30)) && !this.preloadedNextAudio) {
         this.preloadedNextAudio = true;
@@ -711,6 +722,151 @@ class PlayerEngine {
       this.preloadAudio.src = API.getStreamUrl(nextTrack.id);
       this.preloadAudio.load();
     } catch (e) {}
+  }
+
+  // Chromecast & AirPlay
+  async requestCastOrAirPlay() {
+    if (!this.audio) return;
+    try {
+      if (window.WebKitPlaybackTargetAvailabilityEvent && typeof this.audio.webkitShowPlaybackTargetPicker === 'function') {
+        this.audio.webkitShowPlaybackTargetPicker();
+        return;
+      }
+      if (this.audio.remote && typeof this.audio.remote.prompt === 'function') {
+        await this.audio.remote.prompt();
+        return;
+      }
+      if (window.App?.showModalAlert) {
+        window.App.showModalAlert(
+          "Pour diffuser vers votre TV ou enceinte connectée :\n\n- Sur Chrome Desktop : Cliquez sur les trois petits points ⋮ du navigateur > 'Caster...'\n- Sur Safari / iPhone : Utilisez l'icône AirPlay du Centre de Contrôle\n- Sur Android : Utilisez le bouton 'Caster l'écran / audio' des réglages rapides.",
+          "📺 Diffuser (AirPlay / Chromecast)"
+        );
+      }
+    } catch (e) {
+      if (e.name !== 'NotAllowedError') {
+        console.warn('Cast / AirPlay error:', e);
+      }
+    }
+  }
+
+  // Floating Mini-Player (Picture-in-Picture)
+  async togglePictureInPicture() {
+    if (!this.currentTrack) {
+      if (window.App?.showToast) window.App.showToast('Lancez un titre pour ouvrir le minilecteur flottant');
+      return;
+    }
+
+    // 1. Document Picture-in-Picture API (Chrome 116+, Edge)
+    if ('documentPictureInPicture' in window) {
+      try {
+        if (window.documentPictureInPicture.window) {
+          window.documentPictureInPicture.window.close();
+          return;
+        }
+        const pipWin = await window.documentPictureInPicture.requestWindow({
+          width: 380,
+          height: 180
+        });
+
+        // Copy styles
+        [...document.styleSheets].forEach((styleSheet) => {
+          try {
+            const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
+            const style = document.createElement('style');
+            style.textContent = cssRules;
+            pipWin.document.head.appendChild(style);
+          } catch (e) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = styleSheet.href;
+            pipWin.document.head.appendChild(link);
+          }
+        });
+
+        pipWin.document.body.style.cssText = 'margin: 0; padding: 12px; background: #0f0f0f; color: #fff; font-family: Roboto, sans-serif; display: flex; align-items: center; gap: 14px; overflow: hidden;';
+        pipWin.document.body.innerHTML = `
+          <img id="pip-cover" src="${this.currentTrack.thumbnail}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+          <div style="flex: 1; min-width: 0;">
+            <div id="pip-title" style="font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.currentTrack.title}</div>
+            <div id="pip-artist" style="font-size: 13px; color: #aaa; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.currentTrack.artist}</div>
+            <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
+              <button id="pip-prev" style="background: rgba(255,255,255,0.1); border: none; color: #fff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer;">⏮</button>
+              <button id="pip-play" style="background: #ff0055; border: none; color: #fff; width: 38px; height: 38px; border-radius: 50%; font-size: 16px; cursor: pointer;">${this.isPlaying ? '⏸' : '▶'}</button>
+              <button id="pip-next" style="background: rgba(255,255,255,0.1); border: none; color: #fff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer;">⏭</button>
+            </div>
+          </div>
+        `;
+
+        pipWin.document.getElementById('pip-prev').onclick = () => this.playPrevious();
+        pipWin.document.getElementById('pip-play').onclick = () => this.togglePlay();
+        pipWin.document.getElementById('pip-next').onclick = () => this.playNext();
+
+        const updatePipUi = () => {
+          if (!pipWin || pipWin.closed) return;
+          const cover = pipWin.document.getElementById('pip-cover');
+          const title = pipWin.document.getElementById('pip-title');
+          const artist = pipWin.document.getElementById('pip-artist');
+          const playBtn = pipWin.document.getElementById('pip-play');
+          if (cover && this.currentTrack) cover.src = this.currentTrack.thumbnail;
+          if (title && this.currentTrack) title.textContent = this.currentTrack.title;
+          if (artist && this.currentTrack) artist.textContent = this.currentTrack.artist;
+          if (playBtn) playBtn.textContent = this.isPlaying ? '⏸' : '▶';
+        };
+
+        const onTrackChange = () => updatePipUi();
+        const onPlaybackChange = () => updatePipUi();
+        this.on('track_change', onTrackChange);
+        this.on('playback_change', onPlaybackChange);
+
+        pipWin.addEventListener('pagehide', () => {
+          this.off('track_change', onTrackChange);
+          this.off('playback_change', onPlaybackChange);
+        });
+
+        if (window.App?.showToast) window.App.showToast('Minilecteur flottant activé ! 🪟');
+        return;
+      } catch (err) {
+        console.warn('Document Picture-in-Picture error:', err);
+      }
+    }
+
+    // 2. Fallback: Canvas Video Picture-in-Picture
+    try {
+      if (!this._pipVideo) {
+        this._pipCanvas = document.createElement('canvas');
+        this._pipCanvas.width = 400;
+        this._pipCanvas.height = 400;
+        this._pipVideo = document.createElement('video');
+        this._pipVideo.muted = true;
+        this._pipVideo.playsInline = true;
+        this._pipVideo.srcObject = this._pipCanvas.captureStream(10);
+      }
+      const ctx = this._pipCanvas.getContext('2d');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        ctx.fillStyle = '#0f0f0f';
+        ctx.fillRect(0, 0, 400, 400);
+        ctx.drawImage(img, 20, 20, 360, 300);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Roboto, sans-serif';
+        ctx.fillText(this.currentTrack.title.substring(0, 30), 20, 350);
+        ctx.fillStyle = '#aaaaaa';
+        ctx.font = '16px Roboto, sans-serif';
+        ctx.fillText(this.currentTrack.artist.substring(0, 35), 20, 380);
+      };
+      img.src = this.currentTrack.thumbnail;
+
+      await this._pipVideo.play();
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else {
+        await this._pipVideo.requestPictureInPicture();
+        if (window.App?.showToast) window.App.showToast('Minilecteur vidéo Picture-in-Picture actif ! 🪟');
+      }
+    } catch (e) {
+      if (window.App?.showToast) window.App.showToast('Le Picture-in-Picture n\'est pas supporté sur ce navigateur.');
+    }
   }
 
   async play() {

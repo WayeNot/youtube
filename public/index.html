@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="YT Music">
     <link rel="manifest" href="/manifest.json?v=3.1">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-    <link rel="stylesheet" href="/css/style.css?v=3.5">
+    <link rel="stylesheet" href="/css/style.css?v=3.6">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -977,6 +977,55 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Setting Section: 🎧 Intégrations (Last.fm & Discord) -->
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">🎧 Intégrations & Scrobbling</h3>
+                        <div class="settings-card">
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Scrobbling Last.fm</span>
+                                    <span class="settings-item-desc">Enregistre automatiquement vos écoutes sur votre profil Last.fm à 50% de la chanson.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settings-lastfm-toggle" onchange="window.App && window.App.toggleLastFm(this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="input-row" style="margin-top: 12px;">
+                                <label style="font-size: 13px; color: var(--text-secondary);">Nom d'utilisateur Last.fm :</label>
+                                <div style="display:flex;gap:10px;margin-top:6px;">
+                                    <input type="text" id="settings-lastfm-username" class="modern-input" placeholder="Ex : wayenot" style="flex:1;">
+                                    <button class="btn secondary small" onclick="window.App && window.App.saveLastFmUsername()">Enregistrer</button>
+                                </div>
+                            </div>
+                            <div class="settings-item-row" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Partage Discord Rich Status</span>
+                                    <span class="settings-item-desc">Génère un statut formaté avec lien d'écoute prêt à être copié pour Discord.</span>
+                                </div>
+                                <button class="btn secondary small" onclick="window.App && window.App.copyDiscordStatus()">
+                                    <span>Copier le statut Discord</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Setting Section: 🗑️ Corbeille & Historique -->
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">🗑️ Corbeille & Restauration</h3>
+                        <div class="settings-card">
+                            <div class="settings-item-row">
+                                <div class="settings-item-text">
+                                    <span class="settings-item-label">Restaurer des playlists ou morceaux supprimés</span>
+                                    <span class="settings-item-desc">Conserve un historique de vos 50 dernières suppressions pour une restauration instantanée.</span>
+                                </div>
+                                <button class="btn secondary small" onclick="window.App && window.App.openTrashModal()">
+                                    <span>Ouvrir la Corbeille 🗑️</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- VIEW 8: PAGE D'ERREUR (404 / Non trouvé / Thème YouTube) -->
@@ -1235,6 +1284,22 @@
                         </svg>
                     </button>
 
+                    <!-- Picture-in-Picture Floating Miniplayer -->
+                    <button id="pip-player-btn" class="icon-btn" title="Minilecteur flottant (Picture-in-Picture)"
+                        onclick="if(window.Player) window.Player.togglePictureInPicture()">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Chromecast & AirPlay -->
+                    <button id="cast-btn" class="icon-btn" title="Diffuser (AirPlay / Chromecast)"
+                        onclick="if(window.Player) window.Player.requestCastOrAirPlay()">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.92-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                        </svg>
+                    </button>
+
                     <!-- Volume Slider -->
                     <div class="volume-slider-group">
                         <button id="mute-btn" class="icon-btn small" title="Couper le son">
@@ -1265,16 +1330,23 @@
                         <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
                     </svg>
                 </button>
-                <button id="mobile-player-fav-btn" class="icon-btn fav-btn" aria-label="Favori">
-                    <svg class="heart-empty" viewBox="0 0 24 24">
-                        <path
-                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                    </svg>
-                    <svg class="heart-filled hidden" viewBox="0 0 24 24">
-                        <path
-                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                    </svg>
-                </button>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <button id="mobile-cast-btn" class="icon-btn" title="Diffuser (AirPlay / Chromecast)" onclick="if(window.Player) window.Player.requestCastOrAirPlay()">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.92-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                        </svg>
+                    </button>
+                    <button id="mobile-player-fav-btn" class="icon-btn fav-btn" aria-label="Favori">
+                        <svg class="heart-empty" viewBox="0 0 24 24">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                        <svg class="heart-filled hidden" viewBox="0 0 24 24">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div class="mobile-player-body">
@@ -2131,21 +2203,71 @@
             </div>
         </div>
 
+        <!-- Global App Dialog Modal (Custom Alert / Confirm / Prompt) -->
+        <div id="modal-app-dialog" class="modal-overlay hidden" style="z-index: 100001;">
+            <div class="modal-card" style="max-width: 420px; animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
+                <div class="modal-header">
+                    <h3 id="app-dialog-title" style="display:flex; align-items:center; gap:8px;">
+                        <span id="app-dialog-icon">💬</span>
+                        <span id="app-dialog-title-text">Notification</span>
+                    </h3>
+                    <button class="icon-btn" onclick="window.App && window.App.closeAppDialog(null)" title="Fermer">✕</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <p id="app-dialog-message" style="color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 16px; white-space: pre-wrap;"></p>
+                    <div id="app-dialog-input-container" class="hidden" style="margin-bottom: 16px;">
+                        <input type="text" id="app-dialog-input" class="modern-input" style="width:100%; box-sizing:border-box; padding:10px 14px; background:rgba(255,255,255,0.06); border:1px solid var(--border-active); border-radius:8px; color:var(--text-primary); font-size:14px;" placeholder="" />
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" id="app-dialog-cancel-btn" class="btn secondary small" onclick="window.App && window.App.closeAppDialog(null)">
+                            Annuler
+                        </button>
+                        <button type="button" id="app-dialog-confirm-btn" class="btn primary small" onclick="window.App && window.App.confirmAppDialog()">
+                            Confirmer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trash & History Manager Modal -->
+        <div id="modal-trash-manager" class="modal-overlay hidden" style="z-index: 100000;">
+            <div class="modal-card" style="max-width: 520px; max-height: 80vh; display:flex; flex-direction:column;">
+                <div class="modal-header">
+                    <h3 style="display:flex; align-items:center; gap:8px;">
+                        <span>🗑️</span> Corbeille & Historique
+                    </h3>
+                    <button class="icon-btn" onclick="document.getElementById('modal-trash-manager').classList.add('hidden')" title="Fermer">✕</button>
+                </div>
+                <div class="modal-body" style="padding: 16px; overflow-y: auto; flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                        <span style="font-size:12px; color:var(--text-tertiary);">Éléments supprimés récemment (restaurables en 1 clic)</span>
+                        <button type="button" class="btn secondary small" style="font-size:11px; padding:4px 8px; color:#ff4444;" onclick="window.App && window.App.emptyTrash()">
+                            Vider la corbeille
+                        </button>
+                    </div>
+                    <div id="trash-items-list" style="display:flex; flex-direction:column; gap:8px;">
+                        <!-- dynamic items -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast Notifications Container -->
         <div id="toast-container" class="toast-container"></div>
     </div>
 
     <!-- Scripts -->
-    <script src="/js/api.js?v=3.5"></script>
-    <script src="/js/storage.js?v=3.5"></script>
-    <script src="/js/lyrics.js?v=3.5"></script>
-    <script src="/js/player.js?v=3.5"></script>
-    <script src="/js/app.js?v=3.5"></script>
+    <script src="/js/api.js?v=3.6"></script>
+    <script src="/js/storage.js?v=3.6"></script>
+    <script src="/js/lyrics.js?v=3.6"></script>
+    <script src="/js/player.js?v=3.6"></script>
+    <script src="/js/app.js?v=3.6"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=3.5').then(reg => {
+                navigator.serviceWorker.register('/sw.js?v=3.6').then(reg => {
                     reg.update();
                 }).catch(err => {
                     console.log('SW note:', err);

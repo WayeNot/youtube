@@ -9,7 +9,9 @@ const Storage = {
     SUBSCRIPTIONS: 'ytm_subscriptions',
     AUTH_TOKEN: 'ytm_auth_token',
     AUTH_USER: 'ytm_auth_user',
-    IS_GUEST: 'ytm_is_guest'
+    IS_GUEST: 'ytm_is_guest',
+    TRASH: 'ytm_trash',
+    LASTFM: 'ytm_lastfm'
   },
 
   syncTimer: null,
@@ -378,38 +380,49 @@ const Storage = {
 
   deletePlaylist(playlistId) {
     let playlists = this.getPlaylists();
+    const pl = playlists.find(p => p.id === playlistId);
+    let trashItem = null;
+    if (pl) {
+      trashItem = this.addToTrash({ type: 'playlist', item: pl, name: pl.name });
+    }
     playlists = playlists.filter(p => p.id !== playlistId);
     localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(playlists));
     window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists } }));
     this.scheduleCloudSync();
+    return trashItem;
   },
 
-  addTrackToPlaylist(playlistId, track) {
+  addTrackToPlaylist(playlistId, track, force = false) {
     const playlists = this.getPlaylists();
     const pl = playlists.find(p => p.id === playlistId);
-    if (!pl) return false;
-    if (!pl.tracks.some(t => t.id === track.id)) {
-      pl.tracks.push({
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        thumbnail: track.thumbnail,
-        duration: track.duration,
-        durationSec: track.durationSec,
-        addedAt: Date.now()
-      });
-      localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(playlists));
-      window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists } }));
-      this.scheduleCloudSync();
-      return true;
+    if (!pl) return { success: false, reason: 'not_found' };
+    const isDup = pl.tracks.some(t => t.id === track.id || (t.title?.toLowerCase() === track.title?.toLowerCase() && t.artist?.toLowerCase() === track.artist?.toLowerCase()));
+    if (isDup && !force) {
+      return { success: false, reason: 'duplicate', playlistName: pl.name };
     }
-    return false;
+    pl.tracks.push({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      thumbnail: track.thumbnail,
+      duration: track.duration,
+      durationSec: track.durationSec,
+      addedAt: Date.now()
+    });
+    localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(playlists));
+    window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists } }));
+    this.scheduleCloudSync();
+    return { success: true, playlistName: pl.name };
   },
 
   removeTrackFromPlaylist(playlistId, trackId) {
     const playlists = this.getPlaylists();
     const pl = playlists.find(p => p.id === playlistId);
     if (!pl) return;
+    const track = pl.tracks.find(t => t.id === trackId);
+    if (track) {
+      this.addToTrash({ type: 'track', playlistId, playlistName: pl.name, item: track, name: track.title });
+    }
     pl.tracks = pl.tracks.filter(t => t.id !== trackId);
     localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(playlists));
     window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists } }));
@@ -641,6 +654,84 @@ const Storage = {
       req.onsuccess = () => resolve(true);
       req.onerror = () => reject(req.error);
     });
+  },
+
+  // -------------------------------------------------------------
+  // TRASH & VERSION HISTORY (CORBEILLE & RESTAURATION)
+  // -------------------------------------------------------------
+  getTrash() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.TRASH)) || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  addToTrash(entry) {
+    const trash = this.getTrash();
+    const item = {
+      id: 'trash_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      deletedAt: Date.now(),
+      ...entry
+    };
+    trash.unshift(item);
+    if (trash.length > 50) trash.length = 50;
+    localStorage.setItem(this.KEYS.TRASH, JSON.stringify(trash));
+    window.dispatchEvent(new CustomEvent('trash_changed', { detail: { trash } }));
+    return item;
+  },
+
+  restoreFromTrash(trashId) {
+    const trash = this.getTrash();
+    const entry = trash.find(t => t.id === trashId);
+    if (!entry) return false;
+
+    if (entry.type === 'playlist' && entry.item) {
+      const playlists = this.getPlaylists();
+      if (!playlists.some(p => p.id === entry.item.id)) {
+        playlists.push(entry.item);
+        localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(playlists));
+        window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists } }));
+        this.scheduleCloudSync();
+      }
+    } else if (entry.type === 'track' && entry.item) {
+      const playlists = this.getPlaylists();
+      const pl = playlists.find(p => p.id === entry.playlistId);
+      if (pl) {
+        if (!pl.tracks.some(t => t.id === entry.item.id)) {
+          pl.tracks.push(entry.item);
+          localStorage.setItem(this.KEYS.PLAYLISTS, JSON.stringify(playlists));
+          window.dispatchEvent(new CustomEvent('playlists_changed', { detail: { playlists } }));
+          this.scheduleCloudSync();
+        }
+      }
+    }
+
+    const updatedTrash = trash.filter(t => t.id !== trashId);
+    localStorage.setItem(this.KEYS.TRASH, JSON.stringify(updatedTrash));
+    window.dispatchEvent(new CustomEvent('trash_changed', { detail: { trash: updatedTrash } }));
+    return true;
+  },
+
+  emptyTrash() {
+    localStorage.removeItem(this.KEYS.TRASH);
+    window.dispatchEvent(new CustomEvent('trash_changed', { detail: { trash: [] } }));
+  },
+
+  // -------------------------------------------------------------
+  // LAST.FM INTEGRATION
+  // -------------------------------------------------------------
+  getLastFmConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.LASTFM)) || { enabled: false, username: '' };
+    } catch (e) {
+      return { enabled: false, username: '' };
+    }
+  },
+
+  saveLastFmConfig(cfg) {
+    localStorage.setItem(this.KEYS.LASTFM, JSON.stringify(cfg));
+    window.dispatchEvent(new CustomEvent('lastfm_changed', { detail: { config: cfg } }));
   }
 };
 

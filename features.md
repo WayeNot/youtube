@@ -238,28 +238,72 @@ Voici une sélection complète et détaillée de fonctionnalités à forte valeu
 
 ---
 
-### 📱 D. Intégration Écosystème & Mobilité
-11. **Support Chromecast & AirPlay (Google Cast / Apple AirPlay)** :
-    - Bouton "Diffuser" dans le lecteur pour streamer l'audio directement sur une enceinte connectée (Sonos, Google Home, Apple TV, ampli Wi-Fi).
-12. **Discord Rich Presence & Last.fm Scrobbling** :
-    - Affichage en temps réel du morceau en cours d'écoute sur le profil Discord de l'utilisateur avec bouton "Écouter avec".
-    - Envoi automatique des écoutes vers Last.fm pour les audiophiles.
-13. **Minilecteur Flottant (Picture-in-Picture Audio)** :
-    - Widget flottant permettant de contrôler la musique tout en naviguant sur d'autres onglets ou sur son bureau.
-14. **Mode Sommeil / Minuteur d'Arrêt (Sleep Timer)** :
-    - Réglage d'un compte à rebours (15 min, 30 min, fin du morceau) pour couper la musique en douceur avec baisse progressive du volume avant de s'endormir.
+### 📱 D. Intégration Écosystème & Mobilité (✅ Développé en v3.6)
+11. **Support Chromecast & AirPlay (Google Cast / Apple AirPlay)** [✅ Déployé] :
+    - Bouton "Diffuser" dans le lecteur desktop et la vue plein écran mobile (`#cast-btn`, `#mobile-cast-btn`).
+    - Déclenchement de la sélection de cible via `audio.webkitShowPlaybackTargetPicker()` (Apple AirPlay) et Remote Playback API W3C (`audio.remote.prompt()`).
+    - Modal d'instructions pour Google Cast Desktop et Android.
+12. **Discord Rich Presence & Last.fm Scrobbling** [✅ Déployé] :
+    - Génération de message de statut Discord formaté avec lien d'écoute immédiat en 1 clic.
+    - Configuration du compte Last.fm dans les réglages et scrobbling automatique dès 50% de la durée de chaque titre.
+13. **Minilecteur Flottant (Picture-in-Picture Audio)** [✅ Déployé] :
+    - Support de la nouvelle API Chrome/Edge `documentPictureInPicture` avec fenêtre détachable flottant au-dessus de toutes les fenêtres (bureau, jeux, travail).
+    - Contrôles complets (Play/Pause, Précédent, Suivant, Pochette et Titre synchronisés). Fallback vidéo Canvas PiP.
+14. **Détection Intelligente des Doublons & Corbeille de Restauration** [✅ Déployé] :
+    - Alerte personnalisée avec modal sombre lors de l'ajout d'un morceau déjà existant dans une playlist, offrant le choix d'ajouter en double ou d'annuler.
+    - Corbeille & Historique des versions (`modal-trash-manager`) permettant de restaurer n'importe quelle playlist ou morceau supprimé en 1 clic.
+15. **Remplacement Intégral des Dialogues Natifs (Modals HTML Modernes)** [✅ Déployé] :
+    - Élimination de 100% des boîtes de dialogue natives du navigateur (`alert()`, `confirm()`, `prompt()`).
+    - Remplacement par `#modal-app-dialog` avec design sombre néon, animations fluides et gestion native des touches Entrée et Échap.
 
 ---
 
-### 📁 E. Organisation & Gestion Avancée
-15. **Dossiers de Playlists & Système de Tags** :
-    - Possibilité de classer ses playlists dans des dossiers hiérarchiques (ex: *Entraînement*, *Soirée*, *Travail*).
-    - Tags colorés et filtres rapides par humeur (*Énergie*, *Concentration*, *Nostalgie*).
-16. **Détection des Doublons dans les Playlists** :
-    - Alerte intelligente lors de l'ajout d'un morceau déjà présent dans la playlist avec option pour ignorer ou ajouter quand même.
-17. **Historique des Versions & Restauration de Playlists** :
-    - Corbeille et historique des modifications permettant d'annuler une suppression accidentelle de titre ou de playlist.
+## 12. 🚀 Nouvelles Fonctionnalités Futures à Développer (Roadmap v4.0)
+
+Voici les prochaines fonctionnalités à forte valeur ajoutée sélectionnées pour le développement futur :
+
+### 🎛️ A. Traitement Audio & Expérience d'Écoute
+1. **Normalisation Sonore Intelligente (ReplayGain / EBU R128)** :
+   - Ajustement automatique du gain pour éviter les écarts de volume brutaux entre différents morceaux d'une même playlist.
+2. **Mode DJ & Beatmatching Automatique** :
+   - Analyse du BPM et de la tonalité harmonique (Camelot Wheel) avec transitions synchronisées sur les mesures (4 ou 8 temps).
+3. **Suppression Vocale IA en Temps Réel (Mode Karaoké Instrumental Pur)** :
+   - Séparation de source audio en temps réel pour atténuer la voix et chanter par-dessus l'instrumentale.
+4. **Visualiseur Audio WebGL 3D Réactif** :
+   - Visualiseur plein écran animé (ondes 3D, particules néon, nébuleuse) calé sur les fréquences de basse, médium et aiguës de la musique.
 
 ---
 
-*Documentation mise à jour — Version 3.4*
+### 🤖 B. Intelligence Artificielle & Découverte
+5. **Générateur de Playlist par Prompt IA ("Smart DJ")** :
+   - Génération de sélection sur-mesure à partir d'une description libre (ex: *"Ambiance cyberpunk nuit pluvieuse Tokyo"*).
+6. **Mode "Flow Infini" (Smart Autoplay)** :
+   - Enchaînement automatique sans interruption avec des morceaux similaires une fois la file d'attente terminée.
+7. **Reconnaissance Musicale Intégrée (Shazam Web)** :
+   - Identification en 3 secondes d'un morceau capté par le micro avec ajout instantané en bibliothèque.
+8. **Traduction & Explication des Paroles par IA** :
+   - Bouton de traduction simultanée des paroles vers le français et explications des figures de style et métaphores.
+
+---
+
+### 👥 C. Social & Temps Réel
+9. **Sessions d'Écoute Partagée ("Jam Session" / Listening Party)** :
+   - Synchronisation multi-utilisateurs en temps réel via WebSockets : écoute synchronisée à la milliseconde près, file d'attente collaborative et mini-chat avec émojis.
+10. **Commentaires Temporels sur les Morceaux (façon SoundCloud)** :
+    - Possibilité d'épingler un commentaire à une seconde précise du morceau le long de la barre de progression.
+11. **Rétrospective Annuelle Interactive ("Mon YTM Wrapped")** :
+    - Bilan annuel personnalisé avec statistiques d'écoute animées et export direct en format Story Instagram / TikTok.
+
+---
+
+### 🚗 D. Mobilité & Vie Quotidienne
+12. **Mode Voiture Dédié (Car Mode)** :
+    - Interface épurée avec boutons géants tactiles, typographie agrandie et commandes vocales simples pour une utilisation sécurisée en conduite.
+13. **Minuteur de Sommeil Intelligent (Sleep Timer avec Fade-Out)** :
+    - Arrêt programmable de la musique (15 min, 30 min, 45 min ou fin du morceau courant) avec baisse progressive et douce du volume.
+14. **Téléchargements Intelligents Hors-Ligne (Smart Offline Sync)** :
+    - Téléchargement automatique en cache PWA des 50 morceaux les plus écoutés pour un accès sans connexion Internet.
+
+---
+
+*Documentation mise à jour — Version 3.6*
