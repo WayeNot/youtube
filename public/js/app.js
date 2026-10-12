@@ -313,7 +313,6 @@ const App = {
                 modeVideoBtn: document.getElementById('mode-video-btn'),
                 toggleLyricsBtn: document.getElementById('toggle-lyrics-btn'),
                 toggleQueueBtn: document.getElementById('toggle-queue-btn'),
-                downloadTrackBtn: document.getElementById('download-track-btn'),
                 volumeSlider: document.getElementById('volume-slider'),
                 muteBtn: document.getElementById('mute-btn'),
 
@@ -350,8 +349,6 @@ const App = {
                 mobilePlayBtn: document.getElementById('mobile-play-btn'),
                 mobileNextBtn: document.getElementById('mobile-next-btn'),
                 mobileRepeatBtn: document.getElementById('mobile-repeat-btn'),
-                mobileDownloadBtn: document.getElementById('mobile-download-btn'),
-                mobileSleepBtn: document.getElementById('mobile-sleep-btn'),
                 mobileEqBtn: document.getElementById('mobile-eq-btn'),
                 mobileModeAudioBtn: document.getElementById('mobile-mode-audio-btn'),
                 mobileModeVideoBtn: document.getElementById('mobile-mode-video-btn'),
@@ -362,11 +359,7 @@ const App = {
 
                 // Modals & Header Actions
                 eqBtn: document.getElementById('eq-btn'),
-                sleepTimerBtn: document.getElementById('sleep-timer-btn'),
-                sleepTimerBadge: document.getElementById('sleep-timer-badge'),
                 fullscreenBtn: document.getElementById('fullscreen-btn'),
-                modalSleepTimer: document.getElementById('modal-sleep-timer'),
-                cancelTimerBtn: document.getElementById('cancel-timer-btn'),
                 modalEqualizer: document.getElementById('modal-equalizer'),
                 modalPlaylistPicker: document.getElementById('modal-playlist-picker'),
                 playlistPickerList: document.getElementById('playlist-picker-list'),
@@ -892,49 +885,16 @@ const App = {
                 this.updateFavoriteUI(isFav);
                 this.showToast(isFav ? 'Ajouté aux Titres favoris ❤️' : 'Retiré des favoris');
             };
-            this.dom.playerFavBtn.addEventListener('click', toggleFav);
-            this.dom.mobilePlayerFavBtn.addEventListener('click', toggleFav);
+            if (this.dom.playerFavBtn) this.dom.playerFavBtn.addEventListener('click', toggleFav);
+            if (this.dom.mobilePlayerFavBtn) this.dom.mobilePlayerFavBtn.addEventListener('click', toggleFav);
 
             // Add to playlist modal
             const openPlModal = () => {
                 if (!Player.currentTrack) return;
                 this.openPlaylistPicker(Player.currentTrack);
             };
-            this.dom.playerAddToPlBtn.addEventListener('click', openPlModal);
-            this.dom.mobileAddToPlBtn.addEventListener('click', openPlModal);
-
-            // Download Offline
-            const downloadTrack = () => {
-                if (!Player.currentTrack) return;
-                const url = API.getDownloadUrl(Player.currentTrack.id, Player.currentTrack.title);
-                window.open(url, '_blank');
-                this.showToast('Téléchargement lancé...');
-            };
-            this.dom.downloadTrackBtn.addEventListener('click', downloadTrack);
-            this.dom.mobileDownloadBtn.addEventListener('click', downloadTrack);
-
-            // Sleep Timer Modal
-            const openSleepModal = () => this.dom.modalSleepTimer && this.dom.modalSleepTimer.classList.remove('hidden');
-            if (this.dom.sleepTimerBtn) this.dom.sleepTimerBtn.addEventListener('click', openSleepModal);
-            if (this.dom.mobileSleepBtn) this.dom.mobileSleepBtn.addEventListener('click', openSleepModal);
-
-            document.querySelectorAll('.timer-option-btn[data-minutes]').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    const raw = btn.getAttribute('data-minutes');
-                    const val = raw === 'end_of_track' ? 'end_of_track' : parseInt(raw, 10);
-                    Player.setSleepTimer(val);
-                    this.dom.modalSleepTimer.classList.add('hidden');
-                    this.showToast(`Minuterie activée : ${raw === 'end_of_track' ? 'Fin du titre' : raw + ' min'}`);
-                });
-            });
-
-            if (this.dom.cancelTimerBtn) {
-                this.dom.cancelTimerBtn.addEventListener('click', () => {
-                    Player.cancelSleepTimer();
-                    if (this.dom.modalSleepTimer) this.dom.modalSleepTimer.classList.add('hidden');
-                    this.showToast('Minuterie annulée');
-                });
-            }
+            if (this.dom.playerAddToPlBtn) this.dom.playerAddToPlBtn.addEventListener('click', openPlModal);
+            if (this.dom.mobileAddToPlBtn) this.dom.mobileAddToPlBtn.addEventListener('click', openPlModal);
 
             // Equalizer Modal
             const openEqModal = () => this.dom.modalEqualizer && this.dom.modalEqualizer.classList.remove('hidden');
@@ -1344,28 +1304,6 @@ const App = {
             // Queue change
             window.addEventListener('player_queue_change', () => {
                 this.renderQueueUI();
-            });
-
-            // Sleep Timer Events
-            window.addEventListener('player_sleep_timer_set', () => {
-                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.classList.remove('hidden');
-                if (this.dom.cancelTimerBtn) this.dom.cancelTimerBtn.classList.remove('hidden');
-            });
-
-            window.addEventListener('player_sleep_timer_tick', (e) => {
-                const mins = Math.ceil(e.detail.remainingSeconds / 60);
-                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.textContent = `${mins}m`;
-            });
-
-            window.addEventListener('player_sleep_timer_ended', () => {
-                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.classList.add('hidden');
-                if (this.dom.cancelTimerBtn) this.dom.cancelTimerBtn.classList.add('hidden');
-                this.showToast('Minuterie de veille terminée, musique mise en pause.');
-            });
-
-            window.addEventListener('player_sleep_timer_cancelled', () => {
-                if (this.dom.sleepTimerBadge) this.dom.sleepTimerBadge.classList.add('hidden');
-                if (this.dom.cancelTimerBtn) this.dom.cancelTimerBtn.classList.add('hidden');
             });
 
             // Cloud settings synchronization
@@ -2014,15 +1952,6 @@ const App = {
                     const id = btn.getAttribute('data-id');
                     const track = this.findTrackInMemory(id);
                     if (track) this.openPlaylistPicker(track);
-                });
-            });
-
-            container.querySelectorAll('.row-download-btn').forEach((btn) => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const id = btn.getAttribute('data-id');
-                    const track = this.findTrackInMemory(id);
-                    if (track) this.openDownloadModal(track);
                 });
             });
 
@@ -3106,109 +3035,6 @@ const App = {
             this.showToast(isPub ? 'Playlist maintenant Publique (partageable avec tout le monde) 🌐' : 'Playlist maintenant Privée (visible uniquement par vous) 🔒');
         },
 
-        async openDownloadModal(track) {
-            if (!track || !track.id) return;
-            this.selectedTrackForDownload = track;
-
-            const modal = document.getElementById('modal-download-options');
-            if (!modal) return;
-
-            const thumbEl = document.getElementById('download-modal-thumb');
-            const titleEl = document.getElementById('download-modal-title');
-            const artistEl = document.getElementById('download-modal-artist');
-            const statusEl = document.getElementById('download-modal-offline-status');
-            const vaultBtnTitle = document.getElementById('download-vault-btn-title');
-            const vaultBtnDesc = document.getElementById('download-vault-btn-desc');
-            const vaultIconCircle = document.getElementById('download-vault-icon-circle');
-
-            if (thumbEl) thumbEl.src = track.thumbnail || '/icons/icon.svg';
-            if (titleEl) titleEl.textContent = track.title || 'Titre inconnu';
-            if (artistEl) artistEl.textContent = track.artist || 'Artiste inconnu';
-
-            // Check if stored offline
-            const offlineItem = await Storage.getTrackOffline(track.id);
-            if (offlineItem) {
-                if (statusEl) {
-                    statusEl.textContent = '✅ Enregistré dans le coffre hors-ligne';
-                    statusEl.className = 'download-modal-status badge-status public';
-                }
-                if (vaultBtnTitle) vaultBtnTitle.textContent = 'Retirer du Mode Hors-ligne';
-                if (vaultBtnDesc) vaultBtnDesc.textContent = 'Supprimer le morceau stocké de l\'IndexedDB locale';
-                if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-remove';
-            } else {
-                if (statusEl) {
-                    statusEl.textContent = 'Non synchronisé hors-ligne';
-                    statusEl.className = 'download-modal-status badge-status private';
-                }
-                if (vaultBtnTitle) vaultBtnTitle.textContent = 'Sauvegarder Hors-ligne (IndexedDB)';
-                if (vaultBtnDesc) vaultBtnDesc.textContent = 'Écouter sans connexion Internet dans le métro ou l\'avion';
-                if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-color';
-            }
-
-            modal.classList.remove('hidden');
-        },
-
-        triggerDownloadDirectMp3() {
-            const track = this.selectedTrackForDownload || Player.currentTrack;
-            if (!track || !track.id) return;
-            const url = API.getDownloadUrl(track.id, track.title);
-            window.location.href = url;
-            this.showToast(`Téléchargement direct de "${track.title}" lancé (.mp3) 💾`);
-        },
-
-        async toggleTrackOfflineVault() {
-            const track = this.selectedTrackForDownload || Player.currentTrack;
-            if (!track || !track.id) return;
-
-            const statusEl = document.getElementById('download-modal-offline-status');
-            const vaultBtnTitle = document.getElementById('download-vault-btn-title');
-            const vaultBtnDesc = document.getElementById('download-vault-btn-desc');
-            const vaultIconCircle = document.getElementById('download-vault-icon-circle');
-
-            const existing = await Storage.getTrackOffline(track.id);
-            if (existing) {
-                // Remove from offline
-                await Storage.deleteTrackOffline(track.id);
-                if (statusEl) {
-                    statusEl.textContent = 'Non synchronisé hors-ligne';
-                    statusEl.className = 'download-modal-status badge-status private';
-                }
-                if (vaultBtnTitle) vaultBtnTitle.textContent = 'Sauvegarder Hors-ligne (IndexedDB)';
-                if (vaultBtnDesc) vaultBtnDesc.textContent = 'Écouter sans connexion Internet dans le métro ou l\'avion';
-                if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-color';
-                this.showToast(`Titre "${track.title}" retiré du mode hors-ligne.`);
-            } else {
-                // Download and save blob to IndexedDB
-                if (statusEl) {
-                    statusEl.textContent = '⏳ Téléchargement et mise en cache...';
-                    statusEl.className = 'download-modal-status badge-status private';
-                }
-                try {
-                    const streamUrl = API.getStreamUrl(track.id);
-                    const res = await fetch(streamUrl);
-                    if (!res.ok) throw new Error(`Stream fetch failed HTTP ${res.status}`);
-                    const blob = await res.blob();
-                    await Storage.saveTrackOffline(track, blob);
-
-                    if (statusEl) {
-                        statusEl.textContent = '✅ Enregistré dans le coffre hors-ligne';
-                        statusEl.className = 'download-modal-status badge-status public';
-                    }
-                    if (vaultBtnTitle) vaultBtnTitle.textContent = 'Retirer du Mode Hors-ligne';
-                    if (vaultBtnDesc) vaultBtnDesc.textContent = 'Supprimer le morceau stocké de l\'IndexedDB locale';
-                    if (vaultIconCircle) vaultIconCircle.className = 'opt-icon-circle offline-remove';
-                    this.showToast(`Morceau prêt pour écoute hors-ligne (métro / avion) ! ✈️`);
-                } catch (e) {
-                    console.error('Offline save error:', e);
-                    if (statusEl) {
-                        statusEl.textContent = '❌ Échec du téléchargement hors-ligne';
-                        statusEl.className = 'download-modal-status badge-status private';
-                    }
-                    this.showToast('Erreur lors du téléchargement hors-ligne');
-                }
-            }
-        },
-
         openPlaylistPicker(track) {
             this.selectedTrackForPlaylist = track;
             const playlists = Storage.getPlaylists();
@@ -3889,14 +3715,6 @@ const App = {
 
         closeEqualizerModal() {
             this.closeModal('modal-equalizer');
-        },
-
-        openSleepModal() {
-            this.openModal('modal-sleep-timer');
-        },
-
-        closeSleepModal() {
-            this.closeModal('modal-sleep-timer');
         },
 
         openCreatePlaylistPrompt() {

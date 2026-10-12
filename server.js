@@ -934,10 +934,12 @@ app.get('/api/stream/:id', async (req, res) => {
 
         // Standard headers to prevent Google Video 403 Forbidden
         const fetchHeaders = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
             'Accept': '*/*',
             'Accept-Encoding': 'identity;q=1, *;q=0',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            'Referer': 'https://www.youtube.com/',
+            'Origin': 'https://www.youtube.com'
         };
         if (req.headers.range) {
             fetchHeaders['Range'] = req.headers.range;
@@ -948,7 +950,7 @@ app.get('/api/stream/:id', async (req, res) => {
             abortController.abort();
         });
 
-        const upstreamRes = await fetch(streamUrl, {
+        let upstreamRes = await fetch(streamUrl, {
             headers: fetchHeaders,
             signal: abortController.signal,
         });
@@ -958,26 +960,20 @@ app.get('/api/stream/:id', async (req, res) => {
             streamCache.delete(videoId);
             try { await db.deleteStreamCache(videoId); } catch (e) { }
             console.warn(`Upstream error ${upstreamRes.status} for ${videoId}, retrying with fresh URL...`);
-            const freshUrl = await getAudioStreamUrl(videoId);
-            const freshUpstream = await fetch(freshUrl, {
-                headers: fetchHeaders,
-                signal: abortController.signal,
-            });
-
-            res.status(freshUpstream.status);
-            ['content-type', 'content-length', 'content-range', 'accept-ranges'].forEach((h) => {
-                const val = freshUpstream.headers.get(h);
-                if (val) res.setHeader(h, val);
-            });
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-
-            const { Readable } = require('stream');
-            if (freshUpstream.body) {
-                Readable.fromWeb(freshUpstream.body).pipe(res);
-            } else {
-                res.end();
+            try {
+                const freshUrl = await getAudioStreamUrl(videoId);
+                upstreamRes = await fetch(freshUrl, {
+                    headers: fetchHeaders,
+                    signal: abortController.signal,
+                });
+            } catch (retryErr) {
+                console.error(`Stream retry extraction failed for ${videoId}:`, retryErr.message);
+                return res.status(502).send('Audio stream unavailable');
             }
-            return;
+
+            if (!upstreamRes.ok && upstreamRes.status !== 206) {
+                return res.status(upstreamRes.status || 502).send('Audio upstream unavailable');
+            }
         }
 
         // Forward response status (200 or 206) and headers
