@@ -1945,14 +1945,16 @@ async function ensureYtDlp() {
         console.error('Erreur initialisation DB:', e);
     }
 
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`🎵 Serveur YouTube Music prêt sur http://localhost:${PORT}`);
-        if (db.isNeon()) {
-            console.log('☁️ Base de données: NeonDB (PostgreSQL Serverless)');
-        } else {
-            console.log('📁 Base de données: SQLite Local (data/ytm.db)');
-        }
-    });
+    if (!process.env.VERCEL) {
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`🎵 Serveur YouTube Music prêt sur http://localhost:${PORT}`);
+            if (db.isNeon()) {
+                console.log('☁️ Base de données: NeonDB (PostgreSQL Serverless)');
+            } else {
+                console.log('📁 Base de données: SQLite Local (data/ytm.db)');
+            }
+        });
+    }
 })();
 
 module.exports = app;
