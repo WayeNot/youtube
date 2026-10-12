@@ -185,6 +185,18 @@ const API = {
     });
     if (!res.ok) throw new Error('Session expirée');
     return await res.json();
+  },
+
+  // VibeTube Feed
+  async getVibeTubeFeed(category = 'trending') {
+    try {
+      const res = await fetch(`/api/vibetube/feed?category=${encodeURIComponent(category)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('VibeTube feed API error:', e);
+      return { category, videos: [] };
+    }
   }
 };
 

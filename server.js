@@ -346,6 +346,9 @@ async function searchInnertube(query) {
                     vr.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
                     `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
 
+                const publishedTime = vr.publishedTimeText?.simpleText || '';
+                const channelAvatar = vr.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(artist)}`;
+
                 // Calculate duration in seconds
                 const parts = duration.split(':').map(Number);
                 let durationSec = 0;
@@ -357,10 +360,13 @@ async function searchInnertube(query) {
                     id: vr.videoId,
                     title,
                     artist,
+                    channel: artist,
                     duration,
                     durationSec,
                     thumbnail: thumb,
                     views,
+                    publishedTime,
+                    channelAvatar,
                 });
             }
         }
@@ -1008,6 +1014,45 @@ app.post('/api/prefetch', (req, res) => {
         }
     });
     res.json({ success: true, count: cleanIds.length });
+});
+
+// 4c. VibeTube: Reimagined YouTube Video Feed (Categories & Trending)
+const vibetubeFeedCache = new Map();
+app.get('/api/vibetube/feed', async (req, res) => {
+    const category = (req.query.category || 'trending').toLowerCase();
+    const queryMap = {
+        trending: 'tendances youtube france',
+        gaming: 'gaming gameplay fr',
+        music: 'clip musical officiel nouveauté',
+        tech: 'tech actu ia high tech',
+        podcasts: 'podcast interview fr',
+        cinema: 'bande annonce film cinema vostfr',
+        shorts: 'video courte viral'
+    };
+    const searchQuery = queryMap[category] || `${category} video`;
+
+    const cacheKey = `vibetube_${category}`;
+    const cached = vibetubeFeedCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && cached.expiresAt > now) {
+        return res.json({ category, videos: cached.videos, cached: true });
+    }
+
+    try {
+        let videos = await searchInnertube(searchQuery);
+        if (!videos || videos.length === 0) {
+            videos = await searchInnertube('tendances youtube');
+        }
+        const cleanVideos = (videos || []).slice(0, 24);
+        vibetubeFeedCache.set(cacheKey, {
+            videos: cleanVideos,
+            expiresAt: now + 15 * 60 * 1000 // 15 minutes TTL
+        });
+        res.json({ category, videos: cleanVideos, cached: false });
+    } catch (err) {
+        console.error('VibeTube feed error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch VibeTube video feed', videos: [] });
+    }
 });
 
 // 5. Download track as MP3 file

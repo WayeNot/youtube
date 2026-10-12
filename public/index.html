@@ -93,6 +93,11 @@
                     <span class="brand-name">VibeStream</span>
                     <span class="brand-badge">PRO</span>
                 </a>
+                <button id="switch-vibetube-btn" class="switch-vibetube-btn" title="Basculer vers VibeTube (Mode Vidéo)" onclick="window.App && window.App.toggleVibeTubeMode()">
+                    <span class="vibetube-icon-pulse">🎬</span>
+                    <span class="vibetube-btn-text">VibeTube</span>
+                    <span class="vibetube-badge">NOUVEAU</span>
+                </button>
             </div>
 
             <div class="header-center">
@@ -201,6 +206,11 @@
                     <a href="javascript:void(0)" class="nav-item" onclick="window.CarMode?.open()">
                         <span style="font-size:18px;">🚗</span>
                         <span>Mode Voiture</span>
+                    </a>
+                    <a href="/vibetube" class="nav-item" data-view="vibetube" id="sidebar-vibetube-link" onclick="event.preventDefault(); window.App && window.App.switchView('vibetube')">
+                        <span style="font-size:18px;">🎬</span>
+                        <span>VibeTube (Vidéos)</span>
+                        <span class="sidebar-new-pill" style="background:linear-gradient(135deg, #ff0055, #ff5500); color:#fff; font-size:9px; font-weight:800; padding:2px 6px; border-radius:10px; margin-left:auto;">NEW</span>
                     </a>
                 </nav>
 
@@ -357,6 +367,53 @@
                         </div>
                         <div class="genre-grid" id="genre-grid"></div>
                     </div>
+                </section>
+
+                <!-- VIEW: VIBETUBE (YouTube à notre sauce) -->
+                <section id="view-vibetube" class="view-section">
+                    <!-- Hero Banner VibeTube -->
+                    <div class="vibetube-hero">
+                        <div class="vibetube-hero-content">
+                            <div class="vibetube-hero-badge">
+                                <span class="badge-dot"></span> VIBETUBE NEXT-GEN • EXPÉRIENCE PURE
+                            </div>
+                            <h1 class="vibetube-hero-title">YouTube, réinventé à notre sauce.</h1>
+                            <p class="vibetube-hero-desc">
+                                Découvrez vos créateurs et vidéos favorites dans une interface fluide et sans distractions. 
+                                Basculez instantanément n'importe quelle vidéo vers le moteur audio haute fidélité en un clic !
+                            </p>
+                            <div class="vibetube-hero-actions">
+                                <button type="button" class="btn primary vibetube-hero-btn" onclick="window.App && window.App.filterVibeTube('trending')">
+                                    <span>🔥 Vidéos Tendances</span>
+                                </button>
+                                <button type="button" class="btn secondary" onclick="window.App && window.App.switchView('home')">
+                                    <span>🎵 Revenir à la Musique</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Chips Bar VibeTube -->
+                    <div class="vibetube-chips-wrapper">
+                        <div class="vibetube-chips-scroll" id="vibetube-chips">
+                            <button type="button" class="vibetube-chip active" data-vibetube-cat="trending">🔥 Tendances</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="gaming">🎮 Gaming</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="music">🎵 Clips & Musique</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="tech">💻 Tech & Code</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="podcasts">🎙️ Podcasts</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="cinema">🍿 Cinéma & Trailers</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="shorts">⚡ Shorts & Virales</button>
+                        </div>
+                    </div>
+
+                    <!-- Feed Header -->
+                    <div class="vibetube-feed-header">
+                        <h2 class="section-title" id="vibetube-section-title">🔥 Vidéos Tendances</h2>
+                        <span class="vibetube-count-pill" id="vibetube-video-count">Chargement...</span>
+                    </div>
+
+                    <!-- Video Grid 16:9 -->
+                    <div id="vibetube-video-grid" class="vibetube-video-grid"></div>
                 </section>
 
                 <!-- VIEW 4: LIBRARY -->
@@ -2450,6 +2507,36 @@
             <div style="text-align:center; font-size:14px; color:rgba(255,255,255,0.5); padding:10px;">
                 👆 Balayez l'écran vers la gauche ou la droite pour changer de titre
             </div>
+        <!-- MODAL: VibeTube Video Player Overlay -->
+        <div id="modal-vibetube-player" class="modal-overlay hidden">
+            <div class="vibetube-player-container">
+                <div class="vibetube-player-header">
+                    <div class="vibetube-player-title-box">
+                        <span class="vibetube-player-tag">🎬 VIBETUBE VIDÉO</span>
+                        <h3 id="vibetube-player-title" class="vibetube-player-title">Titre de la vidéo</h3>
+                    </div>
+                    <div class="vibetube-player-actions">
+                        <button type="button" id="vibetube-audio-bridge-btn" class="btn secondary small vibetube-audio-btn" title="Écouter en audio haute fidélité">
+                            <span>🎧 Écouter en Audio VibeStream</span>
+                        </button>
+                        <button type="button" id="vibetube-player-close-btn" class="icon-btn" title="Fermer" onclick="window.App && window.App.closeVibeTubePlayer()">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="vibetube-player-screen">
+                    <iframe id="vibetube-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                <div class="vibetube-player-meta">
+                    <div class="vibetube-channel-info">
+                        <img id="vibetube-channel-avatar" src="/icons/icon.svg" class="vibetube-channel-avatar" alt="Avatar">
+                        <div>
+                            <div id="vibetube-channel-name" class="vibetube-channel-name">Nom de la chaîne</div>
+                            <div id="vibetube-video-stats" class="vibetube-video-stats">Vues • Date</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Toast Notifications Container -->
@@ -2457,21 +2544,21 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/api.js?v=3.8"></script>
-    <script src="/js/storage.js?v=3.8"></script>
-    <script src="/js/lyrics.js?v=3.8"></script>
-    <script src="/js/player.js?v=3.8"></script>
-    <script src="/js/visualizer.js?v=3.8"></script>
-    <script src="/js/canvas-bg.js?v=3.8"></script>
-    <script src="/js/dj.js?v=3.8"></script>
-    <script src="/js/jam.js?v=3.8"></script>
-    <script src="/js/carmode.js?v=3.8"></script>
-    <script src="/js/app.js?v=3.8"></script>
+    <script src="/js/api.js?v=3.9"></script>
+    <script src="/js/storage.js?v=3.9"></script>
+    <script src="/js/lyrics.js?v=3.9"></script>
+    <script src="/js/player.js?v=3.9"></script>
+    <script src="/js/visualizer.js?v=3.9"></script>
+    <script src="/js/canvas-bg.js?v=3.9"></script>
+    <script src="/js/dj.js?v=3.9"></script>
+    <script src="/js/jam.js?v=3.9"></script>
+    <script src="/js/carmode.js?v=3.9"></script>
+    <script src="/js/app.js?v=3.9"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=3.8').then(reg => {
+                navigator.serviceWorker.register('/sw.js?v=3.9').then(reg => {
                     reg.update();
                 }).catch(err => {
                     console.log('SW note:', err);

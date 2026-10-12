@@ -1397,6 +1397,30 @@ const App = {
                     case 'KeyF':
                         this.dom.fullscreenBtn.click();
                         break;
+                    case 'Slash':
+                        e.preventDefault();
+                        if (window.innerWidth <= 768 && this.dom.mobileSearchInput) {
+                            this.switchView('search');
+                            this.dom.mobileSearchInput.focus();
+                        } else if (this.dom.searchInput) {
+                            this.dom.searchInput.focus();
+                            this.dom.searchInput.select();
+                            this.showRecentSearchSuggestions();
+                        }
+                        break;
+                }
+
+                // Global Ctrl+K / Cmd+K search shortcut
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    if (window.innerWidth <= 768 && this.dom.mobileSearchInput) {
+                        this.switchView('search');
+                        this.dom.mobileSearchInput.focus();
+                    } else if (this.dom.searchInput) {
+                        this.dom.searchInput.focus();
+                        this.dom.searchInput.select();
+                        this.showRecentSearchSuggestions();
+                    }
                 }
             });
         },
@@ -1420,10 +1444,22 @@ const App = {
                     settings: '/settings',
                     search: '/search',
                     album: '/album',
+                    vibetube: '/vibetube',
                     error: '/error'
                 };
                 const newPath = pathMap[viewName] || `/${viewName}`;
                 this.updateURL(newPath);
+            }
+
+            // Update VibeTube switch button appearance
+            const switchBtn = document.getElementById('switch-vibetube-btn');
+            if (switchBtn) {
+                const isTube = viewName === 'vibetube';
+                switchBtn.classList.toggle('active-mode', isTube);
+                const textEl = switchBtn.querySelector('.vibetube-btn-text');
+                const badgeEl = switchBtn.querySelector('.vibetube-badge');
+                if (textEl) textEl.textContent = isTube ? 'VibeStream' : 'VibeTube';
+                if (badgeEl) badgeEl.textContent = isTube ? 'MUSIQUE' : 'VIDÉO';
             }
 
             // Hide mood/filter chips on any page that is NOT home
@@ -1466,6 +1502,10 @@ const App = {
                 if (!this.dom.homeSectionsContainer || !this.dom.homeSectionsContainer.hasChildNodes() || this.dom.homeSectionsContainer.children.length === 0) {
                     this.loadHome();
                 }
+            }
+
+            if (viewName === 'vibetube') {
+                this.loadVibeTubeFeed(this.currentVibeTubeCategory || 'trending');
             }
 
             if (viewName === 'library') {
@@ -1963,23 +2003,9 @@ const App = {
         `).join('');
             }
 
-            // 2. Recent track results with direct play button (Image 3: Cover + Title + Artist + Play Button)
+            // 2. Recent track results with direct action buttons (Like, Playlist, Queue, Play)
             if (trackItems.length > 0) {
-                html += trackItems.slice(0, 4).map(item => `
-          <div class="suggestion-track-item" data-track-id="${item.id}">
-            <img src="${item.thumbnail}" alt="" class="suggestion-track-thumb">
-            <div class="suggestion-track-meta">
-              <span class="suggestion-track-title">${this.escapeHtml(item.title)}</span>
-              <span class="suggestion-track-sub">${this.escapeHtml(item.artist || 'Artiste')} • ${item.duration || ''}</span>
-            </div>
-            <div class="suggestion-play-icon" title="Écouter maintenant">
-              <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            </div>
-            <button class="suggestion-delete-btn" data-delete-id="${item.id}" title="Supprimer">
-              <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-            </button>
-          </div>
-        `).join('');
+                html += trackItems.slice(0, 4).map(item => this.createSuggestionTrackRowHTML(item, { isRecent: true })).join('');
             }
 
             const dropdowns = targetDropdown
@@ -1990,17 +2016,7 @@ const App = {
                 dd.innerHTML = html;
                 dd.classList.remove('hidden');
 
-                // Bind events
-                dd.querySelectorAll('.suggestion-delete-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const delId = btn.getAttribute('data-delete-id');
-                        Storage.removeRecentSearch(delId);
-                        this.showRecentSearchSuggestions(targetDropdown);
-                        this.renderRecentSearches();
-                    });
-                });
-
+                // Bind Query Click
                 dd.querySelectorAll('.suggestion-item').forEach(item => {
                     item.addEventListener('click', () => {
                         const q = item.getAttribute('data-query');
@@ -2011,16 +2027,94 @@ const App = {
                     });
                 });
 
-                dd.querySelectorAll('.suggestion-track-item').forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        if (e.target.closest('.suggestion-delete-btn')) return;
-                        const trackId = item.getAttribute('data-track-id');
-                        const track = this.findTrackInMemory(trackId) || trackItems.find(t => t.id === trackId);
-                        if (track) {
-                            Player.playTrack(track);
-                            dropdowns.forEach(d => d.classList.add('hidden'));
-                        }
-                    });
+                // Bind Track Actions & Row Click
+                this.bindSuggestionTrackActionListeners(dd, trackItems, dropdowns, targetDropdown);
+            });
+        },
+
+        createSuggestionTrackRowHTML(track, { isRecent = false } = {}) {
+            const isFav = Storage.isFavorite(track.id);
+            return `
+          <div class="suggestion-track-item ytm-track-preview-row" data-track-id="${track.id}">
+            <div class="suggestion-thumb-wrap">
+              <img src="${track.thumbnail || 'https://i.ytimg.com/vi/' + track.id + '/hqdefault.jpg'}" alt="" class="suggestion-track-thumb">
+              <div class="suggestion-thumb-play-overlay">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+              </div>
+            </div>
+            <div class="suggestion-track-meta">
+              <span class="suggestion-track-title">${this.escapeHtml(track.title)}</span>
+              <span class="suggestion-track-sub">
+                ${this.escapeHtml(track.artist || 'Artiste')} ${track.duration ? '• ' + track.duration : ''}
+              </span>
+            </div>
+            <div class="suggestion-track-actions">
+              <button type="button" class="suggestion-action-btn btn-like ${isFav ? 'is-liked' : ''}" data-action="like" data-track-id="${track.id}" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              </button>
+              <button type="button" class="suggestion-action-btn btn-playlist" data-action="playlist" data-track-id="${track.id}" title="Ajouter à une playlist">
+                <svg viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
+              </button>
+              <button type="button" class="suggestion-action-btn btn-queue" data-action="queue" data-track-id="${track.id}" title="Ajouter à la file d'attente">
+                <svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+              </button>
+              ${isRecent ? `
+              <button type="button" class="suggestion-action-btn suggestion-delete-btn" data-delete-id="${track.id}" title="Supprimer de l'historique">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              </button>
+              ` : ''}
+            </div>
+          </div>
+            `;
+        },
+
+        bindSuggestionTrackActionListeners(dd, trackList, dropdowns, targetDropdown = null) {
+            // Delete recent search item
+            dd.querySelectorAll('.suggestion-delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const delId = btn.getAttribute('data-delete-id');
+                    Storage.removeRecentSearch(delId);
+                    this.showRecentSearchSuggestions(targetDropdown);
+                    this.renderRecentSearches();
+                });
+            });
+
+            // Action buttons: Like, Playlist, Queue
+            dd.querySelectorAll('.suggestion-action-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const action = btn.getAttribute('data-action');
+                    const trackId = btn.getAttribute('data-track-id');
+                    const track = trackList.find(t => t.id === trackId) || this.findTrackInMemory(trackId);
+                    if (!track) return;
+
+                    if (action === 'like') {
+                        const isNowFav = Storage.toggleFavorite(track);
+                        btn.classList.toggle('is-liked', isNowFav);
+                        btn.title = isNowFav ? 'Retirer des favoris' : 'Ajouter aux favoris';
+                        this.showToast(isNowFav ? 'Titre ajouté aux favoris ❤️' : 'Titre retiré des favoris');
+                    } else if (action === 'playlist') {
+                        this.openPlaylistPicker(track);
+                    } else if (action === 'queue') {
+                        Player.addToQueue(track);
+                        this.showToast(`"${track.title}" ajouté à la file d'attente 🎶`);
+                    }
+                });
+            });
+
+            // Entire row click: play track
+            dd.querySelectorAll('.suggestion-track-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.suggestion-action-btn')) return;
+                    const trackId = item.getAttribute('data-track-id');
+                    const track = trackList.find(t => t.id === trackId) || this.findTrackInMemory(trackId);
+                    if (track) {
+                        Player.playTrack(track);
+                        dropdowns.forEach(d => d.classList.add('hidden'));
+                    }
                 });
             });
         },
@@ -2054,7 +2148,7 @@ const App = {
 
             // 1. Text Query suggestions with magnifying glass
             if (suggestions && suggestions.length > 0) {
-                html += suggestions.slice(0, 6).map(s => `
+                html += suggestions.slice(0, 5).map(s => `
           <div class="suggestion-item ytm-suggestion-row" data-query="${this.escapeHtml(s)}">
             <div class="suggestion-left">
               <svg class="suggestion-search-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -2077,19 +2171,9 @@ const App = {
         `;
             }
 
-            // 3. Direct song results at bottom
+            // 3. Direct song results with rich interactive actions (Like, Playlist, Queue, Play)
             if (directTracks.length > 0) {
-                html += directTracks.slice(0, 4).map(t => `
-          <div class="suggestion-track-item ytm-track-preview-row" data-track-id="${t.id}">
-            <img src="${t.thumbnail || 'https://i.ytimg.com/vi/' + t.id + '/hqdefault.jpg'}" alt="" class="suggestion-track-thumb">
-            <div class="suggestion-track-meta">
-              <span class="suggestion-track-title">${this.escapeHtml(t.title)}</span>
-              <span class="suggestion-track-sub">
-                <span class="ytm-explicit-badge">E</span> Titre • ${this.escapeHtml(t.artist || 'Artiste')} ${t.views ? '• ' + this.escapeHtml(t.views) : (t.duration ? '• ' + t.duration : '')}
-              </span>
-            </div>
-          </div>
-        `).join('');
+                html += directTracks.slice(0, 4).map(t => this.createSuggestionTrackRowHTML(t, { isRecent: false })).join('');
             }
 
             dropdowns.forEach(dd => {
@@ -2118,17 +2202,8 @@ const App = {
                     });
                 });
 
-                // Click on Direct Track Preview (instant play)
-                dd.querySelectorAll('.suggestion-track-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const trackId = item.getAttribute('data-track-id');
-                        const track = directTracks.find(t => t.id === trackId) || this.findTrackInMemory(trackId);
-                        if (track) {
-                            Player.playTrack(track);
-                            dropdowns.forEach(d => d.classList.add('hidden'));
-                        }
-                    });
-                });
+                // Bind Track Actions & Row Click
+                this.bindSuggestionTrackActionListeners(dd, directTracks, dropdowns, targetDropdown);
             });
         },
 
@@ -5556,6 +5631,180 @@ const App = {
             const toggle = document.getElementById('settings-lastfm-toggle');
             if (toggle && username) toggle.checked = true;
             this.showToast(username ? `Compte Last.fm "${username}" configuré ! 🎵` : 'Nom d\'utilisateur Last.fm effacé');
+        },
+
+        // -------------------------------------------------------------
+        // VIBETUBE (YouTube à notre sauce)
+        // -------------------------------------------------------------
+        toggleVibeTubeMode() {
+            if (this.currentView === 'vibetube') {
+                this.switchView('home');
+            } else {
+                this.switchView('vibetube');
+            }
+        },
+
+        filterVibeTube(category) {
+            this.currentVibeTubeCategory = category;
+            const container = document.getElementById('vibetube-chips');
+            if (container) {
+                container.querySelectorAll('.vibetube-chip').forEach(c => {
+                    c.classList.toggle('active', c.getAttribute('data-vibetube-cat') === category);
+                });
+            }
+            const titleMap = {
+                trending: '🔥 Vidéos Tendances du Moment',
+                gaming: '🎮 Meilleurs Gameplays & Live Gaming',
+                music: '🎵 Clips & Nouveautés Musicales',
+                tech: '💻 Tech, Intelligence Artificielle & Dev',
+                podcasts: '🎙️ Podcasts & Grandes Interviews',
+                cinema: '🍿 Bandes-Annonces & Cinéma',
+                shorts: '⚡ Shorts & Vidéos Virales'
+            };
+            const titleEl = document.getElementById('vibetube-section-title');
+            if (titleEl) titleEl.textContent = titleMap[category] || '🎬 Vidéos Recommandées';
+
+            this.loadVibeTubeFeed(category);
+        },
+
+        async loadVibeTubeFeed(category = 'trending') {
+            const grid = document.getElementById('vibetube-video-grid');
+            const countEl = document.getElementById('vibetube-video-count');
+            if (!grid) return;
+
+            // Skeletons
+            grid.innerHTML = Array.from({ length: 8 }).map(() => `
+                <div class="vibetube-video-card skeleton">
+                    <div class="vibetube-thumb-wrap skeleton-box"></div>
+                    <div class="vibetube-card-body">
+                        <div class="vibetube-avatar-skeleton skeleton-box"></div>
+                        <div class="vibetube-meta-skeleton">
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            if (countEl) countEl.textContent = 'Chargement en cours...';
+
+            const res = await API.getVibeTubeFeed(category);
+            const videos = (res && Array.isArray(res.videos)) ? res.videos : [];
+
+            if (videos.length === 0) {
+                grid.innerHTML = '<p class="empty-msg" style="grid-column: 1/-1; padding: 40px; text-align: center;">Aucune vidéo disponible pour cette catégorie pour le moment.</p>';
+                if (countEl) countEl.textContent = '0 vidéo';
+                return;
+            }
+
+            if (countEl) countEl.textContent = `${videos.length} vidéos disponibles`;
+
+            // Enregistrer dans les résultats connus pour la lecture audio
+            if (!Array.isArray(this.currentSearchResults)) this.currentSearchResults = [];
+            videos.forEach(v => {
+                if (v && v.id && !this.currentSearchResults.some(x => x.id === v.id)) {
+                    this.currentSearchResults.push(v);
+                }
+            });
+
+            grid.innerHTML = videos.map(v => `
+                <div class="vibetube-video-card" data-video-id="${v.id}">
+                    <div class="vibetube-thumb-wrap" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')">
+                        <img src="${v.thumbnail || 'https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg'}" alt="${this.escapeHtml(v.title)}" class="vibetube-thumb" loading="lazy">
+                        ${v.duration ? `<span class="vibetube-duration-badge">${this.escapeHtml(v.duration)}</span>` : ''}
+                        <div class="vibetube-thumb-overlay">
+                            <div class="vibetube-play-pill">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+                                <span>Regarder</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vibetube-card-body">
+                        <img src="${v.channelAvatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(v.artist || 'creator')}" alt="" class="vibetube-creator-avatar">
+                        <div class="vibetube-card-info">
+                            <h3 class="vibetube-video-title" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')" title="${this.escapeHtml(v.title)}">${this.escapeHtml(v.title)}</h3>
+                            <div class="vibetube-channel-row">
+                                <span class="vibetube-channel-name">${this.escapeHtml(v.artist || 'Chaîne YouTube')}</span>
+                                <span class="vibetube-verified-icon" title="Chaîne vérifiée">✓</span>
+                            </div>
+                            <div class="vibetube-stats-row">
+                                <span>${v.views ? this.escapeHtml(v.views) : 'Populaire'}</span>
+                                ${v.publishedTime ? `<span>• ${this.escapeHtml(v.publishedTime)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vibetube-card-actions">
+                        <button type="button" class="btn secondary small vibetube-card-play-btn" onclick="window.App && window.App.openVibeTubeVideo('${v.id}')">
+                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor; margin-right:4px;"><path d="M8 5v14l11-7z"/></svg>
+                            <span>Vidéo</span>
+                        </button>
+                        <button type="button" class="btn secondary small vibetube-card-audio-btn" onclick="window.App && window.App.playVibeTubeAsAudio('${v.id}')" title="Écouter en audio haute vitesse sur VibeStream">
+                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor; margin-right:4px;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                            <span>Audio</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Bind chip clicks in VibeTube
+            const chipsWrapper = document.getElementById('vibetube-chips');
+            if (chipsWrapper && !chipsWrapper._hasBound) {
+                chipsWrapper._hasBound = true;
+                chipsWrapper.querySelectorAll('.vibetube-chip').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const cat = btn.getAttribute('data-vibetube-cat');
+                        this.filterVibeTube(cat);
+                    });
+                });
+            }
+        },
+
+        openVibeTubeVideo(videoId) {
+            const track = this.findTrackInMemory(videoId) || { id: videoId, title: 'Vidéo VibeTube', artist: 'YouTube' };
+            const modal = document.getElementById('modal-vibetube-player');
+            const iframe = document.getElementById('vibetube-iframe');
+            const titleEl = document.getElementById('vibetube-player-title');
+            const nameEl = document.getElementById('vibetube-channel-name');
+            const statsEl = document.getElementById('vibetube-video-stats');
+            const avatarEl = document.getElementById('vibetube-channel-avatar');
+            const audioBtn = document.getElementById('vibetube-audio-bridge-btn');
+
+            if (titleEl) titleEl.textContent = track.title || 'Vidéo';
+            if (nameEl) nameEl.textContent = track.artist || track.channel || 'Créateur';
+            if (statsEl) statsEl.textContent = `${track.views || 'Nombreuses vues'} ${track.publishedTime ? '• ' + track.publishedTime : ''}`;
+            if (avatarEl && track.channelAvatar) avatarEl.src = track.channelAvatar;
+
+            if (audioBtn) {
+                audioBtn.onclick = () => {
+                    this.closeVibeTubePlayer();
+                    this.playVibeTubeAsAudio(videoId);
+                };
+            }
+
+            if (iframe) {
+                // Pause background audio when user opens full video player
+                if (Player.isPlaying) Player.pause();
+                iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+            }
+
+            if (modal) modal.classList.remove('hidden');
+        },
+
+        closeVibeTubePlayer() {
+            const modal = document.getElementById('modal-vibetube-player');
+            const iframe = document.getElementById('vibetube-iframe');
+            if (iframe) iframe.src = '';
+            if (modal) modal.classList.add('hidden');
+        },
+
+        playVibeTubeAsAudio(videoId) {
+            const track = this.findTrackInMemory(videoId) || {
+                id: videoId,
+                title: 'Vidéo YouTube',
+                artist: 'Artiste',
+                thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+            };
+            Player.playTrack(track);
+            this.showToast(`Lancement audio haute vitesse : "${track.title}" ⚡`);
         },
 
         escapeHtml(str) {

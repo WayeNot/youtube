@@ -1,5 +1,5 @@
 // Service Worker - Network First Strategy for Realtime Updates
-const CACHE_NAME = 'vibestream-v12';
+const CACHE_NAME = 'vibestream-v13';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();
