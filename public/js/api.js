@@ -248,6 +248,71 @@ const API = {
       console.warn('VibeTube post comment error:', e);
       return null;
     }
+  },
+
+  // Admin Panel & RBAC API
+  async getAdminStats() {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch('/api/admin/stats', {
+        headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('Admin stats error:', e);
+      return null;
+    }
+  },
+
+  async getAdminUsers(limit = 100) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch(`/api/admin/users?limit=${limit}`, {
+        headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('Admin users error:', e);
+      return null;
+    }
+  },
+
+  async updateAdminUserRole(userId, role) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch(`/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ role })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('Update user role error:', e);
+      throw e;
+    }
+  },
+
+  async getAdminAuditLogs(limit = 50) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch(`/api/admin/audit-logs?limit=${limit}`, {
+        headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('Admin audit logs error:', e);
+      return null;
+    }
   }
 };
 

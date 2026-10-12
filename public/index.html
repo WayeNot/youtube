@@ -119,6 +119,12 @@
             </div>
 
             <div class="header-right">
+                <!-- Direct Universe Quick Switcher (Mobile & Desktop) -->
+                <button type="button" id="header-universe-btn" class="header-universe-pill-btn" onclick="window.App && window.App.toggleAppMode()" title="Changer d'univers">
+                    <span id="header-universe-icon">🎬</span>
+                    <span id="header-universe-text">VibeTube</span>
+                </button>
+
                 <div class="user-menu-wrapper" id="user-menu-wrapper">
                     <button id="auth-btn" class="btn secondary small auth-pill-btn" title="Compte utilisateur"
                         onclick="window.App && window.App.handleAuthBtnClick(event)">
@@ -155,6 +161,11 @@
                                     d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
                             </svg>
                             <span>Paramètres</span>
+                        </a>
+                        <a href="/admin" class="dropdown-item" id="dropdown-admin-link"
+                            onclick="event.preventDefault(); window.App && window.App.openAdminPanel()">
+                            <span style="font-size:16px;">🛡️</span>
+                            <span>Administration RBAC</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <button class="dropdown-item danger" onclick="window.App && window.App.logoutUser()">
@@ -651,6 +662,130 @@
                         <button type="button" class="btn primary" onclick="window.App && window.App.switchView('vibetube')">
                             <span>Explorer VibeTube</span>
                         </button>
+                    </div>
+                </section>
+
+                <!-- VIEW: VIBETUBE SHORTS (9:16 Vertical Immersive Experience) -->
+                <section id="view-vibetube-shorts" class="view-section">
+                    <div class="vibetube-shorts-container">
+                        <div class="vibetube-shorts-feed" id="vibetube-shorts-feed"></div>
+                    </div>
+                </section>
+
+                <!-- VIEW: VIBETUBE SUBSCRIPTIONS (Dedicated Subscriptions Feed & Channels) -->
+                <section id="view-vibetube-subscriptions" class="view-section">
+                    <div class="vibetube-library-header">
+                        <div class="vibetube-library-header-main">
+                            <div class="vibetube-lib-icon-badge" style="background:rgba(255,0,51,0.2);">📺</div>
+                            <div>
+                                <h1 class="section-title">Vos Abonnements</h1>
+                                <p class="section-subtitle">Dernières vidéos publiées par vos chaînes favorites</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Channels avatar strip -->
+                    <div id="vibetube-subs-channels-strip" class="vibetube-subs-strip"></div>
+                    <!-- Videos Grid -->
+                    <div id="vibetube-subs-video-grid" class="vibetube-video-grid" style="margin-top:24px;"></div>
+                    <!-- Empty State -->
+                    <div id="vibetube-subs-empty" class="vibetube-empty-state hidden">
+                        <div class="vibetube-empty-icon">📺</div>
+                        <h3>Aucun abonnement pour le moment</h3>
+                        <p>Abonnez-vous à des chaînes sur VibeTube pour voir leurs dernières sorties ici.</p>
+                        <button type="button" class="btn primary" onclick="window.App && window.App.switchView('vibetube')">
+                            <span>Explorer VibeTube</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- VIEW: ADMIN DASHBOARD (RBAC Multi-Level Management) -->
+                <section id="view-admin" class="view-section">
+                    <div class="admin-dashboard-wrapper">
+                        <div class="admin-header-row">
+                            <div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span class="admin-shield-icon">🛡️</span>
+                                    <h1 class="section-title" style="margin:0;">Panneau d'Administration</h1>
+                                    <span class="admin-role-pill" id="admin-user-role-badge">ADMIN</span>
+                                </div>
+                                <p class="section-subtitle">Monitoring en direct, sécurité, gestion des rôles (RBAC) & infrastructure</p>
+                            </div>
+                            <div class="admin-header-actions">
+                                <button type="button" class="btn secondary small" onclick="window.App && window.App.refreshAdminStats()">
+                                    <span>🔄 Actualiser</span>
+                                </button>
+                                <button type="button" class="btn primary small" onclick="window.App && window.App.switchView('vibetube')">
+                                    <span>Retour App</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- KPI Stat Cards -->
+                        <div class="admin-stats-grid">
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-label">👥 Utilisateurs Totaux</div>
+                                <div class="admin-stat-value" id="admin-stat-users">--</div>
+                                <div class="admin-stat-sub" id="admin-stat-users-sub">Chargement...</div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-label">🎵 Écoutes VibeStream</div>
+                                <div class="admin-stat-value" id="admin-stat-streams">--</div>
+                                <div class="admin-stat-sub">Titres streamés</div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-label">🎬 Visionnages VibeTube</div>
+                                <div class="admin-stat-value" id="admin-stat-vibetube">--</div>
+                                <div class="admin-stat-sub">Vidéos regardées</div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-label">⚡ Latence Moyenne</div>
+                                <div class="admin-stat-value" id="admin-stat-latency" style="color:#00ff88;">142 ms</div>
+                                <div class="admin-stat-sub">Mode CDN direct</div>
+                            </div>
+                        </div>
+
+                        <!-- Admin Tabs (Users, Live Streams, Audit Logs) -->
+                        <div class="admin-tabs-nav">
+                            <button type="button" class="admin-tab-btn active" data-admin-tab="users" onclick="window.App && window.App.switchAdminTab('users')">👥 Utilisateurs & Rôles</button>
+                            <button type="button" class="admin-tab-btn" data-admin-tab="live" onclick="window.App && window.App.switchAdminTab('live')">⚡ Live Pulse & Jam</button>
+                            <button type="button" class="admin-tab-btn" data-admin-tab="audit" onclick="window.App && window.App.switchAdminTab('audit')">🛡️ Audit Logs & Sécurité</button>
+                        </div>
+
+                        <!-- Tab: Users & Roles -->
+                        <div id="admin-tab-users" class="admin-tab-content active">
+                            <div class="admin-table-container">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Utilisateur</th>
+                                            <th>Rôle</th>
+                                            <th>Inscription</th>
+                                            <th>Statut</th>
+                                            <th>Actions RBAC</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-users-tbody">
+                                        <tr><td colspan="5" style="text-align:center; padding:20px;">Chargement des utilisateurs...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Live Pulse & Jam Sessions -->
+                        <div id="admin-tab-live" class="admin-tab-content hidden">
+                            <div class="admin-panel-card">
+                                <h3>📻 Salles Jam Session Actives</h3>
+                                <div id="admin-jam-rooms-list" style="margin-top:12px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Audit Logs -->
+                        <div id="admin-tab-audit" class="admin-tab-content hidden">
+                            <div class="admin-panel-card">
+                                <h3>📜 Journal des Événements & Accès</h3>
+                                <div id="admin-audit-logs-list" class="admin-logs-box"></div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -1427,8 +1562,9 @@
             </div>
         </div>
 
-        <!-- Mobile Bottom Navigation Bar -->
-        <nav class="mobile-bottom-nav">
+        <!-- Mobile Bottom Navigation Bars (Dynamic according to active universe) -->
+        <!-- 1. VibeStream Mobile Bottom Nav -->
+        <nav class="mobile-bottom-nav vibestream-mobile-nav" id="vibestream-mobile-nav">
             <a href="/vibestream" class="mobile-nav-item active" data-view="home">
                 <svg viewBox="0 0 24 24">
                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
@@ -1445,7 +1581,7 @@
             <a href="/search" class="mobile-nav-item" data-view="search">
                 <svg viewBox="0 0 24 24">
                     <path
-                        d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                        d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 14z" />
                 </svg>
                 <span>Recherche</span>
             </a>
@@ -1455,6 +1591,34 @@
                         d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10l-2.5-1.5L13 12V6h5v6z" />
                 </svg>
                 <span>Bibliothèque</span>
+            </a>
+            <a href="javascript:void(0)" class="mobile-nav-item mobile-nav-switch" onclick="window.App && window.App.setAppMode('vibetube')">
+                <span style="font-size:18px;">🎬</span>
+                <span style="color:#ff0033; font-weight:700;">VibeTube</span>
+            </a>
+        </nav>
+
+        <!-- 2. VibeTube Mobile Bottom Nav -->
+        <nav class="mobile-bottom-nav vibetube-mobile-nav hidden" id="vibetube-mobile-nav">
+            <a href="/vibetube" class="mobile-nav-item active" data-vibetube-nav="home" onclick="event.preventDefault(); window.App && window.App.switchView('vibetube')">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+                <span>Accueil</span>
+            </a>
+            <a href="/vibetube/shorts" class="mobile-nav-item" data-vibetube-nav="shorts" onclick="event.preventDefault(); window.App && window.App.openVibeTubeShorts()">
+                <span style="font-size:18px;">⚡</span>
+                <span>Shorts</span>
+            </a>
+            <a href="/vibetube/subscriptions" class="mobile-nav-item" data-vibetube-nav="subscriptions" onclick="event.preventDefault(); window.App && window.App.openVibeTubeSubscriptionsView()">
+                <svg viewBox="0 0 24 24"><path d="M20 8H4V6h16v2zm-2-6H6v2h12V2zm4 10v8c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-8c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2zm-6 4l-6-3.27v6.53L16 16z" fill="currentColor"/></svg>
+                <span>Abonnements</span>
+            </a>
+            <a href="/vibetube/history" class="mobile-nav-item" data-vibetube-nav="history" onclick="event.preventDefault(); window.App && window.App.openVibeTubeLibrarySection('history')">
+                <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg>
+                <span>Vous</span>
+            </a>
+            <a href="javascript:void(0)" class="mobile-nav-item mobile-nav-switch" onclick="window.App && window.App.setAppMode('vibestream')">
+                <span style="font-size:18px;">🎵</span>
+                <span style="color:#ff1e50; font-weight:700;">VibeStream</span>
             </a>
         </nav>
 

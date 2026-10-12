@@ -2313,6 +2313,7 @@ app.put('/api/user/profile', authMiddleware, async (req, res) => {
                 username: user.username,
                 avatar: user.avatar,
                 bio: user.bio,
+                role: user.role || 'user',
                 isPublic: user.is_public !== false && user.is_public !== 0,
                 createdAt: Number(user.created_at)
             }
@@ -2320,6 +2321,90 @@ app.put('/api/user/profile', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error('Profile update error:', err);
         res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+    }
+});
+
+// =============================================================
+// ADMIN & RBAC API ENDPOINTS
+// =============================================================
+const adminMiddleware = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentification requise' });
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, config.jwtSecret);
+        const user = await db.findUserById(decoded.id);
+        if (!user) {
+            return res.status(401).json({ error: 'Utilisateur introuvable' });
+        }
+        const role = user.role || 'user';
+        if (role !== 'admin' && role !== 'mod') {
+            return res.status(403).json({ error: 'Accès refusé. Privilèges Administrateur / Modérateur requis (RBAC).' });
+        }
+        req.user = user;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Session expirée' });
+    }
+};
+
+app.get('/api/admin/stats', adminMiddleware, async (req, res) => {
+    try {
+        const stats = await db.getAdminStats();
+        // Add Jam Session active rooms count
+        stats.activeJamRooms = jamRooms.size;
+        stats.memoryUsage = process.memoryUsage ? Math.round(process.memoryUsage().heapUsed / 1024 / 1024) : 0;
+        stats.uptimeSeconds = Math.round(process.uptime ? process.uptime() : 0);
+        res.json({ success: true, stats });
+    } catch (err) {
+        console.error('Admin stats error:', err);
+        res.status(500).json({ error: 'Erreur récupération des métriques' });
+    }
+});
+
+app.get('/api/admin/users', adminMiddleware, async (req, res) => {
+    try {
+        const limit = Math.min(Number(req.query.limit) || 100, 200);
+        const users = await db.getAdminUsers(limit);
+        res.json({ success: true, users });
+    } catch (err) {
+        console.error('Admin users error:', err);
+        res.status(500).json({ error: 'Erreur récupération des utilisateurs' });
+    }
+});
+
+app.put('/api/admin/users/:id/role', adminMiddleware, async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Seul un Administrateur peut modifier les rôles (RBAC)' });
+    }
+    const targetUserId = req.params.id;
+    const { role } = req.body || {};
+    const validRoles = ['user', 'vip', 'mod', 'admin'];
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: 'Rôle invalide (user, vip, mod, admin)' });
+    }
+
+    try {
+        const updatedRole = await db.updateAdminUserRole(targetUserId, role);
+        const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        await db.addAuditLog(req.user.id, 'CHANGE_ROLE', targetUserId, { newRole: role, updatedBy: req.user.username }, clientIp);
+        res.json({ success: true, userId: targetUserId, role: updatedRole });
+    } catch (err) {
+        console.error('Update role error:', err);
+        res.status(500).json({ error: 'Erreur lors de la modification du rôle' });
+    }
+});
+
+app.get('/api/admin/audit-logs', adminMiddleware, async (req, res) => {
+    try {
+        const limit = Math.min(Number(req.query.limit) || 50, 100);
+        const logs = await db.getAuditLogs(limit);
+        res.json({ success: true, logs });
+    } catch (err) {
+        console.error('Admin audit logs error:', err);
+        res.status(500).json({ error: 'Erreur logs d\'audit' });
     }
 });
 

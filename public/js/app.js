@@ -125,6 +125,12 @@ const App = {
                 } else if (path.startsWith('/vibetube/channel')) {
                     if (c) this.openVibeTubeChannel(c);
                     else this.switchView('vibetube', false);
+                } else if (path === '/vibetube/shorts') {
+                    this.openVibeTubeShorts(false);
+                } else if (path === '/vibetube/subscriptions') {
+                    this.openVibeTubeSubscriptionsView(false);
+                } else if (path === '/vibetube/trending') {
+                    this.filterVibeTube('trending');
                 } else if (path === '/vibetube/history') {
                     this.openVibeTubeLibrarySection('history', false);
                 } else if (path === '/vibetube/watch-later') {
@@ -136,6 +142,8 @@ const App = {
                 } else {
                     this.switchView('vibetube', false);
                 }
+            } else if (path === '/admin') {
+                this.openAdminPanel(false);
             } else if (path === '/vibestream') {
                 this.setAppMode('vibestream', false);
                 this.switchView('home', false);
@@ -1487,13 +1495,13 @@ const App = {
 
         switchView(viewName, updatePath = true) {
             this.currentView = viewName;
-            const videoViews = ['vibetube', 'vibetube-search', 'vibetube-channel', 'vibetube-watch', 'vibetube-library'];
+            const videoViews = ['vibetube', 'vibetube-search', 'vibetube-channel', 'vibetube-watch', 'vibetube-library', 'vibetube-shorts', 'vibetube-subscriptions'];
             const isVideoView = videoViews.includes(viewName);
 
             // Automatically synchronize app mode with active view
             if (isVideoView && this.currentAppMode !== 'vibetube') {
                 this.setAppMode('vibetube', false);
-            } else if (!isVideoView && this.currentAppMode === 'vibetube') {
+            } else if (!isVideoView && this.currentAppMode === 'vibetube' && viewName !== 'admin') {
                 this.setAppMode('vibestream', false);
             }
 
@@ -1511,7 +1519,10 @@ const App = {
                     settings: '/settings',
                     search: '/search',
                     album: '/album',
+                    admin: '/admin',
                     vibetube: '/vibetube',
+                    'vibetube-shorts': '/vibetube/shorts',
+                    'vibetube-subscriptions': '/vibetube/subscriptions',
                     'vibetube-search': '/vibetube/search',
                     'vibetube-channel': '/vibetube/channel',
                     'vibetube-watch': '/vibetube/watch',
@@ -5790,6 +5801,28 @@ const App = {
                 this.closeVibeTubePlayer();
             }
 
+            // Mobile Bottom Navs toggle
+            const streamMobileNav = document.getElementById('vibestream-mobile-nav');
+            const tubeMobileNav = document.getElementById('vibetube-mobile-nav');
+            if (streamMobileNav) streamMobileNav.classList.toggle('hidden', isTube);
+            if (tubeMobileNav) tubeMobileNav.classList.toggle('hidden', !isTube);
+
+            // Header Quick Switch Pill
+            const headerUnivBtn = document.getElementById('header-universe-btn');
+            const headerUnivIcon = document.getElementById('header-universe-icon');
+            const headerUnivText = document.getElementById('header-universe-text');
+            if (headerUnivBtn) {
+                if (isTube) {
+                    headerUnivBtn.classList.add('tube-mode');
+                    if (headerUnivIcon) headerUnivIcon.textContent = '🎵';
+                    if (headerUnivText) headerUnivText.textContent = 'VibeStream';
+                } else {
+                    headerUnivBtn.classList.remove('tube-mode');
+                    if (headerUnivIcon) headerUnivIcon.textContent = '🎬';
+                    if (headerUnivText) headerUnivText.textContent = 'VibeTube';
+                }
+            }
+
             // Header Branding & Universe Switcher Button
             const logoImg = document.getElementById('brand-logo-img');
             const logoName = document.getElementById('brand-logo-name');
@@ -6734,6 +6767,280 @@ const App = {
             const added = Storage.addVideoToVibeTubePlaylist(playlistId, video);
             this.closeVibeTubePlaylistModal();
             this.showToast(added ? 'Vidéo ajoutée à la playlist ! 📁' : 'Cette vidéo est déjà dans la playlist.');
+        },
+
+        // -------------------------------------------------------------
+        // VIBETUBE SHORTS EXPERIENCE (9:16 Vertical Immersive)
+        // -------------------------------------------------------------
+        async openVibeTubeShorts(updateUrl = true) {
+            this.switchView('vibetube-shorts', updateUrl);
+            const feedContainer = document.getElementById('vibetube-shorts-feed');
+            if (!feedContainer) return;
+
+            feedContainer.innerHTML = `
+                <div class="vibetube-shorts-loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top:14px; font-weight:600; color:#fff;">Chargement des Shorts tendance...</p>
+                </div>
+            `;
+
+            try {
+                // Fetch high engagement short tech/cyber clips
+                const res = await API.searchVibeTube('shorts cyber dev gaming');
+                const videos = (res && Array.isArray(res.videos)) ? res.videos : [];
+                const shorts = videos.filter(v => {
+                    const dur = v.duration || '';
+                    const isShortDur = dur.startsWith('0:') && parseInt(dur.split(':')[1], 10) <= 60;
+                    return isShortDur || (v.title || '').toLowerCase().includes('short') || true;
+                }).slice(0, 15);
+
+                if (shorts.length === 0) {
+                    feedContainer.innerHTML = '<p class="empty-msg" style="text-align:center; padding:60px 20px;">Aucun Short disponible pour le moment.</p>';
+                    return;
+                }
+
+                feedContainer.innerHTML = shorts.map((s, idx) => `
+                    <div class="shorts-card" data-short-id="${s.id}" id="short-item-${idx}">
+                        <div class="shorts-screen">
+                            <iframe src="https://www.youtube-nocookie.com/embed/${s.id}?autoplay=${idx === 0 ? 1 : 0}&loop=1&playlist=${s.id}&controls=1&modestbranding=1&playsinline=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                        <div class="shorts-overlay-meta">
+                            <div class="shorts-creator-tag">
+                                <img src="${s.channelAvatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(s.channel || 'creator')}" class="shorts-creator-avatar" alt="">
+                                <span class="shorts-creator-name">${this.escapeHtml(s.channel || 'Créateur')}</span>
+                                <button type="button" class="btn primary small shorts-sub-btn" onclick="window.App && window.App.toggleVibeTubeChannelSub('${this.escapeHtml(s.channel || '')}')">S'abonner</button>
+                            </div>
+                            <h3 class="shorts-title">${this.escapeHtml(s.title)}</h3>
+                        </div>
+                        <div class="shorts-side-actions">
+                            <button type="button" class="shorts-action-btn" onclick="window.App && window.App.toggleVibeTubeLikeVideo('${s.id}')" title="J'aime">
+                                <span class="shorts-action-icon">👍</span>
+                                <span class="shorts-action-label">Like</span>
+                            </button>
+                            <button type="button" class="shorts-action-btn" onclick="window.App && window.App.toggleVibeTubeWatchLaterVideo('${s.id}')" title="À regarder plus tard">
+                                <span class="shorts-action-icon">⏱️</span>
+                                <span class="shorts-action-label">Plus tard</span>
+                            </button>
+                            <button type="button" class="shorts-action-btn" onclick="window.App && window.App.openVibeTubeVideo('${s.id}')" title="Mode Grand Écran">
+                                <span class="shorts-action-icon">🎬</span>
+                                <span class="shorts-action-label">Détails</span>
+                            </button>
+                            <button type="button" class="shorts-action-btn" onclick="navigator.clipboard && navigator.clipboard.writeText('https://youtu.be/${s.id}'); window.App && window.App.showToast('Lien du Short copié ! 🔗');" title="Partager">
+                                <span class="shorts-action-icon">↗️</span>
+                                <span class="shorts-action-label">Partager</span>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.warn('Error loading shorts:', e);
+                feedContainer.innerHTML = '<p class="empty-msg" style="text-align:center; padding:60px 20px;">Erreur lors du chargement des Shorts.</p>';
+            }
+        },
+
+        // -------------------------------------------------------------
+        // VIBETUBE SUBSCRIPTIONS VIEW (Full Dedicated Feed)
+        // -------------------------------------------------------------
+        async openVibeTubeSubscriptionsView(updateUrl = true) {
+            this.switchView('vibetube-subscriptions', updateUrl);
+            const strip = document.getElementById('vibetube-subs-channels-strip');
+            const grid = document.getElementById('vibetube-subs-video-grid');
+            const emptyEl = document.getElementById('vibetube-subs-empty');
+
+            const subs = Storage.getSubscriptions ? Storage.getSubscriptions() : [];
+
+            if (subs.length === 0) {
+                if (strip) strip.innerHTML = '';
+                if (grid) grid.innerHTML = '';
+                if (emptyEl) emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            if (emptyEl) emptyEl.classList.add('hidden');
+
+            // Render Channels avatar strip
+            if (strip) {
+                strip.innerHTML = subs.map(sub => {
+                    const name = typeof sub === 'string' ? sub : (sub.name || sub.artist || 'Chaîne');
+                    const avatar = (typeof sub === 'object' && sub.avatar) ? sub.avatar : `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name)}`;
+                    return `
+                        <div class="vibetube-sub-strip-item" onclick="window.App && window.App.openVibeTubeChannel('${this.escapeHtml(name)}', '${avatar}')">
+                            <div class="vibetube-sub-strip-avatar-wrap">
+                                <img src="${avatar}" alt="" class="vibetube-sub-strip-avatar">
+                                <span class="vibetube-sub-strip-dot"></span>
+                            </div>
+                            <span class="vibetube-sub-strip-name">${this.escapeHtml(name)}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Feed from subscribed creators
+            if (grid) {
+                grid.innerHTML = Array.from({ length: 8 }).map(() => `
+                    <div class="vibetube-video-card skeleton">
+                        <div class="vibetube-thumb-wrap skeleton-box"></div>
+                        <div class="vibetube-card-body">
+                            <div class="vibetube-avatar-skeleton skeleton-box"></div>
+                            <div class="vibetube-meta-skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                const queryCreator = typeof subs[0] === 'string' ? subs[0] : (subs[0].name || subs[0].artist || '');
+                const res = await API.searchVibeTube(queryCreator);
+                const videos = (res && Array.isArray(res.videos)) ? res.videos : [];
+
+                if (videos.length === 0) {
+                    grid.innerHTML = '<p class="empty-msg" style="grid-column:1/-1; text-align:center; padding:40px;">Aucune vidéo récente pour vos abonnements.</p>';
+                } else {
+                    this.renderVibeTubeVideoGrid(grid, videos);
+                }
+            }
+        },
+
+        // -------------------------------------------------------------
+        // ADMIN PANEL & RBAC MULTI-LEVEL MANAGEMENT
+        // -------------------------------------------------------------
+        async openAdminPanel(updateUrl = true) {
+            const user = Storage.getUser ? Storage.getUser() : null;
+            this.switchView('admin', updateUrl);
+
+            const roleBadge = document.getElementById('admin-user-role-badge');
+            if (roleBadge) {
+                const userRole = (user?.role || 'user').toUpperCase();
+                roleBadge.textContent = userRole;
+                roleBadge.style.background = userRole === 'ADMIN' ? '#ff0033' : (userRole === 'MOD' ? '#ff9900' : '#333');
+            }
+
+            await this.refreshAdminStats();
+            await this.loadAdminUsers();
+        },
+
+        async refreshAdminStats() {
+            try {
+                const res = await API.getAdminStats();
+                if (res && res.stats) {
+                    const stats = res.stats;
+                    const elUsers = document.getElementById('admin-stat-users');
+                    const elUsersSub = document.getElementById('admin-stat-users-sub');
+                    const elStreams = document.getElementById('admin-stat-streams');
+                    const elTube = document.getElementById('admin-stat-vibetube');
+
+                    if (elUsers) elUsers.textContent = stats.totalUsers ?? 0;
+                    if (elUsersSub) elUsersSub.textContent = `${stats.totalPlaylists ?? 0} playlists créées`;
+                    if (elStreams) elStreams.textContent = stats.totalStreams ?? 0;
+                    if (elTube) elTube.textContent = stats.totalVibeTubeViews ?? 0;
+                }
+            } catch (e) {
+                console.warn('Admin stats error:', e);
+            }
+        },
+
+        switchAdminTab(tabKey) {
+            document.querySelectorAll('.admin-tab-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-admin-tab') === tabKey);
+            });
+            document.querySelectorAll('.admin-tab-content').forEach(c => {
+                c.classList.toggle('hidden', c.id !== `admin-tab-${tabKey}`);
+                c.classList.toggle('active', c.id === `admin-tab-${tabKey}`);
+            });
+
+            if (tabKey === 'audit') {
+                this.loadAdminAuditLogs();
+            }
+        },
+
+        async loadAdminUsers() {
+            const tbody = document.getElementById('admin-users-tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Chargement des utilisateurs NeonDB...</td></tr>';
+
+            try {
+                const res = await API.getAdminUsers(100);
+                const users = (res && Array.isArray(res.users)) ? res.users : [];
+
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Aucun utilisateur trouvé.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = users.map(u => {
+                    const dateStr = u.createdAt ? new Date(Number(u.createdAt)).toLocaleDateString('fr-FR') : 'Inconnue';
+                    const role = u.role || 'user';
+                    return `
+                        <tr>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <img src="${u.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(u.username)}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;" alt="">
+                                    <span style="font-weight:600; color:#fff;">${this.escapeHtml(u.username)}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="admin-role-tag role-${role}">${role.toUpperCase()}</span>
+                            </td>
+                            <td style="color:var(--text-secondary); font-size:13px;">${dateStr}</td>
+                            <td><span style="color:#00ff88; font-size:12px;">● Actif</span></td>
+                            <td>
+                                <select class="admin-role-select" onchange="window.App && window.App.updateUserRole('${u.id}', this.value)">
+                                    <option value="user" ${role === 'user' ? 'selected' : ''}>Utilisateur (user)</option>
+                                    <option value="vip" ${role === 'vip' ? 'selected' : ''}>VIP (vip)</option>
+                                    <option value="mod" ${role === 'mod' ? 'selected' : ''}>Modérateur (mod)</option>
+                                    <option value="admin" ${role === 'admin' ? 'selected' : ''}>Administrateur (admin)</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.warn('Error loading admin users:', e);
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#ff4444;">Privilèges administrateur requis pour voir la liste des utilisateurs.</td></tr>';
+            }
+        },
+
+        async updateUserRole(userId, newRole) {
+            try {
+                await API.updateAdminUserRole(userId, newRole);
+                this.showToast(`Rôle mis à jour: ${newRole.toUpperCase()} 🛡️`);
+                await this.refreshAdminStats();
+            } catch (e) {
+                this.showToast(e.message || 'Erreur lors de la mise à jour du rôle RBAC');
+                await this.loadAdminUsers();
+            }
+        },
+
+        async loadAdminAuditLogs() {
+            const listEl = document.getElementById('admin-audit-logs-list');
+            if (!listEl) return;
+            listEl.innerHTML = '<div style="padding:15px; text-align:center; color:var(--text-secondary);">Chargement du journal de sécurité...</div>';
+
+            try {
+                const res = await API.getAdminAuditLogs(50);
+                const logs = (res && Array.isArray(res.logs)) ? res.logs : [];
+
+                if (logs.length === 0) {
+                    listEl.innerHTML = '<div style="padding:15px; text-align:center; color:var(--text-secondary);">Aucun événement d\'audit enregistré pour le moment.</div>';
+                    return;
+                }
+
+                listEl.innerHTML = logs.map(l => {
+                    const dateStr = l.createdAt ? new Date(Number(l.createdAt)).toLocaleString('fr-FR') : '';
+                    return `
+                        <div class="admin-log-row">
+                            <span class="admin-log-time">${dateStr}</span>
+                            <span class="admin-log-action">[${this.escapeHtml(l.action)}]</span>
+                            <span class="admin-log-user">${this.escapeHtml(l.username || l.userId || 'Système')}</span>
+                            <span class="admin-log-details">${this.escapeHtml(typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || ''))}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                listEl.innerHTML = '<div style="padding:15px; text-align:center; color:#ff4444;">Erreur de chargement du journal d\'audit.</div>';
+            }
         }
     };
 

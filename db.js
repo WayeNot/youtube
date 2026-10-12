@@ -177,6 +177,86 @@ const db = {
         );
       `;
 
+      try {
+        await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
+      } catch (e) {}
+
+      // --- DEDICATED VIBETUBE TABLES (100% Separated from VibeStream) ---
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS vibetube_history (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          views TEXT,
+          watched_at BIGINT NOT NULL
+        );
+      `;
+
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS vibetube_watch_later (
+          user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          views TEXT,
+          added_at BIGINT NOT NULL,
+          PRIMARY KEY (user_id, video_id)
+        );
+      `;
+
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS vibetube_liked (
+          user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          views TEXT,
+          liked_at BIGINT NOT NULL,
+          PRIMARY KEY (user_id, video_id)
+        );
+      `;
+
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS vibetube_playlists (
+          id TEXT PRIMARY KEY,
+          user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          description TEXT DEFAULT '',
+          created_at BIGINT NOT NULL,
+          updated_at BIGINT NOT NULL
+        );
+      `;
+
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS vibetube_playlist_videos (
+          id SERIAL PRIMARY KEY,
+          playlist_id TEXT REFERENCES vibetube_playlists(id) ON DELETE CASCADE,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          position INT NOT NULL,
+          added_at BIGINT NOT NULL
+        );
+      `;
+
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT,
+          action TEXT NOT NULL,
+          target TEXT,
+          details JSONB DEFAULT '{}'::jsonb,
+          ip TEXT,
+          created_at BIGINT NOT NULL
+        );
+      `;
+
       // Create indexes for blazing fast lookups
       await neonSql`CREATE INDEX IF NOT EXISTS idx_liked_user ON liked_tracks(user_id, added_at DESC);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id, updated_at DESC);`;
@@ -186,6 +266,11 @@ const db = {
       await neonSql`CREATE INDEX IF NOT EXISTS idx_follows_follower ON user_follows(follower_id);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_follows_followed ON user_follows(followed_id);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_comments_vid ON video_comments(video_id, created_at DESC);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_vt_hist_user ON vibetube_history(user_id, watched_at DESC);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_vt_wl_user ON vibetube_watch_later(user_id, added_at DESC);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_vt_like_user ON vibetube_liked(user_id, liked_at DESC);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_vt_pl_user ON vibetube_playlists(user_id, updated_at DESC);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);`;
 
       console.log('✅ Tables relationnelles NeonDB (liked_tracks, playlists, playlist_tracks, history, user_follows, video_comments) prêtes !');
     } else {
@@ -290,6 +375,74 @@ const db = {
           created_at INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS vibetube_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT NOT NULL,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          views TEXT,
+          watched_at INTEGER NOT NULL,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS vibetube_watch_later (
+          user_id TEXT NOT NULL,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          views TEXT,
+          added_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, video_id),
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS vibetube_liked (
+          user_id TEXT NOT NULL,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          views TEXT,
+          liked_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, video_id),
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS vibetube_playlists (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT DEFAULT '',
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS vibetube_playlist_videos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          playlist_id TEXT NOT NULL,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          channel TEXT,
+          thumbnail TEXT,
+          position INTEGER NOT NULL,
+          added_at INTEGER NOT NULL,
+          FOREIGN KEY(playlist_id) REFERENCES vibetube_playlists(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT,
+          action TEXT NOT NULL,
+          target TEXT,
+          details TEXT DEFAULT '{}',
+          ip TEXT,
+          created_at INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_liked_user ON liked_tracks(user_id, added_at DESC);
         CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id, updated_at DESC);
         CREATE INDEX IF NOT EXISTS idx_pl_tracks ON playlist_tracks(playlist_id, position);
@@ -298,7 +451,16 @@ const db = {
         CREATE INDEX IF NOT EXISTS idx_follows_follower ON user_follows(follower_id);
         CREATE INDEX IF NOT EXISTS idx_follows_followed ON user_follows(followed_id);
         CREATE INDEX IF NOT EXISTS idx_comments_vid ON video_comments(video_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_vt_hist_user ON vibetube_history(user_id, watched_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_vt_wl_user ON vibetube_watch_later(user_id, added_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_vt_like_user ON vibetube_liked(user_id, liked_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_vt_pl_user ON vibetube_playlists(user_id, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
       `);
+
+      try {
+        sqliteDb.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
+      } catch (e) {}
 
       try {
         sqliteDb.exec('ALTER TABLE users ADD COLUMN is_public INTEGER DEFAULT 1');
@@ -319,19 +481,19 @@ const db = {
   // Users
   async findUserByUsername(username) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, role, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, created_at FROM users WHERE username = ?').get(username.trim()) || null;
+      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, role, created_at FROM users WHERE username = ?').get(username.trim()) || null;
     }
   },
 
   async findUserById(id) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, avatar, bio, is_public, created_at FROM users WHERE id = ${id} LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, avatar, bio, is_public, role, created_at FROM users WHERE id = ${id} LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, avatar, bio, is_public, created_at FROM users WHERE id = ?').get(id) || null;
+      return sqliteDb.prepare('SELECT id, username, avatar, bio, is_public, role, created_at FROM users WHERE id = ?').get(id) || null;
     }
   },
 
@@ -1076,6 +1238,102 @@ const db = {
         likes: 0,
         createdAt: now
       };
+    }
+  },
+
+  // --- ADMIN & RBAC METHODS ---
+  async getAdminStats() {
+    if (isNeon) {
+      const usersCount = (await neonSql`SELECT COUNT(*)::int as count FROM users`)[0]?.count || 0;
+      const streamsCount = (await neonSql`SELECT COUNT(*)::int as count FROM listen_history`)[0]?.count || 0;
+      const vibetubeViewsCount = (await neonSql`SELECT COUNT(*)::int as count FROM vibetube_history`)[0]?.count || 0;
+      const playlistsCount = (await neonSql`SELECT COUNT(*)::int as count FROM playlists`)[0]?.count || 0;
+      return {
+        totalUsers: usersCount,
+        totalStreams: streamsCount,
+        totalVibeTubeViews: vibetubeViewsCount,
+        totalPlaylists: playlistsCount
+      };
+    } else {
+      const usersCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
+      const streamsCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM listen_history').get()?.count || 0;
+      const vibetubeViewsCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM vibetube_history').get()?.count || 0;
+      const playlistsCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM playlists').get()?.count || 0;
+      return {
+        totalUsers: usersCount,
+        totalStreams: streamsCount,
+        totalVibeTubeViews: vibetubeViewsCount,
+        totalPlaylists: playlistsCount
+      };
+    }
+  },
+
+  async getAdminUsers(limit = 100) {
+    if (isNeon) {
+      const rows = await neonSql`
+        SELECT id, username, avatar, role, created_at as "createdAt"
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `;
+      return rows;
+    } else {
+      const rows = sqliteDb.prepare(`
+        SELECT id, username, avatar, role, created_at as createdAt
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(limit);
+      return rows;
+    }
+  },
+
+  async updateAdminUserRole(userId, newRole) {
+    const validRoles = ['user', 'vip', 'mod', 'admin'];
+    const roleToSet = validRoles.includes(newRole) ? newRole : 'user';
+    if (isNeon) {
+      await neonSql`UPDATE users SET role = ${roleToSet} WHERE id = ${userId}`;
+    } else {
+      sqliteDb.prepare('UPDATE users SET role = ? WHERE id = ?').run(roleToSet, userId);
+    }
+    return roleToSet;
+  },
+
+  async addAuditLog(userId, action, target, details = {}, ip = '') {
+    const now = Date.now();
+    const detailsStr = typeof details === 'string' ? details : JSON.stringify(details);
+    if (isNeon) {
+      await neonSql`
+        INSERT INTO audit_logs (user_id, action, target, details, ip, created_at)
+        VALUES (${userId || null}, ${action}, ${target || null}, ${detailsStr}::jsonb, ${ip || null}, ${now})
+      `;
+    } else {
+      sqliteDb.prepare(`
+        INSERT INTO audit_logs (user_id, action, target, details, ip, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(userId || null, action, target || null, detailsStr, ip || null, now);
+    }
+  },
+
+  async getAuditLogs(limit = 50) {
+    if (isNeon) {
+      const rows = await neonSql`
+        SELECT a.id, a.user_id as "userId", u.username, a.action, a.target, a.details, a.ip, a.created_at as "createdAt"
+        FROM audit_logs a
+        LEFT JOIN users u ON a.user_id = u.id
+        ORDER BY a.created_at DESC
+        LIMIT ${limit}
+      `;
+      return rows;
+    } else {
+      const rows = sqliteDb.prepare(`
+        SELECT a.id, a.user_id as userId, u.username, a.action, a.target, a.details, a.ip, a.created_at as createdAt
+        FROM audit_logs a
+        LEFT JOIN users u ON a.user_id = u.id
+        ORDER BY a.created_at DESC
+        LIMIT ?
+      `).all(limit);
+      return rows;
     }
   }
 };
