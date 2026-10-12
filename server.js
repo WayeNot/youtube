@@ -858,13 +858,9 @@ app.get('/api/debug', async (req, res) => {
         const testId = req.query.test_id;
         const client = req.query.client || 'android';
         const useCookies = req.query.cookies === '1';
-        const testArgs = [
-            '-g',
-            '-f', '18/bestaudio/best/ba/b',
-            '--no-playlist',
-            '--no-warnings',
-            '--no-cache-dir'
-        ];
+        const testArgs = req.query.list_formats === '1'
+            ? ['-F', '--no-playlist', '--no-cache-dir']
+            : ['-g', '-f', req.query.format || '18/bestaudio/best/ba/b', '--no-playlist', '--no-warnings', '--no-cache-dir'];
         if (useCookies && hasCookies) {
             testArgs.push('--cookies', cookiesPath);
         }
