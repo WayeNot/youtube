@@ -1040,7 +1040,7 @@ app.post('/api/prefetch', (req, res) => {
     if (!Array.isArray(ids) || ids.length === 0) {
         return res.json({ success: true, count: 0 });
     }
-    const cleanIds = ids.filter(id => typeof id === 'string' && /^[\w-]{11}$/.test(id)).slice(0, 6);
+    const cleanIds = ids.filter(id => typeof id === 'string' && /^[\w-]{11}$/.test(id)).slice(0, 1);
     cleanIds.forEach(id => {
         if (!streamCache.has(id) && !inFlightStreams.has(id)) {
             getAudioStreamUrl(id).catch(() => {});

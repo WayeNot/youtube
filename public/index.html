@@ -247,14 +247,6 @@
                     <div id="sidebar-playlists" class="sidebar-playlists-list"></div>
                 </div>
 
-                <div class="sidebar-footer">
-                    <button id="export-data-btn" class="text-link-btn"
-                        onclick="window.Storage && window.Storage.exportData()">Sauvegarder données</button>
-                    <button id="import-data-btn" class="text-link-btn"
-                        onclick="document.getElementById('import-file-input').click()">Restaurer données</button>
-                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
-                </div>
-
                 <!-- VibeTube Switcher Button (Clean & Light) -->
                 <div class="sidebar-vibetube-switch-box">
                     <button type="button" class="sidebar-universe-toggle-btn tube" onclick="window.App && window.App.setAppMode('vibetube')" title="Basculer sur VibeTube">
@@ -1345,19 +1337,6 @@
                         <div class="settings-card">
                             <div class="settings-item-row">
                                 <div class="settings-item-text">
-                                    <span class="settings-item-label">Minuterie de Veille (Sleep Timer)</span>
-                                    <span class="settings-item-desc" id="settings-sleep-timer-desc">Arrête automatiquement la lecture après le délai choisi.</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span id="sleep-timer-badge" class="badge hidden" style="font-size: 12px; padding: 4px 8px;"></span>
-                                    <button class="btn secondary small" onclick="window.App && window.App.openSleepModal()">
-                                        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 6px; fill: currentColor;"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" /></svg>
-                                        <span>Programmer</span>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="settings-item-row">
-                                <div class="settings-item-text">
                                     <span class="settings-item-label">Égaliseur Audio (EQ 5 Bandes)</span>
                                     <span class="settings-item-desc">Ajustez les basses, voix et aigus ou appliquez des préréglages studio.</span>
                                 </div>
@@ -1802,25 +1781,6 @@
                         </div>
                     </div>
 
-                    <!-- Download offline -->
-                    <button id="download-track-btn" class="icon-btn" title="Télécharger ou écouter hors-ligne"
-                        onclick="if(window.Player && window.Player.currentTrack && window.App) { window.App.openDownloadModal(window.Player.currentTrack); }">
-                        <svg viewBox="0 0 24 24">
-                            <path
-                                d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
-                        </svg>
-                    </button>
-
-                    <!-- 3D Audio Visualizer Button -->
-                    <button id="visualizer-btn" class="icon-btn" title="Visualiseur Audio 3D WebGL" onclick="window.Visualizer3D?.toggle()">
-                        <span style="font-size:18px;">🔮</span>
-                    </button>
-
-                    <!-- Jam Session Live Sync Button -->
-                    <button id="jam-session-btn" class="icon-btn" title="Jam Session (Écoute partagée en direct)" onclick="window.JamSession?.createRoom()">
-                        <span style="font-size:18px;">👥</span>
-                    </button>
-
                     <!-- Spotify Canvas Dynamic Background Toggle -->
                     <button id="spotify-canvas-btn" class="icon-btn" title="Fond Canvas Spotify Réactif" onclick="window.SpotifyCanvas?.toggle()">
                         <span style="font-size:18px;">✨</span>
@@ -1831,14 +1791,6 @@
                         onclick="if(window.Player) window.Player.togglePictureInPicture()">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                             <path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>
-                        </svg>
-                    </button>
-
-                    <!-- Chromecast & AirPlay -->
-                    <button id="cast-btn" class="icon-btn" title="Diffuser (AirPlay / Chromecast)"
-                        onclick="if(window.Player) window.Player.requestCastOrAirPlay()">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.92-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
                         </svg>
                     </button>
 
@@ -1873,19 +1825,8 @@
                     </svg>
                 </button>
                 <div style="display:flex;align-items:center;gap:6px;">
-                    <button class="icon-btn" title="Visualiseur 3D" onclick="window.Visualizer3D?.toggle()">
-                        <span style="font-size:16px;">🔮</span>
-                    </button>
-                    <button class="icon-btn" title="Jam Session" onclick="window.JamSession?.createRoom()">
-                        <span style="font-size:16px;">👥</span>
-                    </button>
                     <button class="icon-btn" title="Mode Voiture" onclick="window.CarMode?.open()">
                         <span style="font-size:16px;">🚗</span>
-                    </button>
-                    <button id="mobile-cast-btn" class="icon-btn" title="Diffuser (AirPlay / Chromecast)" onclick="if(window.Player) window.Player.requestCastOrAirPlay()">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.92-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
-                        </svg>
                     </button>
                     <button id="mobile-player-fav-btn" class="icon-btn fav-btn" aria-label="Favori">
                         <svg class="heart-empty" viewBox="0 0 24 24">
@@ -1976,22 +1917,6 @@
 
                     <!-- Mobile Extra Action Pills -->
                     <div class="mobile-extra-actions">
-                        <button id="mobile-download-btn" class="action-pill-btn"
-                            onclick="if(window.Player && window.Player.currentTrack && window.App) { window.App.openDownloadModal(window.Player.currentTrack); }">
-                            <svg viewBox="0 0 24 24">
-                                <path
-                                    d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
-                            </svg>
-                            <span>Télécharger</span>
-                        </button>
-                        <button id="mobile-sleep-btn" class="action-pill-btn"
-                            onclick="window.App && window.App.openSleepModal()">
-                            <svg viewBox="0 0 24 24">
-                                <path
-                                    d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" />
-                            </svg>
-                            <span>Minuterie</span>
-                        </button>
                         <button id="mobile-eq-btn" class="action-pill-btn"
                             onclick="window.App && window.App.openEqualizerModal()">
                             <svg viewBox="0 0 24 24">
@@ -2036,95 +1961,6 @@
                         </div>
                     </div>
                     <div id="mobile-queue-list" class="queue-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODAL: Sleep Timer -->
-        <div id="modal-sleep-timer" class="modal-overlay hidden">
-            <div class="modal-card">
-                <div class="modal-header">
-                    <h3>Minuterie de veille</h3>
-                    <button class="icon-btn close-modal-btn"
-                        onclick="document.getElementById('modal-sleep-timer').classList.add('hidden')">
-                        <svg viewBox="0 0 24 24">
-                            <path
-                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="timer-options">
-                        <button class="timer-option-btn" data-minutes="15"
-                            onclick="window.Player && window.Player.setSleepTimer(15); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 15 min');">15
-                            minutes</button>
-                        <button class="timer-option-btn" data-minutes="30"
-                            onclick="window.Player && window.Player.setSleepTimer(30); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 30 min');">30
-                            minutes</button>
-                        <button class="timer-option-btn" data-minutes="45"
-                            onclick="window.Player && window.Player.setSleepTimer(45); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 45 min');">45
-                            minutes</button>
-                        <button class="timer-option-btn" data-minutes="60"
-                            onclick="window.Player && window.Player.setSleepTimer(60); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : 60 min');">1
-                            heure</button>
-                        <button class="timer-option-btn" data-minutes="end_of_track"
-                            onclick="window.Player && window.Player.setSleepTimer('end_of_track'); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie activée : Fin du titre');">Fin
-                            du titre en cours</button>
-                        <button id="cancel-timer-btn" class="timer-option-btn danger hidden"
-                            onclick="window.Player && window.Player.cancelSleepTimer(); document.getElementById('modal-sleep-timer').classList.add('hidden'); window.App && window.App.showToast('Minuterie annulée');">Désactiver
-                            la minuterie</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODAL: Download & Offline Options -->
-        <div id="modal-download-options" class="modal-overlay hidden">
-            <div class="modal-card download-modal-card">
-                <div class="modal-header">
-                    <h3>Téléchargement & Mode Hors-ligne</h3>
-                    <button class="icon-btn close-modal-btn" onclick="document.getElementById('modal-download-options').classList.add('hidden')">
-                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                    </button>
-                </div>
-                <div class="modal-body download-modal-body">
-                    <div class="download-track-preview">
-                        <img id="download-modal-thumb" src="/icons/icon.svg" alt="" class="download-modal-thumb">
-                        <div class="download-modal-meta">
-                            <span id="download-modal-title" class="download-modal-title">Titre musical</span>
-                            <span id="download-modal-artist" class="download-modal-artist">Artiste</span>
-                            <span id="download-modal-offline-status" class="download-modal-status">Prêt</span>
-                        </div>
-                    </div>
-                    <div class="download-options-list">
-                        <button id="download-mp3-direct-btn" class="download-opt-btn" onclick="window.App && window.App.triggerDownloadDirectMp3()">
-                            <div class="opt-icon-circle mp3-color">
-                                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                            </div>
-                            <div class="opt-text">
-                                <span class="opt-title">Exporter en MP3 direct (.mp3)</span>
-                                <span class="opt-desc">Télécharger le fichier audio sur votre disque ou téléphone</span>
-                            </div>
-                        </button>
-                        <button id="download-vault-toggle-btn" class="download-opt-btn" onclick="window.App && window.App.toggleTrackOfflineVault()">
-                            <div class="opt-icon-circle offline-color" id="download-vault-icon-circle">
-                                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
-                            </div>
-                            <div class="opt-text">
-                                <span id="download-vault-btn-title" class="opt-title">Sauvegarder Hors-ligne (IndexedDB)</span>
-                                <span id="download-vault-btn-desc" class="opt-desc">Écouter sans connexion Internet dans le métro ou l'avion</span>
-                            </div>
-                        </button>
-                        <button id="download-view-library-btn" class="download-opt-btn secondary-opt" onclick="document.getElementById('modal-download-options').classList.add('hidden'); window.App && window.App.openLibraryTab('downloads');">
-                            <div class="opt-icon-circle neutral-color">
-                                <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
-                            </div>
-                            <div class="opt-text">
-                                <span class="opt-title">Accéder à mes titres Hors-ligne</span>
-                                <span class="opt-desc">Ouvrir la section Téléchargements de la bibliothèque</span>
-                            </div>
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -2849,24 +2685,6 @@
             </div>
         </div>
 
-        <!-- 1. Fullscreen 3D WebGL Audio Visualizer -->
-        <div id="modal-visualizer-3d" class="hidden">
-            <canvas id="visualizer-3d-canvas" style="position:absolute; inset:0; width:100%; height:100%; display:block;"></canvas>
-            <div style="position:absolute; top:20px; left:24px; z-index:10; display:flex; align-items:center; gap:14px; background:rgba(0,0,0,0.6); backdrop-filter:blur(10px); padding:8px 16px; border-radius:30px; border:1px solid rgba(255,255,255,0.1);">
-                <img id="vis-track-cover" src="/icons/icon.svg" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
-                <div>
-                    <div id="vis-track-title" style="font-size:14px; font-weight:700; color:#fff; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Titre</div>
-                    <div id="vis-track-artist" style="font-size:12px; color:rgba(255,255,255,0.6); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Artiste</div>
-                </div>
-            </div>
-            <div style="position:absolute; top:20px; right:24px; z-index:10; display:flex; gap:10px; align-items:center;">
-                <button type="button" class="vis-theme-btn active" data-mode="neon_sphere" onclick="window.Visualizer3D?.setMode('neon_sphere')">Sphère Néon</button>
-                <button type="button" class="vis-theme-btn" data-mode="cyber_tunnel" onclick="window.Visualizer3D?.setMode('cyber_tunnel')">Tunnel 3D</button>
-                <button type="button" class="vis-theme-btn" data-mode="synthwave_grid" onclick="window.Visualizer3D?.setMode('synthwave_grid')">Synthwave</button>
-                <button type="button" class="icon-btn" style="background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.2); width:40px; height:40px; border-radius:50%; color:#fff;" onclick="window.Visualizer3D?.close()" title="Quitter">✕</button>
-            </div>
-        </div>
-
         <!-- 2. Interactive Double Deck DJ Mode -->
         <div id="modal-dj-deck" class="modal-overlay hidden" style="z-index: 100055;">
             <div class="modal-card" style="max-width: 900px; width: 95vw; background: #0c0c12; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 25px 60px rgba(0,0,0,0.95);">
@@ -2936,57 +2754,6 @@
                                 <input type="range" min="0.84" max="1.16" step="0.01" value="1.0" oninput="window.DjDeck?.setPitch('B', this.value)" style="width:70px;">
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. Live Synchronized Jam Session Modal -->
-        <div id="modal-jam-session" class="modal-overlay hidden" style="z-index: 100050;">
-            <div class="modal-card" style="max-width: 480px;">
-                <div class="modal-header">
-                    <h3 style="display:flex; align-items:center; gap:10px;">
-                        <span>👥</span> Jam Session (Écoute Partagée)
-                    </h3>
-                    <button class="icon-btn" onclick="window.JamSession?.closeModal()" title="Fermer">✕</button>
-                </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div style="text-align:center; margin-bottom:16px;">
-                        <span style="font-size:11px; color:var(--text-tertiary); letter-spacing:1px; font-weight:700;">CODE DE LA SESSION</span>
-                        <div id="jam-room-code" style="font-size:32px; font-weight:900; letter-spacing:4px; color:#00ffff; margin:4px 0;">JAM-XXXX</div>
-                        <div id="jam-user-role" style="font-size:12px; color:var(--text-secondary);">👑 Hôte de la session</div>
-                    </div>
-
-                    <!-- Share link -->
-                    <div style="display:flex; gap:8px; margin-bottom:18px;">
-                        <input type="text" id="jam-room-link" class="modern-input" readonly style="flex:1; font-size:12px; background:rgba(255,255,255,0.06); color:#fff; border-radius:8px; padding:8px 12px;">
-                        <button type="button" class="btn secondary small" onclick="window.JamSession?.copyRoomLink()">Copier</button>
-                    </div>
-
-                    <!-- Connected Listeners -->
-                    <div style="margin-bottom:18px;">
-                        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:8px;">Auditeurs connectés en direct :</div>
-                        <div id="jam-listeners-list" style="display:flex; flex-wrap:wrap; gap:8px;">
-                            <!-- live avatars -->
-                        </div>
-                    </div>
-
-                    <!-- Live Emoji Shower Reaction Buttons -->
-                    <div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
-                        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:8px; text-align:center;">Réagir en direct (s'envole sur l'écran) :</div>
-                        <div style="display:flex; justify-content:center; gap:12px;">
-                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🔥')">🔥</button>
-                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('❤️')">❤️</button>
-                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🎵')">🎵</button>
-                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🚀')">🚀</button>
-                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('💃')">💃</button>
-                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🤯')">🤯</button>
-                        </div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <button type="button" class="btn secondary small" style="color:#ff4444;" onclick="window.JamSession?.leaveSession()">Quitter la session</button>
-                        <button type="button" class="btn primary small" onclick="window.JamSession?.closeModal()">Continuer l'écoute</button>
                     </div>
                 </div>
             </div>
@@ -3076,10 +2843,8 @@
     <script src="/js/storage.js?v=4.1"></script>
     <script src="/js/lyrics.js?v=4.1"></script>
     <script src="/js/player.js?v=4.1"></script>
-    <script src="/js/visualizer.js?v=4.1"></script>
     <script src="/js/canvas-bg.js?v=4.1"></script>
     <script src="/js/dj.js?v=4.1"></script>
-    <script src="/js/jam.js?v=4.1"></script>
     <script src="/js/carmode.js?v=4.1"></script>
     <script src="/js/app.js?v=4.1"></script>
     <script>

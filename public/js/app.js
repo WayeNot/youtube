@@ -875,7 +875,11 @@ const App = {
                     if (target === 'lyrics') {
                         if (window.LyricsManager && typeof window.LyricsManager.setContainer === 'function') {
                             window.LyricsManager.setContainer(this.dom.mobileLyricsContainer);
-                            window.LyricsManager.render();
+                            if (window.Player?.currentTrack) {
+                                window.LyricsManager.loadLyrics(window.Player.currentTrack.title, window.Player.currentTrack.artist);
+                            } else {
+                                window.LyricsManager.render();
+                            }
                         }
                     }
                 });
@@ -1307,8 +1311,15 @@ const App = {
                 this.updateNowPlayingUI(track);
                 this.renderQueueUI();
                 this.updateAmbientGlow(track.thumbnail);
+                // Only fetch lyrics if lyrics panel or mobile lyrics tab is currently open/visible
+                const isSideLyricsOpen = this.currentSidePanel === 'lyrics' && this.dom.sidePanel && !this.dom.sidePanel.classList.contains('hidden');
+                const isMobileLyricsOpen = document.getElementById('mobile-tab-lyrics')?.classList.contains('active');
                 if (window.LyricsManager) {
-                    window.LyricsManager.loadLyrics(track.title, track.artist);
+                    if (isSideLyricsOpen || isMobileLyricsOpen) {
+                        window.LyricsManager.loadLyrics(track.title, track.artist);
+                    } else if (typeof window.LyricsManager.clear === 'function') {
+                        window.LyricsManager.clear();
+                    }
                 }
             });
 
@@ -1928,9 +1939,6 @@ const App = {
             <button class="icon-btn small row-add-pl-btn" data-id="${track.id}" title="Ajouter à une playlist">
               <svg viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
             </button>
-            <button class="icon-btn small row-download-btn" data-id="${track.id}" title="Télécharger ou écouter hors-ligne">
-              <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-            </button>
             ${isPlaylist ? `
             <button class="icon-btn small row-remove-track-btn" data-pl-id="${playlistId}" data-track-id="${track.id}" title="${playlistId === 'liked_tracks' ? 'Retirer des favoris' : 'Retirer de la playlist'}">
               <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -1955,13 +1963,13 @@ const App = {
 
             container.querySelectorAll('[data-track-id]').forEach((el) => {
                 el.addEventListener('click', (e) => {
-                    if (e.target.closest('.row-fav-btn') || e.target.closest('.row-add-pl-btn') || e.target.closest('.row-download-btn') || e.target.closest('.row-remove-track-btn') || e.target.closest('.row-artist') || e.target.closest('.card-artist')) return;
+                    if (e.target.closest('.row-fav-btn') || e.target.closest('.row-add-pl-btn') || e.target.closest('.row-remove-track-btn') || e.target.closest('.row-artist') || e.target.closest('.card-artist')) return;
                     const id = el.getAttribute('data-track-id');
                     const track = this.findTrackInMemory(id);
                     if (!track) return;
 
                     // Collect sibling tracks in the same shelf or list for seamless queueing (deduplicated)
-                    const parentGroup = el.closest('.shelf-carousel') || el.closest('.tracks-list');
+                    const parentGroup = el.closest('.shelf-carousel') || el.closest('.tracks-list') || el.closest('#search-results-list');
                     let queueTracks = null;
                     if (parentGroup) {
                         const trackEls = parentGroup.querySelectorAll('[data-track-id]');
@@ -1980,6 +1988,9 @@ const App = {
                         }
                     }
                     Player.playTrack(track, queueTracks);
+                    if (parentGroup && (parentGroup.id === 'search-results-list' || parentGroup.closest('#search-results-list'))) {
+                        Player.fetchRadioRecommendations(false);
+                    }
                 });
             });
 
@@ -2252,15 +2263,19 @@ const App = {
                 });
             });
 
-            // Entire row click: play track
+            // Entire row click: play track + automatically build dynamic queue of similar songs
             dd.querySelectorAll('.suggestion-track-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     if (e.target.closest('.suggestion-action-btn')) return;
                     const trackId = item.getAttribute('data-track-id');
                     const track = trackList.find(t => t.id === trackId) || this.findTrackInMemory(trackId);
                     if (track) {
-                        Player.playTrack(track);
                         dropdowns.forEach(d => d.classList.add('hidden'));
+                        const otherTracks = (trackList || []).filter(t => t && t.id && t.id !== track.id);
+                        const initialQueue = [track, ...otherTracks];
+                        Player.playTrack(track, initialQueue, 0);
+                        this.showToast(`🎶 Lancement de "${track.title}" & file similaire auto`);
+                        Player.fetchRadioRecommendations(false);
                     }
                 });
             });
@@ -2293,9 +2308,9 @@ const App = {
 
             let html = '';
 
-            // Clean, fast YouTube-like text query suggestions
+            // 1. Text suggestions at top (5 queries max)
             if (suggestions && suggestions.length > 0) {
-                html += suggestions.slice(0, 8).map(s => `
+                html += suggestions.slice(0, 5).map(s => `
           <div class="suggestion-item ytm-suggestion-row" data-query="${this.escapeHtml(s)}">
             <div class="suggestion-left">
               <svg class="suggestion-search-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -2303,15 +2318,11 @@ const App = {
             </div>
           </div>
         `).join('');
-            } else if (directTracks.length > 0) {
-                html += directTracks.slice(0, 6).map(t => `
-          <div class="suggestion-item ytm-suggestion-row" data-query="${this.escapeHtml(t.title)}">
-            <div class="suggestion-left">
-              <svg class="suggestion-search-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              <span class="suggestion-text">${this.escapeHtml(t.title)}</span>
-            </div>
-          </div>
-        `).join('');
+            }
+
+            // 2. Clickable track preview rows directly below text suggestions (matching YouTube Music design)
+            if (directTracks.length > 0) {
+                html += directTracks.slice(0, 4).map(t => this.createSuggestionTrackRowHTML(t, { isRecent: false })).join('');
             }
 
             dropdowns.forEach(dd => {
@@ -3459,7 +3470,11 @@ const App = {
             if (panelName === 'lyrics') {
                 if (window.LyricsManager && typeof window.LyricsManager.setContainer === 'function') {
                     window.LyricsManager.setContainer(this.dom.sideLyricsContainer);
-                    window.LyricsManager.render();
+                    if (window.Player?.currentTrack) {
+                        window.LyricsManager.loadLyrics(window.Player.currentTrack.title, window.Player.currentTrack.artist);
+                    } else {
+                        window.LyricsManager.render();
+                    }
                 }
             } else if (panelName === 'queue') {
                 this.renderQueueUI();

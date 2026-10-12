@@ -718,7 +718,7 @@ class PlayerEngine {
 
   prefetchNextTrack() {
     this.prefetchedNext = true;
-    const nextTracks = this.queue.slice(this.currentIndex + 1, this.currentIndex + 4);
+    const nextTracks = this.queue.slice(this.currentIndex + 1, this.currentIndex + 2);
     if (nextTracks.length > 0) {
       const ids = nextTracks.map(t => t.id).filter(Boolean);
       if (API.prefetchBatch) {
