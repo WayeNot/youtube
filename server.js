@@ -1087,11 +1087,14 @@ async function searchVibeTube(query) {
         const videos = [];
         const channels = [];
 
+        const normalizeUrl = (u) => (u && u.startsWith('//') ? 'https:' + u : u);
+
         for (const item of contents) {
             if (item.channelRenderer) {
                 const cr = item.channelRenderer;
                 const name = cr.title?.simpleText || cr.title?.runs?.map(r => r.text).join('') || 'Chaîne YouTube';
-                const avatar = cr.thumbnail?.thumbnails?.slice(-1)[0]?.url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name)}`;
+                const avatarRaw = cr.thumbnail?.thumbnails?.slice(-1)[0]?.url;
+                const avatar = avatarRaw ? normalizeUrl(avatarRaw) : `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name)}`;
                 const subscribers = cr.subscriberCountText?.simpleText || cr.videoCountText?.simpleText || '';
                 const desc = cr.descriptionSnippet?.runs?.map(r => r.text).join('') || '';
                 channels.push({
@@ -1109,9 +1112,11 @@ async function searchVibeTube(query) {
                 const channel = vr.ownerText?.runs?.map(r => r.text).join('') || 'Créateur';
                 const duration = vr.lengthText?.simpleText || '3:30';
                 const views = vr.shortViewCountText?.simpleText || '';
-                const thumb = vr.thumbnail?.thumbnails?.slice(-1)[0]?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
+                const thumbRaw = vr.thumbnail?.thumbnails?.slice(-1)[0]?.url;
+                const thumb = thumbRaw ? normalizeUrl(thumbRaw) : `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
                 const publishedTime = vr.publishedTimeText?.simpleText || '';
-                const channelAvatar = vr.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(channel)}`;
+                const channelAvatarRaw = vr.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url;
+                const channelAvatar = channelAvatarRaw ? normalizeUrl(channelAvatarRaw) : `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(channel)}`;
 
                 videos.push({
                     id: vr.videoId,
