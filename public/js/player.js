@@ -639,12 +639,12 @@ class PlayerEngine {
       console.warn('Fallback direct CDN stream error:', e);
     }
 
-    // 2. Only on Desktop, attempt YouTube embed iframe as last resort
-    if (!isMobileDevice()) {
-      try {
-        this.playViaYouTubeEmbed(track);
-        return;
-      } catch (e) {}
+    // 2. High-availability audio/embed fallback when direct stream cannot be extracted (e.g. Premium-only tracks)
+    try {
+      this.playViaYouTubeEmbed(track);
+      return;
+    } catch (e) {
+      console.warn('YouTube embed fallback error:', e);
     }
 
     this.emit('error', { message: 'Impossible de lire ce titre' });

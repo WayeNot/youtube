@@ -5808,7 +5808,9 @@ const App = {
             } else {
                 if (desktopPlayer) desktopPlayer.style.removeProperty('display');
                 if (mobilePlayer) mobilePlayer.style.removeProperty('display');
-                this.closeVibeTubePlayer();
+                if (typeof this.closeVibeTubePlayer === 'function') {
+                    this.closeVibeTubePlayer();
+                }
             }
 
             // Mobile Bottom Navs toggle
@@ -6663,10 +6665,20 @@ const App = {
             if (actions) actions.classList.remove('visible');
         },
 
-        closeWatchView() {
-            const iframe = document.getElementById('vibetube-watch-iframe');
+        closeVibeTubePlayer() {
+            // Close modal player if present
+            const modal = document.getElementById('modal-vibetube-player');
+            if (modal) modal.classList.add('hidden');
+            const iframe = document.getElementById('vibetube-iframe');
             if (iframe) iframe.src = '';
+            // Close in-page watch view if active
+            const watchIframe = document.getElementById('vibetube-watch-iframe');
+            if (watchIframe) watchIframe.src = '';
             this.currentWatchVideoId = null;
+        },
+
+        closeWatchView() {
+            this.closeVibeTubePlayer();
             if (this.currentVibeTubeSearchQuery) {
                 this.switchView('vibetube-search');
             } else {

@@ -243,41 +243,41 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: Web session with cookies first (works with datacenter IPs)
+    // 5. Extract stream with yt-dlp: Web session with cookies first, then visionos, android, and web
     const streamPromise = (async () => {
         let lastErr = null;
         const format = '18/bestaudio/ba/b';
         const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Authenticated session with desktop cookies (tested 100% working on Vercel)
+        // Attempt 1: Authenticated session with desktop cookies
         if (hasCookies) {
             try {
                 return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 12000);
             } catch (err) {
-                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying...`);
+                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying visionos...`);
                 lastErr = err;
             }
         }
 
-        // Attempt 2: Android client
+        // Attempt 2: VisionOS client (fast, reliable, uncluttered audio stream extraction)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=android'], format, 4000);
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], 'bestaudio/140/251/18/ba/b', 6000);
         } catch (err) {
-            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying tv_embedded...`);
+            console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying android...`);
             lastErr = err;
         }
 
-        // Attempt 3: TV Embedded client
+        // Attempt 3: Android client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=tv_embedded'], format, 3500);
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=android'], format, 6000);
         } catch (err) {
-            console.warn(`yt-dlp tv_embedded attempt failed for ${videoId}: ${err.message}.`);
+            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying default web...`);
             lastErr = err;
         }
 
         // Attempt 4: Default fallback
         try {
-            return await runYtDlp([], format, 4000);
+            return await runYtDlp([], format, 6000);
         } catch (err) {
             console.error(`yt-dlp all attempts failed for ${videoId}: ${err.message}`);
             throw lastErr || err;
