@@ -12,7 +12,15 @@ const db = require('./db');
 
 const app = express();
 const PORT = config.port;
-const YTDLP_PATH = config.ytdlpPath;
+let YTDLP_PATH = config.ytdlpPath;
+const YTDLP_BIN_NAME = 'yt-dlp';
+
+function getCookiesPath() {
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+        return path.join('/tmp', 'cookies.txt');
+    }
+    return path.join(__dirname, 'cookies.txt');
+}
 
 app.use(cors());
 app.use(compression());
@@ -62,7 +70,7 @@ setInterval(async () => {
 // Helper: Ensure cookies.txt is created from environment variables if present
 function syncCookiesFile() {
     const fs = require('fs');
-    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    const cookiesPath = getCookiesPath();
     try {
         if (process.env.YTDLP_COOKIES_BASE64 && process.env.YTDLP_COOKIES_BASE64.trim()) {
             const decoded = Buffer.from(process.env.YTDLP_COOKIES_BASE64.trim(), 'base64').toString('utf-8');
@@ -132,11 +140,10 @@ async function getAudioStreamUrl(videoId) {
         return inFlightStreams.get(videoId);
     }
 
-    // 4. Ensure cookies file exists if env variable is set
+    // 4. Ensure yt-dlp binary is ready and cookies file exists
+    await ensureYtDlp();
     const hasCookies = syncCookiesFile();
-
-    const fs = require('fs');
-    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    const cookiesPath = getCookiesPath();
 
     // Concurrency queue for yt-dlp to avoid CPU starvation / 500 on Render
     const runYtDlp = (extraArgs = [], format = '140/251/ba/b') => {
@@ -325,7 +332,8 @@ async function searchInnertube(query) {
 
 // Fallback: Search via yt-dlp flat playlist
 function searchYtDlp(query, limit = 20) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
+        await ensureYtDlp();
         execFile(
             YTDLP_PATH,
             ['--dump-json', '--flat-playlist', '--', `ytsearch${limit}:${query}`],
@@ -663,6 +671,7 @@ app.get('/api/album/:id', async (req, res) => {
         // If it's a YouTube Playlist ID (e.g. starts with PL or VL)
         if (albumId && (albumId.startsWith('PL') || albumId.startsWith('VL') || albumId.length > 15)) {
             const cleanPlId = albumId.startsWith('VL') ? albumId.substring(2) : albumId;
+            await ensureYtDlp();
             const tracks = await new Promise((resolve) => {
                 execFile(
                     YTDLP_PATH,
@@ -763,7 +772,8 @@ app.get('/api/album/:id', async (req, res) => {
 });
 
 // Diagnostic endpoint to check environment & yt-dlp binary
-app.get('/api/debug', (req, res) => {
+app.get('/api/debug', async (req, res) => {
+    await ensureYtDlp();
     syncCookiesFile();
     const fs = require('fs');
     const exists = fs.existsSync(YTDLP_PATH);
@@ -771,7 +781,7 @@ app.get('/api/debug', (req, res) => {
     if (exists) {
         try { size = fs.statSync(YTDLP_PATH).size; } catch (e) { }
     }
-    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    const cookiesPath = getCookiesPath();
     const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
     const cookiesSize = hasCookies ? fs.statSync(cookiesPath).size : 0;
     const { execFile } = require('child_process');
@@ -1216,6 +1226,7 @@ app.get('/api/random', async (req, res) => {
 app.get('/api/info/:id', async (req, res) => {
     const videoId = req.params.id;
     try {
+        await ensureYtDlp();
         execFile(
             YTDLP_PATH,
             ['-j', '--no-playlist', '--', `https://www.youtube.com/watch?v=${videoId}`],
@@ -1386,6 +1397,7 @@ app.post('/api/playlist/import', async (req, res) => {
         }
 
         // 3. YouTube / YouTube Music URL (via yt-dlp)
+        await ensureYtDlp();
         execFile(
             YTDLP_PATH,
             ['--flat-playlist', '-j', '--', cleanUrl],
@@ -1753,31 +1765,71 @@ app.use((req, res) => {
 });
 
 // Ensure yt-dlp binary and cookies are present
+let ytDlpPromise = null;
 async function ensureYtDlp() {
-    const fs = require('fs');
-    const binDir = path.dirname(YTDLP_PATH);
-    if (!fs.existsSync(binDir)) {
-        fs.mkdirSync(binDir, { recursive: true });
-    }
-    if (!fs.existsSync(YTDLP_PATH)) {
-        console.log('⬇️ yt-dlp introuvable, téléchargement automatique en cours...');
-        try {
-            const { execSync } = require('child_process');
-            execSync(`curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "${YTDLP_PATH}" && chmod a+rx "${YTDLP_PATH}"`);
-            console.log('✅ yt-dlp installé avec succès !');
-        } catch (e) {
-            console.error('❌ Échec du téléchargement de yt-dlp:', e.message);
-        }
-    }
+    if (ytDlpPromise) return ytDlpPromise;
+    ytDlpPromise = (async () => {
+        const fs = require('fs');
+        const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+        const bundledPath = path.join(__dirname, 'bin', YTDLP_BIN_NAME);
+        const tmpPath = path.join('/tmp', YTDLP_BIN_NAME);
 
-    // Ensure cookies are synchronized on startup
-    const hasCookies = syncCookiesFile();
-    if (hasCookies) {
-        const cookiesPath = path.join(__dirname, 'cookies.txt');
-        console.log('🍪 Cookies YouTube actifs ! Taille:', fs.statSync(cookiesPath).size, 'octets');
-    } else {
-        console.log('⚠️ Aucun cookie YouTube détecté (YTDLP_COOKIES ou YTDLP_COOKIES_BASE64 non défini)');
-    }
+        let targetPath = isServerless ? tmpPath : (fs.existsSync(bundledPath) ? bundledPath : tmpPath);
+
+        if (isServerless) {
+            // Check if /tmp/yt-dlp already exists and is valid
+            if (!fs.existsSync(tmpPath) || fs.statSync(tmpPath).size < 1000000) {
+                if (fs.existsSync(bundledPath)) {
+                    try {
+                        console.log('📦 Copie de yt-dlp depuis le bundle vers /tmp/yt-dlp...');
+                        fs.copyFileSync(bundledPath, tmpPath);
+                        fs.chmodSync(tmpPath, 0o755);
+                    } catch (e) {
+                        console.warn('⚠️ Échec copie bundled yt-dlp vers /tmp:', e.message);
+                    }
+                }
+                if (!fs.existsSync(tmpPath) || fs.statSync(tmpPath).size < 1000000) {
+                    console.log('⬇️ yt-dlp introuvable, téléchargement automatique vers /tmp/yt-dlp...');
+                    try {
+                        const { execSync } = require('child_process');
+                        execSync(`curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "${tmpPath}" && chmod a+rx "${tmpPath}"`, { timeout: 45000 });
+                        console.log('✅ yt-dlp téléchargé et prêt dans /tmp/yt-dlp !');
+                    } catch (e) {
+                        console.error('❌ Échec du téléchargement de yt-dlp:', e.message);
+                    }
+                }
+            } else {
+                try { fs.chmodSync(tmpPath, 0o755); } catch (e) {}
+            }
+            targetPath = tmpPath;
+        } else {
+            // Local development
+            if (!fs.existsSync(bundledPath)) {
+                const binDir = path.dirname(bundledPath);
+                if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
+                try {
+                    const { execSync } = require('child_process');
+                    execSync(`curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "${bundledPath}" && chmod a+rx "${bundledPath}"`, { timeout: 45000 });
+                } catch (e) {
+                    console.error('❌ Échec téléchargement local yt-dlp:', e.message);
+                }
+            } else {
+                try { fs.chmodSync(bundledPath, 0o755); } catch (e) {}
+            }
+            targetPath = fs.existsSync(bundledPath) ? bundledPath : tmpPath;
+        }
+
+        YTDLP_PATH = targetPath;
+        const hasCookies = syncCookiesFile();
+        if (hasCookies) {
+            const cookiesPath = getCookiesPath();
+            console.log('🍪 Cookies YouTube actifs ! Taille:', fs.statSync(cookiesPath).size, 'octets');
+        } else {
+            console.log('⚠️ Aucun cookie YouTube détecté (YTDLP_COOKIES ou YTDLP_COOKIES_BASE64 non défini)');
+        }
+        return targetPath;
+    })();
+    return ytDlpPromise;
 }
 
 // Initialize Database schema and start server

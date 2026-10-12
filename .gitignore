@@ -1,8 +1,8 @@
 node_modules/
 .env
 data/*.db
-bin/
 *.db
 .DS_Store
 cookies.txt
 .yt-dlp-cache/
+

@@ -1056,8 +1056,54 @@ const App = {
             if (this.dom.clearQueueBtn) this.dom.clearQueueBtn.addEventListener('click', () => Player.clearQueue());
             if (this.dom.mobileClearQueueBtn) this.dom.mobileClearQueueBtn.addEventListener('click', () => Player.clearQueue());
 
-            // Global Event Delegation for Cards, Hero buttons & Shelves
+            // Global Event Delegation for Modals, Cards, Hero buttons & Shelves
             document.addEventListener('click', (e) => {
+                // Universal modal triggers
+                if (e.target.closest('#header-import-btn, #sidebar-import-btn, #library-import-playlist-btn, #hero-import-btn')) {
+                    e.preventDefault();
+                    this.openImportModal();
+                    return;
+                }
+                if (e.target.closest('#create-playlist-btn, #create-playlist-btn-2')) {
+                    e.preventDefault();
+                    this.openCreatePlaylistModal();
+                    return;
+                }
+                if (e.target.closest('#playlist-share-btn')) {
+                    e.preventDefault();
+                    this.shareCurrentPlaylist();
+                    return;
+                }
+                if (e.target.closest('#profile-share-btn')) {
+                    e.preventDefault();
+                    this.shareUserProfile();
+                    return;
+                }
+                if (e.target.closest('#profile-story-btn')) {
+                    e.preventDefault();
+                    this.openStoryGenerator();
+                    return;
+                }
+                if (e.target.closest('#auth-btn')) {
+                    e.preventDefault();
+                    this.handleAuthBtnClick(e);
+                    return;
+                }
+
+                // Modal backdrop & close button delegations
+                const closeBtn = e.target.closest('.close-modal-btn');
+                if (closeBtn) {
+                    const modal = closeBtn.closest('.modal-overlay');
+                    if (modal) {
+                        this.closeModal(modal);
+                        return;
+                    }
+                }
+                if (e.target.classList.contains('modal-overlay')) {
+                    this.closeModal(e.target);
+                    return;
+                }
+
                 // Hero Random button
                 if (e.target.closest('#hero-random-btn')) {
                     e.preventDefault();
@@ -3387,18 +3433,28 @@ const App = {
             }
         },
 
-        openImportModal() {
-            const modal = document.getElementById('modal-import-playlist');
-            if (modal) {
-                modal.classList.remove('hidden');
+        openModal(modalId) {
+            const el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+            if (el) {
+                el.classList.remove('hidden');
+                el.style.display = 'flex';
             }
         },
 
-        closeImportModal() {
-            const modal = document.getElementById('modal-import-playlist');
-            if (modal) {
-                modal.classList.add('hidden');
+        closeModal(modalId) {
+            const el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+            if (el) {
+                el.classList.add('hidden');
+                el.style.display = 'none';
             }
+        },
+
+        openImportModal() {
+            this.openModal('modal-import-playlist');
+        },
+
+        closeImportModal() {
+            this.closeModal('modal-import-playlist');
         },
 
         switchImportTab(tabKey) {
@@ -3528,19 +3584,19 @@ const App = {
 
         // Modal helpers
         openEqualizerModal() {
-            document.getElementById('modal-equalizer')?.classList.remove('hidden');
+            this.openModal('modal-equalizer');
         },
 
         closeEqualizerModal() {
-            document.getElementById('modal-equalizer')?.classList.add('hidden');
+            this.closeModal('modal-equalizer');
         },
 
         openSleepModal() {
-            document.getElementById('modal-sleep-timer')?.classList.remove('hidden');
+            this.openModal('modal-sleep-timer');
         },
 
         closeSleepModal() {
-            document.getElementById('modal-sleep-timer')?.classList.add('hidden');
+            this.closeModal('modal-sleep-timer');
         },
 
         openCreatePlaylistPrompt() {
@@ -3626,15 +3682,14 @@ const App = {
             this.clearNewPlaylistCover();
             if (!modal) return;
             if (input) input.value = '';
-            modal.classList.remove('hidden');
+            this.openModal(modal);
             setTimeout(() => {
                 if (input) input.focus();
             }, 60);
         },
 
         closeCreatePlaylistModal() {
-            const modal = document.getElementById('modal-create-playlist');
-            if (modal) modal.classList.add('hidden');
+            this.closeModal('modal-create-playlist');
             this.clearNewPlaylistCover();
         },
 
@@ -3799,15 +3854,16 @@ const App = {
 
         // Auth & Session UI
         openAuthModal() {
-            if (!this.dom.modalAuth) return;
-            this.dom.modalAuth.classList.remove('hidden');
+            const modal = this.dom.modalAuth || document.getElementById('modal-auth');
+            if (!modal) return;
+            this.openModal(modal);
             this.authMode = 'login';
             this.switchAuthTab('login');
             this.updateAuthModalView();
         },
 
         closeAuthModal() {
-            if (this.dom.modalAuth) this.dom.modalAuth.classList.add('hidden');
+            this.closeModal(this.dom.modalAuth || 'modal-auth');
         },
 
         handleAuthBtnClick(e) {
@@ -4732,7 +4788,11 @@ const App = {
             const redditBtn = document.getElementById('share-btn-reddit');
             if (redditBtn) redditBtn.onclick = () => window.open(`https://reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`, '_blank');
 
-            modal.classList.remove('hidden');
+            this.openModal(modal);
+        },
+
+        closeShareModal() {
+            this.closeModal('modal-share');
         },
 
         copyShareModalUrl() {
@@ -4808,8 +4868,12 @@ const App = {
                 lyricsInput.oninput = () => this.renderStoryCanvas();
             }
 
-            modal.classList.remove('hidden');
+            this.openModal(modal);
             this.renderStoryCanvas();
+        },
+
+        closeStoryGenerator() {
+            this.closeModal('modal-story-generator');
         },
 
         renderStoryCanvas() {
