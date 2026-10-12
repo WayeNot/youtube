@@ -164,6 +164,19 @@ const db = {
         );
       `;
 
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS video_comments (
+          id SERIAL PRIMARY KEY,
+          video_id TEXT NOT NULL,
+          user_id TEXT,
+          author_name TEXT NOT NULL,
+          author_avatar TEXT,
+          content TEXT NOT NULL,
+          likes INT DEFAULT 0,
+          created_at BIGINT NOT NULL
+        );
+      `;
+
       // Create indexes for blazing fast lookups
       await neonSql`CREATE INDEX IF NOT EXISTS idx_liked_user ON liked_tracks(user_id, added_at DESC);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id, updated_at DESC);`;
@@ -172,8 +185,9 @@ const db = {
       await neonSql`CREATE INDEX IF NOT EXISTS idx_stream_expires ON stream_cache(expires_at);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_follows_follower ON user_follows(follower_id);`;
       await neonSql`CREATE INDEX IF NOT EXISTS idx_follows_followed ON user_follows(followed_id);`;
+      await neonSql`CREATE INDEX IF NOT EXISTS idx_comments_vid ON video_comments(video_id, created_at DESC);`;
 
-      console.log('✅ Tables relationnelles NeonDB (liked_tracks, playlists, playlist_tracks, history, user_follows) prêtes !');
+      console.log('✅ Tables relationnelles NeonDB (liked_tracks, playlists, playlist_tracks, history, user_follows, video_comments) prêtes !');
     } else {
       sqliteDb.exec(`
         CREATE TABLE IF NOT EXISTS users (
@@ -265,6 +279,17 @@ const db = {
           expires_at INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS video_comments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          video_id TEXT NOT NULL,
+          user_id TEXT,
+          author_name TEXT NOT NULL,
+          author_avatar TEXT,
+          content TEXT NOT NULL,
+          likes INTEGER DEFAULT 0,
+          created_at INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_liked_user ON liked_tracks(user_id, added_at DESC);
         CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id, updated_at DESC);
         CREATE INDEX IF NOT EXISTS idx_pl_tracks ON playlist_tracks(playlist_id, position);
@@ -272,6 +297,7 @@ const db = {
         CREATE INDEX IF NOT EXISTS idx_stream_expires ON stream_cache(expires_at);
         CREATE INDEX IF NOT EXISTS idx_follows_follower ON user_follows(follower_id);
         CREATE INDEX IF NOT EXISTS idx_follows_followed ON user_follows(followed_id);
+        CREATE INDEX IF NOT EXISTS idx_comments_vid ON video_comments(video_id, created_at DESC);
       `);
 
       try {
@@ -1000,6 +1026,56 @@ const db = {
       await neonSql`DELETE FROM stream_cache WHERE expires_at <= ${now}`;
     } else {
       sqliteDb.prepare('DELETE FROM stream_cache WHERE expires_at <= ?').run(now);
+    }
+  },
+
+  async getVideoComments(videoId) {
+    if (isNeon) {
+      const rows = await neonSql`
+        SELECT id, video_id as "videoId", user_id as "userId", author_name as "authorName", author_avatar as "authorAvatar", content, likes, created_at as "createdAt"
+        FROM video_comments
+        WHERE video_id = ${videoId}
+        ORDER BY created_at DESC
+        LIMIT 60
+      `;
+      return rows;
+    } else {
+      const rows = sqliteDb.prepare(`
+        SELECT id, video_id as videoId, user_id as userId, author_name as authorName, author_avatar as authorAvatar, content, likes, created_at as createdAt
+        FROM video_comments
+        WHERE video_id = ?
+        ORDER BY created_at DESC
+        LIMIT 60
+      `).all(videoId);
+      return rows;
+    }
+  },
+
+  async addVideoComment({ videoId, userId, authorName, authorAvatar, content }) {
+    const now = Date.now();
+    const avatar = authorAvatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(authorName || 'user')}`;
+    if (isNeon) {
+      const res = await neonSql`
+        INSERT INTO video_comments (video_id, user_id, author_name, author_avatar, content, likes, created_at)
+        VALUES (${videoId}, ${userId || null}, ${authorName || 'Utilisateur'}, ${avatar}, ${content}, 0, ${now})
+        RETURNING id, video_id as "videoId", user_id as "userId", author_name as "authorName", author_avatar as "authorAvatar", content, likes, created_at as "createdAt"
+      `;
+      return res[0];
+    } else {
+      const info = sqliteDb.prepare(`
+        INSERT INTO video_comments (video_id, user_id, author_name, author_avatar, content, likes, created_at)
+        VALUES (?, ?, ?, ?, ?, 0, ?)
+      `).run(videoId, userId || null, authorName || 'Utilisateur', avatar, content, now);
+      return {
+        id: info.lastInsertRowid,
+        videoId,
+        userId: userId || null,
+        authorName: authorName || 'Utilisateur',
+        authorAvatar: avatar,
+        content,
+        likes: 0,
+        createdAt: now
+      };
     }
   }
 };

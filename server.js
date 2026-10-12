@@ -1149,6 +1149,222 @@ app.get('/api/vibetube/search', async (req, res) => {
     }
 });
 
+// 4e. VibeTube Watch Page Details & Related Videos
+app.get('/api/vibetube/watch', async (req, res) => {
+    const videoId = (req.query.id || req.query.v || '').trim();
+    if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+
+    try {
+        const normalizeUrl = (u) => (u && u.startsWith('//') ? 'https:' + u : u);
+        const r = await fetch('https://www.youtube.com/youtubei/v1/next', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            },
+            body: JSON.stringify({
+                context: {
+                    client: {
+                        clientName: 'WEB',
+                        clientVersion: '2.20240401.01.00',
+                        hl: 'fr',
+                        gl: 'FR',
+                    },
+                },
+                videoId: videoId,
+            }),
+        });
+
+        const data = await r.json();
+        const primary =
+            data?.contents?.twoColumnWatchNextResults?.results?.results?.contents?.find(
+                (c) => c.videoPrimaryInfoRenderer
+            )?.videoPrimaryInfoRenderer;
+        const secondary =
+            data?.contents?.twoColumnWatchNextResults?.results?.results?.contents?.find(
+                (c) => c.videoSecondaryInfoRenderer
+            )?.videoSecondaryInfoRenderer;
+
+        const title =
+            primary?.title?.runs?.map((x) => x.text).join('') ||
+            primary?.title?.simpleText ||
+            'Vidéo YouTube';
+        const views =
+            primary?.viewCount?.videoViewCountRenderer?.viewCount?.simpleText ||
+            primary?.viewCount?.videoViewCountRenderer?.shortViewCount?.simpleText ||
+            '';
+        const date = primary?.dateText?.simpleText || '';
+
+        const ownerRenderer = secondary?.owner?.videoOwnerRenderer;
+        const channelName =
+            ownerRenderer?.title?.runs?.map((x) => x.text).join('') ||
+            ownerRenderer?.title?.simpleText ||
+            'Créateur';
+        const channelAvatarRaw =
+            ownerRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url;
+        const channelAvatar = channelAvatarRaw
+            ? normalizeUrl(channelAvatarRaw)
+            : `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(channelName)}`;
+        const subscribers =
+            ownerRenderer?.subscriberCountText?.simpleText || '';
+        const channelId =
+            ownerRenderer?.navigationEndpoint?.browseEndpoint?.browseId || '';
+
+        const description =
+            secondary?.attributedDescription?.content ||
+            secondary?.description?.runs?.map((x) => x.text).join('') ||
+            '';
+
+        // Extract related videos
+        const recsRaw =
+            data?.contents?.twoColumnWatchNextResults?.secondaryResults?.secondaryResults?.results ||
+            [];
+        const related = [];
+        const seenIds = new Set([videoId]);
+
+        for (const item of recsRaw) {
+            if (item.lockupViewModel) {
+                const lm = item.lockupViewModel;
+                const id = lm.contentId;
+                const meta = lm.metadata?.lockupMetadataViewModel;
+                const relTitle = meta?.title?.content || '';
+                const rows = meta?.metadata?.contentMetadataViewModel?.metadataRows || [];
+                const relChannel = rows[0]?.metadataParts?.[0]?.text?.content || channelName;
+                const relViews = rows[1]?.metadataParts?.[0]?.text?.content ? (rows[1].metadataParts[0].text.content + ' vues') : '';
+                const relPublished = rows[1]?.metadataParts?.[1]?.text?.content || '';
+                const relAvatar = meta?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources?.[0]?.url;
+
+                if (id && /^[\w-]{11}$/.test(id) && !seenIds.has(id)) {
+                    seenIds.add(id);
+                    related.push({
+                        id,
+                        title: relTitle,
+                        channel: relChannel,
+                        duration: '3:30',
+                        views: relViews,
+                        publishedTime: relPublished,
+                        avatar: relAvatar ? normalizeUrl(relAvatar) : `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(relChannel)}`,
+                        thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+                    });
+                }
+            } else if (item.compactVideoRenderer) {
+                const cv = item.compactVideoRenderer;
+                if (cv.videoId && !seenIds.has(cv.videoId)) {
+                    seenIds.add(cv.videoId);
+                    const thumbRaw = cv.thumbnail?.thumbnails?.slice(-1)[0]?.url;
+                    related.push({
+                        id: cv.videoId,
+                        title: cv.title?.simpleText || cv.title?.runs?.[0]?.text || '',
+                        channel: cv.shortBylineText?.runs?.[0]?.text || channelName,
+                        duration: cv.lengthText?.simpleText || '3:30',
+                        thumbnail: thumbRaw ? normalizeUrl(thumbRaw) : `https://i.ytimg.com/vi/${cv.videoId}/hqdefault.jpg`,
+                        views: cv.viewCountText?.simpleText || cv.shortViewCountText?.simpleText || '',
+                        publishedTime: cv.publishedTimeText?.simpleText || '',
+                        avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(cv.shortBylineText?.runs?.[0]?.text || 'creator')}`
+                    });
+                }
+            }
+        }
+
+        res.json({
+            id: videoId,
+            title,
+            views,
+            date,
+            description,
+            owner: {
+                name: channelName,
+                avatar: channelAvatar,
+                subscribers,
+                channelId,
+            },
+            related,
+        });
+    } catch (err) {
+        console.error('Error fetching VibeTube watch details:', err);
+        res.status(500).json({ error: 'Failed to load video details', id: videoId, related: [] });
+    }
+});
+
+// 4f. VibeTube Comments System (DB + Community curated comments)
+app.get('/api/vibetube/comments', async (req, res) => {
+    const videoId = (req.query.id || req.query.v || '').trim();
+    if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+
+    try {
+        const dbComments = await db.getVideoComments(videoId);
+
+        // Community default seed comments for vibrant engagement
+        const seedComments = [
+            {
+                id: `seed-1-${videoId}`,
+                authorName: 'Lucas M.',
+                authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lucas',
+                content: 'Incroyable cette vidéo ! Le rythme et le montage sont juste parfaits 🔥',
+                likes: 342,
+                createdAt: Date.now() - 3600 * 1000 * 8,
+                isSeed: true
+            },
+            {
+                id: `seed-2-${videoId}`,
+                authorName: 'Sophie_Vibes',
+                authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie',
+                content: 'Le fou rire au milieu de la vidéo m\'a achevé 😂 Bravo pour le travail !',
+                likes: 189,
+                createdAt: Date.now() - 3600 * 1000 * 24,
+                isSeed: true
+            },
+            {
+                id: `seed-3-${videoId}`,
+                authorName: 'Alexandre Tech',
+                authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
+                content: 'Toujours un plaisir de voir du contenu d\'aussi bonne qualité sur VibeTube ❤️',
+                likes: 95,
+                createdAt: Date.now() - 3600 * 1000 * 36,
+                isSeed: true
+            },
+            {
+                id: `seed-4-${videoId}`,
+                authorName: 'Nox Gaming',
+                authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Nox',
+                content: 'La transition à 04:12 est absolument monumentale ! GG à l\'équipe de prod.',
+                likes: 67,
+                createdAt: Date.now() - 3600 * 1000 * 48,
+                isSeed: true
+            }
+        ];
+
+        const allComments = [...(dbComments || []), ...seedComments];
+        res.json({ comments: allComments, total: allComments.length });
+    } catch (e) {
+        console.error('Error fetching VibeTube comments:', e);
+        res.status(500).json({ error: e.message, comments: [] });
+    }
+});
+
+app.post('/api/vibetube/comments', async (req, res) => {
+    try {
+        const { videoId, content, authorName, authorAvatar, userId } = req.body || {};
+        if (!videoId || !content || !content.trim()) {
+            return res.status(400).json({ error: 'videoId and content are required' });
+        }
+
+        const newComment = await db.addVideoComment({
+            videoId: videoId.trim(),
+            userId: userId || null,
+            authorName: (authorName || 'Utilisateur').trim(),
+            authorAvatar: authorAvatar || null,
+            content: content.trim()
+        });
+
+        res.json({ success: true, comment: newComment });
+    } catch (e) {
+        console.error('Error adding VibeTube comment:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 5. Download track as MP3 file
 app.get('/api/download/:id', async (req, res) => {
     const videoId = req.params.id;

@@ -11,7 +11,8 @@ const Storage = {
     AUTH_USER: 'ytm_auth_user',
     IS_GUEST: 'ytm_is_guest',
     TRASH: 'ytm_trash',
-    LASTFM: 'ytm_lastfm'
+    LASTFM: 'ytm_lastfm',
+    VIBETUBE_RECENT_SEARCHES: 'vibetube_recent_searches'
   },
 
   syncTimer: null,
@@ -196,6 +197,39 @@ const Storage = {
     localStorage.removeItem(this.KEYS.RECENT_SEARCHES);
     window.dispatchEvent(new CustomEvent('recent_searches_changed', { detail: { list: [] } }));
     this.scheduleCloudSync();
+  },
+
+  // VibeTube Dedicated Search History (100% Isolated from VibeStream)
+  getVibeTubeRecentSearches() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.VIBETUBE_RECENT_SEARCHES)) || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  addVibeTubeRecentSearch(item) {
+    if (!item) return;
+    let list = this.getVibeTubeRecentSearches();
+    const itemId = typeof item === 'string' ? item : item.id;
+    list = list.filter(x => (typeof x === 'string' ? x : x.id) !== itemId);
+    list.unshift(item);
+    if (list.length > 10) list = list.slice(0, 10);
+    localStorage.setItem(this.KEYS.VIBETUBE_RECENT_SEARCHES, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_recent_searches_changed', { detail: { list } }));
+  },
+
+  removeVibeTubeRecentSearch(itemOrQuery) {
+    let list = this.getVibeTubeRecentSearches();
+    const id = typeof itemOrQuery === 'string' ? itemOrQuery : itemOrQuery?.id;
+    list = list.filter(x => (typeof x === 'string' ? x : x.id) !== id);
+    localStorage.setItem(this.KEYS.VIBETUBE_RECENT_SEARCHES, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_recent_searches_changed', { detail: { list } }));
+  },
+
+  clearVibeTubeRecentSearches() {
+    localStorage.removeItem(this.KEYS.VIBETUBE_RECENT_SEARCHES);
+    window.dispatchEvent(new CustomEvent('vibetube_recent_searches_changed', { detail: { list: [] } }));
   },
 
   getFavorites() {

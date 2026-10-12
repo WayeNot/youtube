@@ -521,6 +521,15 @@ class PlayerEngine {
 
     Storage.addToHistory(track);
     Storage.addRecentSearch(track);
+
+    // Reveal bottom music player bar only now that a track has started (unless in VibeTube)
+    if (!window.App || window.App.currentAppMode !== 'vibetube') {
+      const desktopBar = document.getElementById('desktop-player-bar');
+      const mobileMini = document.getElementById('mobile-mini-player');
+      if (desktopBar) desktopBar.classList.remove('hidden');
+      if (mobileMini) mobileMini.classList.remove('hidden');
+    }
+
     this.emit('track_change', { track: this.currentTrack, index: this.currentIndex });
     this.updateMediaSessionMetadata();
 

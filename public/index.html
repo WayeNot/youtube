@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="VibeStream">
     <link rel="manifest" href="/manifest.json?v=3.8">
     <link rel="icon" type="image/png" href="/icons/vibestream-logo.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.9">
+    <link rel="stylesheet" href="/css/style.css?v=4.1">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -248,6 +248,23 @@
                         onclick="document.getElementById('import-file-input').click()">Restaurer données</button>
                     <input type="file" id="import-file-input" accept=".json" style="display: none;">
                 </div>
+
+                <!-- VibeTube Switcher Card (At the very bottom of VibeStream sidebar, directly above the bottom player bar) -->
+                <div class="sidebar-vibetube-switch-box">
+                    <button type="button" class="sidebar-switch-universe-btn tube" onclick="window.App && window.App.setAppMode('vibetube')" title="Basculer sur VibeTube">
+                        <div class="switch-u-icon-glow tube">
+                            <span class="switch-u-emoji">🎬</span>
+                        </div>
+                        <div class="switch-u-text">
+                            <div class="switch-u-title">
+                                <span>VibeTube</span>
+                                <span class="switch-u-pill tube">VIDÉO</span>
+                            </div>
+                            <span class="switch-u-sub">Explorer l'univers Vidéo & Shorts</span>
+                        </div>
+                        <svg class="switch-u-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
+                    </button>
+                </div>
             </aside>
 
             <!-- VIBETUBE SIDEBAR (Video Entity - 100% Dedicated) -->
@@ -298,9 +315,20 @@
                     </nav>
                 </div>
 
-                <div class="sidebar-footer">
-                    <button type="button" class="btn secondary small" style="width:100%; justify-content:center; gap:6px;" onclick="window.App && window.App.setAppMode('vibestream')">
-                        <span>🎵 Passer sur VibeStream</span>
+                <!-- VibeStream Switcher Card (At the bottom of VibeTube sidebar) -->
+                <div class="sidebar-vibetube-switch-box" style="margin-top:auto;">
+                    <button type="button" class="sidebar-switch-universe-btn stream" onclick="window.App && window.App.setAppMode('vibestream')" title="Basculer sur VibeStream">
+                        <div class="switch-u-icon-glow stream">
+                            <span class="switch-u-emoji">🎵</span>
+                        </div>
+                        <div class="switch-u-text">
+                            <div class="switch-u-title">
+                                <span>VibeStream</span>
+                                <span class="switch-u-pill stream">MUSIQUE</span>
+                            </div>
+                            <span class="switch-u-sub">Revenir au lecteur Audio & DJ</span>
+                        </div>
+                        <svg class="switch-u-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
                     </button>
                 </div>
             </aside>
@@ -495,6 +523,102 @@
                         <h2 class="section-title">Vidéos de la chaîne</h2>
                     </div>
                     <div id="vibetube-channel-videos-grid" class="vibetube-video-grid"></div>
+                </section>
+
+                <!-- VIEW: VIBETUBE WATCH (Full YouTube Cinema & Community Experience) -->
+                <section id="view-vibetube-watch" class="view-section">
+                    <div class="vibetube-watch-nav-bar">
+                        <button type="button" class="btn secondary small" onclick="window.App && window.App.closeWatchView()">
+                            <span>← Retour aux vidéos</span>
+                        </button>
+                    </div>
+
+                    <div class="vibetube-watch-container">
+                        <!-- Left / Main Column -->
+                        <div class="vibetube-watch-main">
+                            <!-- 16:9 Cinema Player Screen -->
+                            <div class="vibetube-watch-player-frame">
+                                <iframe id="vibetube-watch-iframe" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                            </div>
+
+                            <!-- Video Header / Meta -->
+                            <div class="vibetube-watch-details">
+                                <h1 id="vibetube-watch-title" class="vibetube-watch-title">Titre de la vidéo</h1>
+
+                                <!-- Channel & Action Buttons Row -->
+                                <div class="vibetube-watch-creator-row">
+                                    <div class="vibetube-watch-creator-left" onclick="window.App && window.App.openCurrentWatchChannel()">
+                                        <img id="vibetube-watch-avatar" src="/icons/icon.svg" alt="" class="vibetube-watch-avatar">
+                                        <div class="vibetube-watch-creator-meta">
+                                            <div style="display:flex; align-items:center; gap:6px;">
+                                                <span id="vibetube-watch-channel" class="vibetube-watch-channel-name">Créateur</span>
+                                                <span class="vibetube-verified-icon">✓</span>
+                                            </div>
+                                            <span id="vibetube-watch-subs" class="vibetube-watch-subs-text">1 M d'abonnés</span>
+                                        </div>
+                                        <button type="button" id="vibetube-watch-sub-btn" class="btn primary small vibetube-watch-sub-btn" onclick="event.stopPropagation(); window.App && window.App.toggleWatchChannelSub()">
+                                            S'abonner
+                                        </button>
+                                    </div>
+
+                                    <div class="vibetube-watch-actions">
+                                        <button type="button" id="vibetube-watch-like-btn" class="vibetube-action-pill" onclick="window.App && window.App.toggleWatchLike()" title="J'aime cette vidéo">
+                                            <svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" fill="currentColor"/></svg>
+                                            <span id="vibetube-watch-like-count">J'aime</span>
+                                        </button>
+                                        <button type="button" class="vibetube-action-pill" onclick="window.App && window.App.shareCurrentWatchVideo()" title="Partager la vidéo">
+                                            <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" fill="currentColor"/></svg>
+                                            <span>Partager</span>
+                                        </button>
+                                        <button type="button" id="vibetube-watch-save-btn" class="vibetube-action-pill" onclick="window.App && window.App.saveWatchVideoToFavorites()" title="Ajouter aux favoris VibeTube">
+                                            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>
+                                            <span>Enregistrer</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Expandable Description Box -->
+                                <div class="vibetube-watch-desc-box" id="vibetube-watch-desc-box" onclick="window.App && window.App.toggleWatchDescExpand()">
+                                    <div class="vibetube-watch-desc-meta">
+                                        <span id="vibetube-watch-views" class="desc-meta-pill">0 vues</span>
+                                        <span id="vibetube-watch-date" class="desc-meta-pill">Récemment</span>
+                                    </div>
+                                    <p id="vibetube-watch-desc-text" class="vibetube-watch-desc-text collapsed"></p>
+                                    <button type="button" id="vibetube-watch-desc-toggle-btn" class="vibetube-desc-toggle-btn">Plus</button>
+                                </div>
+
+                                <!-- Comments Section -->
+                                <div class="vibetube-watch-comments-section">
+                                    <div class="vibetube-comments-header">
+                                        <h3 id="vibetube-comments-count-title">Commentaires (0)</h3>
+                                    </div>
+
+                                    <!-- Comment Input Box -->
+                                    <div class="vibetube-comment-add-box">
+                                        <img id="vibetube-user-comment-avatar" src="/icons/icon.svg" alt="" class="vibetube-comment-user-avatar">
+                                        <div class="vibetube-comment-input-wrap">
+                                            <textarea id="vibetube-comment-input" placeholder="Ajouter un commentaire..." rows="1" onfocus="document.getElementById('vibetube-comment-input-actions')?.classList.add('visible')"></textarea>
+                                            <div class="vibetube-comment-input-actions" id="vibetube-comment-input-actions">
+                                                <button type="button" class="btn secondary small" onclick="window.App && window.App.cancelCommentInput()">Annuler</button>
+                                                <button type="button" class="btn primary small" id="vibetube-comment-submit-btn" onclick="window.App && window.App.submitVibeTubeComment()">Commenter</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Comments List -->
+                                    <div id="vibetube-comments-list" class="vibetube-comments-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right / Secondary Column: Suggested / Related Videos -->
+                        <div class="vibetube-watch-sidebar">
+                            <div class="vibetube-related-header">
+                                <span class="vibetube-related-title">Vidéos à suivre</span>
+                            </div>
+                            <div id="vibetube-related-videos-list" class="vibetube-related-list"></div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- VIEW 4: LIBRARY -->
@@ -1301,8 +1425,8 @@
             </a>
         </nav>
 
-        <!-- Desktop Bottom Player Bar -->
-        <footer id="desktop-player-bar" class="desktop-player-bar">
+        <!-- Desktop Bottom Player Bar (Hidden by default until a track starts) -->
+        <footer id="desktop-player-bar" class="desktop-player-bar hidden">
             <!-- Scrubber Timeline Line (at very top of player bar) -->
             <div class="player-scrubber-wrapper" id="player-scrubber-wrapper">
                 <div class="player-scrubber-track">
@@ -2623,20 +2747,20 @@
 
     <!-- Scripts -->
     <script src="/js/api.js?v=3.9"></script>
-    <script src="/js/storage.js?v=3.9"></script>
-    <script src="/js/lyrics.js?v=3.9"></script>
-    <script src="/js/player.js?v=3.9"></script>
-    <script src="/js/visualizer.js?v=3.9"></script>
-    <script src="/js/canvas-bg.js?v=3.9"></script>
-    <script src="/js/dj.js?v=3.9"></script>
-    <script src="/js/jam.js?v=3.9"></script>
-    <script src="/js/carmode.js?v=3.9"></script>
-    <script src="/js/app.js?v=4.0"></script>
+    <script src="/js/storage.js?v=4.1"></script>
+    <script src="/js/lyrics.js?v=4.1"></script>
+    <script src="/js/player.js?v=4.1"></script>
+    <script src="/js/visualizer.js?v=4.1"></script>
+    <script src="/js/canvas-bg.js?v=4.1"></script>
+    <script src="/js/dj.js?v=4.1"></script>
+    <script src="/js/jam.js?v=4.1"></script>
+    <script src="/js/carmode.js?v=4.1"></script>
+    <script src="/js/app.js?v=4.1"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=3.9').then(reg => {
+                navigator.serviceWorker.register('/sw.js?v=4.1').then(reg => {
                     reg.update();
                 }).catch(err => {
                     console.log('SW note:', err);

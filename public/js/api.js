@@ -209,6 +209,45 @@ const API = {
       console.warn('VibeTube search API error:', e);
       return { channels: [], videos: [] };
     }
+  },
+
+  // VibeTube Watch Page Details & Related Videos
+  async getVibeTubeWatch(id) {
+    try {
+      const res = await fetch(`/api/vibetube/watch?id=${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('VibeTube watch API error:', e);
+      return null;
+    }
+  },
+
+  // VibeTube Comments
+  async getVibeTubeComments(id) {
+    try {
+      const res = await fetch(`/api/vibetube/comments?id=${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('VibeTube comments API error:', e);
+      return { comments: [], total: 0 };
+    }
+  },
+
+  async postVibeTubeComment({ videoId, content, authorName, authorAvatar, userId }) {
+    try {
+      const res = await fetch('/api/vibetube/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId, content, authorName, authorAvatar, userId })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('VibeTube post comment error:', e);
+      return null;
+    }
   }
 };
 
