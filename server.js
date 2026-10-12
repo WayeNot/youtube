@@ -849,8 +849,37 @@ app.get('/api/debug', async (req, res) => {
     }
     const cookiesPath = getCookiesPath();
     const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
-    const cookiesSize = hasCookies ? fs.statSync(cookiesPath).size : 0;
     const { execFile } = require('child_process');
+    if (req.query.test_id) {
+        const testId = req.query.test_id;
+        const client = req.query.client || 'android';
+        const useCookies = req.query.cookies === '1';
+        const testArgs = [
+            '-g',
+            '-f', 'ba/b/bestaudio/best/18',
+            '--no-playlist',
+            '--no-warnings',
+            '--no-cache-dir'
+        ];
+        if (useCookies && hasCookies) {
+            testArgs.push('--cookies', cookiesPath);
+        }
+        if (client) {
+            testArgs.push('--extractor-args', `youtube:player_client=${client}`);
+        }
+        testArgs.push('--', `https://www.youtube.com/watch?v=${testId}`);
+        return execFile(YTDLP_PATH, testArgs, { timeout: 15000 }, (err, stdout, stderr) => {
+            res.json({
+                testId,
+                client,
+                useCookies,
+                hasCookies,
+                stdout: (stdout || '').trim(),
+                stderr: (stderr || '').trim(),
+                err: err ? err.message : null
+            });
+        });
+    }
     execFile(YTDLP_PATH, ['--version'], { timeout: 4000 }, (err, stdout, stderr) => {
         res.json({
             ytdlpPath: YTDLP_PATH,
