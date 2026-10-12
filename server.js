@@ -1021,12 +1021,15 @@ const vibetubeFeedCache = new Map();
 app.get('/api/vibetube/feed', async (req, res) => {
     const category = (req.query.category || 'trending').toLowerCase();
     const queryMap = {
+        cyber: 'cybersecurite hacking ethique bug bounty fr',
+        dev: 'programmation developpement python rust linux code fr',
+        gaming: 'gaming gameplay fr walkthrough',
+        ai: 'intelligence artificielle ia llm deep learning fr',
+        networks: 'reseaux informatique wireshark docker sysadmin devops fr',
+        hardware: 'hardware informatique flipper zero electronique pc montage fr',
+        podcasts: 'podcast cyber tech interview fr',
         trending: 'tendances youtube france',
-        gaming: 'gaming gameplay fr',
         music: 'clip musical officiel nouveauté',
-        tech: 'tech actu ia high tech',
-        podcasts: 'podcast interview fr',
-        cinema: 'bande annonce film cinema vostfr',
         shorts: 'video courte viral'
     };
     const searchQuery = queryMap[category] || `${category} video`;

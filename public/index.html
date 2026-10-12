@@ -93,11 +93,6 @@
                     <span id="brand-logo-name" class="brand-name">VibeStream</span>
                     <span id="brand-logo-badge" class="brand-badge">PRO</span>
                 </a>
-                <button type="button" id="switch-mode-btn" class="switch-mode-btn" title="Changer d'univers" onclick="window.App && window.App.toggleAppMode()">
-                    <span id="switch-mode-icon" class="switch-icon-pulse">🎬</span>
-                    <span id="switch-mode-text" class="switch-mode-text">Passer sur VibeTube</span>
-                    <span id="switch-mode-badge" class="switch-mode-badge">VIDÉO</span>
-                </button>
             </div>
 
             <div class="header-center">
@@ -179,7 +174,7 @@
             <!-- VIBESTREAM SIDEBAR (Music Entity) -->
             <aside class="app-sidebar vibestream-sidebar" id="vibestream-sidebar">
                 <nav class="sidebar-nav">
-                    <a href="/" class="nav-item active" data-view="home">
+                    <a href="/vibestream" class="nav-item active" data-view="home">
                         <svg viewBox="0 0 24 24">
                             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                         </svg>
@@ -249,20 +244,11 @@
                     <input type="file" id="import-file-input" accept=".json" style="display: none;">
                 </div>
 
-                <!-- VibeTube Switcher Card (At the very bottom of VibeStream sidebar, directly above the bottom player bar) -->
+                <!-- VibeTube Switcher Button (Clean & Light) -->
                 <div class="sidebar-vibetube-switch-box">
-                    <button type="button" class="sidebar-switch-universe-btn tube" onclick="window.App && window.App.setAppMode('vibetube')" title="Basculer sur VibeTube">
-                        <div class="switch-u-icon-glow tube">
-                            <span class="switch-u-emoji">🎬</span>
-                        </div>
-                        <div class="switch-u-text">
-                            <div class="switch-u-title">
-                                <span>VibeTube</span>
-                                <span class="switch-u-pill tube">VIDÉO</span>
-                            </div>
-                            <span class="switch-u-sub">Explorer l'univers Vidéo & Shorts</span>
-                        </div>
-                        <svg class="switch-u-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
+                    <button type="button" class="sidebar-universe-toggle-btn tube" onclick="window.App && window.App.setAppMode('vibetube')" title="Basculer sur VibeTube">
+                        <span class="universe-btn-icon">🎬</span>
+                        <span class="universe-btn-name">VibeTube</span>
                     </button>
                 </div>
             </aside>
@@ -290,45 +276,48 @@
 
                 <div class="sidebar-divider"></div>
 
-                <!-- VibeTube Video Categories -->
+                <!-- VibeTube Video Categories - Master Cybersécurité & Tech -->
                 <div class="sidebar-section">
                     <div class="sidebar-section-header">
-                        <span>Catégories</span>
+                        <span>Thématiques Master</span>
                     </div>
                     <nav class="sidebar-nav">
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('cyber')">
+                            <span style="font-size:18px;">🛡️</span>
+                            <span>Cyber & Hacking</span>
+                        </a>
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('dev')">
+                            <span style="font-size:18px;">💻</span>
+                            <span>Dév & Code</span>
+                        </a>
                         <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('gaming')">
                             <span style="font-size:18px;">🎮</span>
                             <span>Gaming</span>
                         </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('tech')">
-                            <span style="font-size:18px;">💻</span>
-                            <span>Tech & Dev</span>
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('ai')">
+                            <span style="font-size:18px;">🧠</span>
+                            <span>IA & SecOps</span>
+                        </a>
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('networks')">
+                            <span style="font-size:18px;">🌐</span>
+                            <span>Réseaux & Cloud</span>
+                        </a>
+                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('hardware')">
+                            <span style="font-size:18px;">⚡</span>
+                            <span>Hardware Lab</span>
                         </a>
                         <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('podcasts')">
                             <span style="font-size:18px;">🎙️</span>
-                            <span>Podcasts</span>
-                        </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('cinema')">
-                            <span style="font-size:18px;">🍿</span>
-                            <span>Cinéma</span>
+                            <span>Podcasts Tech</span>
                         </a>
                     </nav>
                 </div>
 
-                <!-- VibeStream Switcher Card (At the bottom of VibeTube sidebar) -->
+                <!-- VibeStream Switcher Button (Clean & Light) -->
                 <div class="sidebar-vibetube-switch-box" style="margin-top:auto;">
-                    <button type="button" class="sidebar-switch-universe-btn stream" onclick="window.App && window.App.setAppMode('vibestream')" title="Basculer sur VibeStream">
-                        <div class="switch-u-icon-glow stream">
-                            <span class="switch-u-emoji">🎵</span>
-                        </div>
-                        <div class="switch-u-text">
-                            <div class="switch-u-title">
-                                <span>VibeStream</span>
-                                <span class="switch-u-pill stream">MUSIQUE</span>
-                            </div>
-                            <span class="switch-u-sub">Revenir au lecteur Audio & DJ</span>
-                        </div>
-                        <svg class="switch-u-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
+                    <button type="button" class="sidebar-universe-toggle-btn stream" onclick="window.App && window.App.setAppMode('vibestream')" title="Basculer sur VibeStream">
+                        <span class="universe-btn-icon">🎵</span>
+                        <span class="universe-btn-name">VibeStream</span>
                     </button>
                 </div>
             </aside>
@@ -449,43 +438,25 @@
 
                 <!-- VIEW: VIBETUBE (YouTube à notre sauce) -->
                 <section id="view-vibetube" class="view-section">
-                    <!-- Hero Banner VibeTube -->
-                    <div class="vibetube-hero">
-                        <div class="vibetube-hero-content">
-                            <div class="vibetube-hero-badge">
-                                <span class="badge-dot"></span> VIBETUBE NEXT-GEN • EXPÉRIENCE PURE
-                            </div>
-                            <h1 class="vibetube-hero-title">YouTube, réinventé à notre sauce.</h1>
-                            <p class="vibetube-hero-desc">
-                                Découvrez vos créateurs, chaînes et vidéos favorites dans un univers vidéo 100% dédié, fluide et sans distractions.
-                            </p>
-                            <div class="vibetube-hero-actions">
-                                <button type="button" class="btn primary vibetube-hero-btn" onclick="window.App && window.App.filterVibeTube('trending')">
-                                    <span>🔥 Vidéos Tendances</span>
-                                </button>
-                                <button type="button" class="btn secondary" onclick="window.App && window.App.setAppMode('vibestream')">
-                                    <span>🎵 Passer sur VibeStream</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Category Chips Bar VibeTube -->
                     <div class="vibetube-chips-wrapper">
                         <div class="vibetube-chips-scroll" id="vibetube-chips">
-                            <button type="button" class="vibetube-chip active" data-vibetube-cat="trending">🔥 Tendances</button>
+                            <button type="button" class="vibetube-chip active" data-vibetube-cat="cyber">🛡️ Cyber & Hacking</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="dev">💻 Dév & Code</button>
                             <button type="button" class="vibetube-chip" data-vibetube-cat="gaming">🎮 Gaming</button>
-                            <button type="button" class="vibetube-chip" data-vibetube-cat="music">🎵 Clips & Musique</button>
-                            <button type="button" class="vibetube-chip" data-vibetube-cat="tech">💻 Tech & Code</button>
-                            <button type="button" class="vibetube-chip" data-vibetube-cat="podcasts">🎙️ Podcasts</button>
-                            <button type="button" class="vibetube-chip" data-vibetube-cat="cinema">🍿 Cinéma & Trailers</button>
-                            <button type="button" class="vibetube-chip" data-vibetube-cat="shorts">⚡ Shorts & Virales</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="ai">🧠 IA & Sécurité</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="networks">🌐 Réseaux & Cloud</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="hardware">⚡ Hardware Lab</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="podcasts">🎙️ Podcasts Tech</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="trending">🔥 Tendances</button>
+                            <button type="button" class="vibetube-chip" data-vibetube-cat="shorts">⚡ Shorts</button>
                         </div>
                     </div>
 
                     <!-- Feed Header -->
                     <div class="vibetube-feed-header">
-                        <h2 class="section-title" id="vibetube-section-title">🔥 Vidéos Tendances</h2>
+                        <h2 class="section-title" id="vibetube-section-title">🛡️ Cybersécurité, Pentest & Hacking Éthique</h2>
                         <span class="vibetube-count-pill" id="vibetube-video-count">Chargement...</span>
                     </div>
 
@@ -1396,7 +1367,7 @@
 
         <!-- Mobile Bottom Navigation Bar -->
         <nav class="mobile-bottom-nav">
-            <a href="/" class="mobile-nav-item active" data-view="home">
+            <a href="/vibestream" class="mobile-nav-item active" data-view="home">
                 <svg viewBox="0 0 24 24">
                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                 </svg>

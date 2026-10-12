@@ -128,6 +128,9 @@ const App = {
                 } else {
                     this.switchView('vibetube', false);
                 }
+            } else if (path === '/vibestream') {
+                this.setAppMode('vibestream', false);
+                this.switchView('home', false);
             } else if (path === '/explore') {
                 this.setAppMode('vibestream', false);
                 this.switchView('explore', false);
@@ -147,7 +150,11 @@ const App = {
             } else {
                 const savedMode = localStorage.getItem('vibe_app_mode') || 'vibestream';
                 this.setAppMode(savedMode, false);
-                this.switchView(savedMode === 'vibetube' ? 'vibetube' : 'home', false);
+                if (savedMode === 'vibetube') {
+                    this.switchView('vibetube', true);
+                } else {
+                    this.switchView('home', true);
+                }
             }
         },
 
@@ -1483,7 +1490,7 @@ const App = {
 
             if (updatePath) {
                 const pathMap = {
-                    home: '/',
+                    home: '/vibestream',
                     explore: '/explore',
                     library: '/library',
                     settings: '/settings',
@@ -1550,7 +1557,7 @@ const App = {
             }
 
             if (viewName === 'vibetube') {
-                this.loadVibeTubeFeed(this.currentVibeTubeCategory || 'trending');
+                this.loadVibeTubeFeed(this.currentVibeTubeCategory || 'cyber');
             }
 
             if (viewName === 'library') {
@@ -5815,18 +5822,22 @@ const App = {
                 if (searchInput) searchInput.placeholder = 'Rechercher des titres, artistes, albums...';
                 if (mobileSearchInput) mobileSearchInput.placeholder = 'Rechercher des titres, artistes, albums...';
             }
+
+            // Route cleanly when user explicitly sets or switches mode
+            if (save) {
+                if (isTube && this.currentView !== 'vibetube' && !this.currentView.startsWith('vibetube')) {
+                    this.switchView('vibetube');
+                    this.showToast('🎬 Bienvenue sur VibeTube');
+                } else if (!isTube && (this.currentView === 'vibetube' || this.currentView.startsWith('vibetube'))) {
+                    this.switchView('home');
+                    this.showToast('🎵 Bienvenue sur VibeStream');
+                }
+            }
         },
 
         toggleAppMode() {
             const nextMode = this.currentAppMode === 'vibetube' ? 'vibestream' : 'vibetube';
             this.setAppMode(nextMode);
-            if (nextMode === 'vibetube') {
-                this.switchView('vibetube');
-                this.showToast('🎬 Bienvenue sur VibeTube (Mode Vidéo) !');
-            } else {
-                this.switchView('home');
-                this.showToast('🎵 Retour sur VibeStream (Mode Musique) !');
-            }
         },
 
         handleBrandLogoClick() {
@@ -5853,12 +5864,14 @@ const App = {
                 });
             }
             const titleMap = {
+                cyber: '🛡️ Cybersécurité, Pentest & Hacking Éthique',
+                dev: '💻 Développement, Code, Rust, Python & Linux',
+                gaming: '🎮 Meilleurs Gameplays, Streams & E-Sport',
+                ai: '🧠 Intelligence Artificielle, LLM & SecOps',
+                networks: '🌐 Réseaux Informatiques, Cloud & DevOps',
+                hardware: '⚡ Hardware Lab, Électronique & IoT',
+                podcasts: '🎙️ Podcasts & Conférences Tech',
                 trending: '🔥 Vidéos Tendances du Moment',
-                gaming: '🎮 Meilleurs Gameplays & Live Gaming',
-                music: '🎵 Clips & Nouveautés Musicales',
-                tech: '💻 Tech, Intelligence Artificielle & Dev',
-                podcasts: '🎙️ Podcasts & Grandes Interviews',
-                cinema: '🍿 Bandes-Annonces & Cinéma',
                 shorts: '⚡ Shorts & Vidéos Virales'
             };
             const titleEl = document.getElementById('vibetube-section-title');
@@ -5867,7 +5880,7 @@ const App = {
             this.loadVibeTubeFeed(category);
         },
 
-        async loadVibeTubeFeed(category = 'trending') {
+        async loadVibeTubeFeed(category = 'cyber') {
             const grid = document.getElementById('vibetube-video-grid');
             const countEl = document.getElementById('vibetube-video-count');
             if (!grid) return;
