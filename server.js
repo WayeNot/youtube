@@ -234,7 +234,7 @@ async function getAudioStreamUrl(videoId) {
     const streamPromise = (async () => {
         let lastErr = null;
         const cookieArgs = hasCookies ? ['--cookies', cookiesPath] : [];
-        const format = 'ba/b/bestaudio/best/18';
+        const format = '18/bestaudio/best/ba/b';
         const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
         // Attempt 1: Authenticated session with desktop cookies and matching Chrome UA
@@ -860,7 +860,7 @@ app.get('/api/debug', async (req, res) => {
         const useCookies = req.query.cookies === '1';
         const testArgs = [
             '-g',
-            '-f', 'ba/b/bestaudio/best/18',
+            '-f', '18/bestaudio/best/ba/b',
             '--no-playlist',
             '--no-warnings',
             '--no-cache-dir'
