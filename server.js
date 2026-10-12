@@ -283,8 +283,8 @@ async function getAudioStreamUrl(videoId) {
             lastErr = err;
         }
 
-        // Attempt 5: Smart Fallback for Music Premium only videos (e.g. wBli7itfyYg)
-        // Find public audio / official track on YouTube via oEmbed metadata
+        // Attempt 5: Smart Fallback for Music Premium only or unavailable videos (e.g. wBli7itfyYg, _8DXhtXXTVg)
+        // Find public audio / official track on YouTube via oEmbed + Innertube resolution
         try {
             const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
             if (oembedRes.ok) {
@@ -294,8 +294,19 @@ async function getAudioStreamUrl(videoId) {
                 if (title) {
                     const query = author ? `${author} ${title} audio` : `${title} audio`;
                     console.log(`⚡ Recherche alternative pour titre restreint (${videoId}): "${query}"...`);
-                    const altUrl = await runYtDlp([], '18/bestaudio/ba/b', 8000, `ytsearch1:${query}`);
-                    if (altUrl) return altUrl;
+                    const searchResults = await searchInnertube(query);
+                    const altVideo = searchResults.find(v => v.videoId && v.videoId !== videoId);
+                    if (altVideo && altVideo.videoId) {
+                        console.log(`⚡ Titre alternatif trouvé: ${altVideo.videoId} (${altVideo.title})`);
+                        // Recursively or directly fetch stream for the public version
+                        const altTarget = `https://www.youtube.com/watch?v=${altVideo.videoId}`;
+                        if (hasCookies) {
+                            try {
+                                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 10000, altTarget);
+                            } catch (e) {}
+                        }
+                        return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], 'bestaudio/140/251/18/ba/b', 6000, altTarget);
+                    }
                 }
             }
         } catch (oembedErr) {

@@ -667,7 +667,6 @@ class PlayerEngine {
       iframe.style.pointerEvents = 'none';
       iframe.style.zIndex = '-9999';
       iframe.setAttribute('allow', 'autoplay *; encrypted-media *; fullscreen *');
-      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
       document.body.appendChild(iframe);
 
       window.addEventListener('message', (e) => {
