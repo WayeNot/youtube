@@ -889,6 +889,7 @@ app.get('/api/stream/:id', async (req, res) => {
     try {
         if (req.query.retry === '1') {
             streamCache.delete(videoId);
+            try { await db.deleteStreamCache(videoId); } catch (e) { }
         }
         const streamUrl = await getAudioStreamUrl(videoId);
 
@@ -914,8 +915,9 @@ app.get('/api/stream/:id', async (req, res) => {
         });
 
         if (!upstreamRes.ok && upstreamRes.status !== 206) {
-            // Stream URL might have expired or been rejected, invalidate cache and retry once
+            // Stream URL might have expired or been rejected, invalidate memory & DB cache and retry once
             streamCache.delete(videoId);
+            try { await db.deleteStreamCache(videoId); } catch (e) { }
             console.warn(`Upstream error ${upstreamRes.status} for ${videoId}, retrying with fresh URL...`);
             const freshUrl = await getAudioStreamUrl(videoId);
             const freshUpstream = await fetch(freshUrl, {
@@ -982,6 +984,10 @@ async function pumpStream(reader, res) {
 app.get('/api/stream-url/:id', async (req, res) => {
     const videoId = req.params.id;
     try {
+        if (req.query.retry === '1') {
+            streamCache.delete(videoId);
+            try { await db.deleteStreamCache(videoId); } catch (e) { }
+        }
         const url = await getAudioStreamUrl(videoId);
         res.json({ url });
     } catch (err) {

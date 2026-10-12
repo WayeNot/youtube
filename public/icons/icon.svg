@@ -1,12 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff0033" />
-      <stop offset="100%" stop-color="#cc0000" />
-    </linearGradient>
+    <radialGradient id="vibeRedGrad" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ff2a4b" />
+      <stop offset="70%" stop-color="#e60026" />
+      <stop offset="100%" stop-color="#b3001a" />
+    </radialGradient>
+    <filter id="vibeGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#ff0033" flood-opacity="0.45"/>
+    </filter>
   </defs>
-  <circle cx="256" cy="256" r="240" fill="url(#grad)" />
-  <circle cx="256" cy="256" r="160" fill="#050505" />
-  <circle cx="256" cy="256" r="85" fill="#ff0033" />
-  <polygon points="230,205 310,256 230,307" fill="#ffffff" />
+
+  <!-- Red circular disc -->
+  <circle cx="250" cy="250" r="200" fill="url(#vibeRedGrad)" filter="url(#vibeGlow)" />
+
+  <!-- Outer white curved ring arc -->
+  <path d="M 250 85 A 165 165 0 1 1 133 133" fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" />
+
+  <!-- Play Triangle -->
+  <polygon points="215,175 325,250 215,325" fill="#ffffff" />
 </svg>

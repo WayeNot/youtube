@@ -987,6 +987,14 @@ const db = {
     }
   },
 
+  async deleteStreamCache(videoId) {
+    if (isNeon) {
+      await neonSql`DELETE FROM stream_cache WHERE video_id = ${videoId}`;
+    } else {
+      sqliteDb.prepare('DELETE FROM stream_cache WHERE video_id = ?').run(videoId);
+    }
+  },
+
   async cleanupExpiredStreamCache(now) {
     if (isNeon) {
       await neonSql`DELETE FROM stream_cache WHERE expires_at <= ${now}`;

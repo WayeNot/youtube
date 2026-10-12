@@ -1,7 +1,7 @@
 {
-  "name": "YouTube Music",
-  "short_name": "YT Music",
-  "description": "YouTube Music maison complet, responsive avec musique en arrière-plan et paroles synchronisées",
+  "name": "VibeStream",
+  "short_name": "VibeStream",
+  "description": "VibeStream — Streaming musical haute performance, son en arrière-plan, paroles synchronisées et mode DJ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#030303",
@@ -11,6 +11,11 @@
       "src": "/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/vibestream-logo.png",
+      "sizes": "500x500",
+      "type": "image/png"
     }
   ]
 }

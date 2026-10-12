@@ -306,14 +306,20 @@ class PlayerEngine {
 
   // Web Audio Equalizer (5-Band), 3D Convolver Reverb & Analyser (Desktop only)
   initEqualizer() {
-    if (this.isEqInitialized) return;
-    // On mobile devices (iOS / Android), Web Audio is bypassed to ensure 100% background playback in Waze and lockscreen
-    if (isMobileDevice()) return;
+    if (this.isEqInitialized || this.sourceNode || isMobileDevice()) return;
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
       this.audioCtx = new AudioContext();
       this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
+
+      // Attach visualizer analyser directly to source node
+      try {
+        this.analyser = this.audioCtx.createAnalyser();
+        this.analyser.fftSize = 128;
+        this.analyser.smoothingTimeConstant = 0.8;
+        this.sourceNode.connect(this.analyser);
+      } catch (ae) {}
 
       const freqs = [60, 230, 910, 3600, 14000];
       const types = ['lowshelf', 'peaking', 'peaking', 'peaking', 'highshelf'];
@@ -1319,43 +1325,38 @@ class PlayerEngine {
 
   // Audio Visualizer Analyser Node
   getAudioVisualizerData() {
-    if (!this.analyser && this.audio && !isMobileDevice()) {
+    if (!this.analyser && !this.sourceNode && !isMobileDevice()) {
       try {
-        if (!this.audioCtx) {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          this.audioCtx = new AudioContext();
-        }
-        if (this.audioCtx.state === 'suspended') {
-          this.audioCtx.resume().catch(() => {});
-        }
-        if (!this._mediaSourceNode) {
-          this._mediaSourceNode = this.audioCtx.createMediaElementSource(this.audio);
-          this.analyser = this.audioCtx.createAnalyser();
-          this.analyser.fftSize = 128;
-          this.analyser.smoothingTimeConstant = 0.8;
-          this._mediaSourceNode.connect(this.analyser);
-          this.analyser.connect(this.audioCtx.destination);
+        if (this.audioCtx && this.audioCtx.state === 'running') {
+          this.initEqualizer();
         }
       } catch (e) { }
     }
 
     if (this.analyser) {
-      const bufferLength = this.analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      this.analyser.getByteFrequencyData(dataArray);
-      let bass = 0, mid = 0, treble = 0;
-      const bassCount = Math.floor(bufferLength * 0.2);
-      const midCount = Math.floor(bufferLength * 0.5);
-      for (let i = 0; i < bassCount; i++) bass += dataArray[i];
-      for (let i = bassCount; i < midCount; i++) mid += dataArray[i];
-      for (let i = midCount; i < bufferLength; i++) treble += dataArray[i];
-      bass = bass / (bassCount * 255 || 1);
-      mid = mid / ((midCount - bassCount) * 255 || 1);
-      treble = treble / ((bufferLength - midCount) * 255 || 1);
-      return { bass, mid, treble, energy: (bass + mid + treble) / 3, raw: dataArray };
+      try {
+        const bufferLength = this.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        this.analyser.getByteFrequencyData(dataArray);
+        let bass = 0, mid = 0, treble = 0;
+        const bassCount = Math.floor(bufferLength * 0.2);
+        const midCount = Math.floor(bufferLength * 0.5);
+        for (let i = 0; i < bassCount; i++) bass += dataArray[i];
+        for (let i = bassCount; i < midCount; i++) mid += dataArray[i];
+        for (let i = midCount; i < bufferLength; i++) treble += dataArray[i];
+        bass = bass / (bassCount * 255 || 1);
+        mid = mid / ((midCount - bassCount) * 255 || 1);
+        treble = treble / ((bufferLength - midCount) * 255 || 1);
+        const energy = (bass + mid + treble) / 3;
+
+        // If audio is playing but analyser yields 0 due to cross-origin CDN restriction, fallback to simulation
+        if (energy > 0.005 || !this.isPlaying) {
+          return { bass, mid, treble, energy, raw: dataArray };
+        }
+      } catch (e) { }
     }
 
-    // Algorithmic beat simulator fallback when Analyser is restricted or offline
+    // Algorithmic beat simulator fallback when Analyser is restricted (CORS) or offline
     const t = Date.now() / 1000;
     const isP = this.isPlaying;
     const simBass = isP ? (Math.sin(t * 4) * 0.5 + 0.5) * 0.7 + (Math.sin(t * 8) > 0.7 ? 0.3 : 0) : 0;
