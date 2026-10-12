@@ -199,6 +199,14 @@
                         </svg>
                         <span>Bibliothèque</span>
                     </a>
+                    <a href="javascript:void(0)" class="nav-item" onclick="window.DjDeck?.open()">
+                        <span style="font-size:18px;">🎧</span>
+                        <span>Mode DJ Deck</span>
+                    </a>
+                    <a href="javascript:void(0)" class="nav-item" onclick="window.CarMode?.open()">
+                        <span style="font-size:18px;">🚗</span>
+                        <span>Mode Voiture</span>
+                    </a>
                 </nav>
 
                 <div class="sidebar-divider"></div>
@@ -1284,6 +1292,21 @@
                         </svg>
                     </button>
 
+                    <!-- 3D Audio Visualizer Button -->
+                    <button id="visualizer-btn" class="icon-btn" title="Visualiseur Audio 3D WebGL" onclick="window.Visualizer3D?.toggle()">
+                        <span style="font-size:18px;">🔮</span>
+                    </button>
+
+                    <!-- Jam Session Live Sync Button -->
+                    <button id="jam-session-btn" class="icon-btn" title="Jam Session (Écoute partagée en direct)" onclick="window.JamSession?.createRoom()">
+                        <span style="font-size:18px;">👥</span>
+                    </button>
+
+                    <!-- Spotify Canvas Dynamic Background Toggle -->
+                    <button id="spotify-canvas-btn" class="icon-btn" title="Fond Canvas Spotify Réactif" onclick="window.SpotifyCanvas?.toggle()">
+                        <span style="font-size:18px;">✨</span>
+                    </button>
+
                     <!-- Picture-in-Picture Floating Miniplayer -->
                     <button id="pip-player-btn" class="icon-btn" title="Minilecteur flottant (Picture-in-Picture)"
                         onclick="if(window.Player) window.Player.togglePictureInPicture()">
@@ -1331,6 +1354,15 @@
                     </svg>
                 </button>
                 <div style="display:flex;align-items:center;gap:6px;">
+                    <button class="icon-btn" title="Visualiseur 3D" onclick="window.Visualizer3D?.toggle()">
+                        <span style="font-size:16px;">🔮</span>
+                    </button>
+                    <button class="icon-btn" title="Jam Session" onclick="window.JamSession?.createRoom()">
+                        <span style="font-size:16px;">👥</span>
+                    </button>
+                    <button class="icon-btn" title="Mode Voiture" onclick="window.CarMode?.open()">
+                        <span style="font-size:16px;">🚗</span>
+                    </button>
                     <button id="mobile-cast-btn" class="icon-btn" title="Diffuser (AirPlay / Chromecast)" onclick="if(window.Player) window.Player.requestCastOrAirPlay()">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                             <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.92-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
@@ -2253,16 +2285,193 @@
             </div>
         </div>
 
+        <!-- 1. Fullscreen 3D WebGL Audio Visualizer -->
+        <div id="modal-visualizer-3d" class="hidden">
+            <canvas id="visualizer-3d-canvas" style="position:absolute; inset:0; width:100%; height:100%; display:block;"></canvas>
+            <div style="position:absolute; top:20px; left:24px; z-index:10; display:flex; align-items:center; gap:14px; background:rgba(0,0,0,0.6); backdrop-filter:blur(10px); padding:8px 16px; border-radius:30px; border:1px solid rgba(255,255,255,0.1);">
+                <img id="vis-track-cover" src="/icons/icon.svg" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
+                <div>
+                    <div id="vis-track-title" style="font-size:14px; font-weight:700; color:#fff; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Titre</div>
+                    <div id="vis-track-artist" style="font-size:12px; color:rgba(255,255,255,0.6); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Artiste</div>
+                </div>
+            </div>
+            <div style="position:absolute; top:20px; right:24px; z-index:10; display:flex; gap:10px; align-items:center;">
+                <button type="button" class="vis-theme-btn active" data-mode="neon_sphere" onclick="window.Visualizer3D?.setMode('neon_sphere')">Sphère Néon</button>
+                <button type="button" class="vis-theme-btn" data-mode="cyber_tunnel" onclick="window.Visualizer3D?.setMode('cyber_tunnel')">Tunnel 3D</button>
+                <button type="button" class="vis-theme-btn" data-mode="synthwave_grid" onclick="window.Visualizer3D?.setMode('synthwave_grid')">Synthwave</button>
+                <button type="button" class="icon-btn" style="background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.2); width:40px; height:40px; border-radius:50%; color:#fff;" onclick="window.Visualizer3D?.close()" title="Quitter">✕</button>
+            </div>
+        </div>
+
+        <!-- 2. Interactive Double Deck DJ Mode -->
+        <div id="modal-dj-deck" class="modal-overlay hidden" style="z-index: 100055;">
+            <div class="modal-card" style="max-width: 900px; width: 95vw; background: #0c0c12; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 25px 60px rgba(0,0,0,0.95);">
+                <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <h3 style="display:flex; align-items:center; gap:10px;">
+                        <span>🎧</span> Mode DJ Double Deck Interactif
+                    </h3>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button type="button" class="btn secondary small" onclick="window.DjDeck?.syncBpm()">⚡ SYNC BPM</button>
+                        <button class="icon-btn" onclick="window.DjDeck?.close()" title="Fermer">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <div style="display:grid; grid-template-columns: 1fr 140px 1fr; gap: 20px; align-items: center;">
+                        <!-- Deck A -->
+                        <div class="dj-turntable">
+                            <div style="text-align:center; margin-bottom:12px; width:100%;">
+                                <div style="font-size:11px; font-weight:700; color:#00ffff; letter-spacing:1px;">DECK A (ACTUEL)</div>
+                                <div id="dj-a-title" style="font-weight:700; font-size:14px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Piste A</div>
+                                <div id="dj-a-artist" style="font-size:12px; color:rgba(255,255,255,0.6);">Artiste</div>
+                                <div id="dj-a-bpm" style="font-size:12px; font-weight:700; color:#38ef7d; margin-top:2px;">124 BPM</div>
+                            </div>
+                            <div id="dj-vinyl-disc-a" class="dj-vinyl">
+                                <div class="dj-vinyl-center">
+                                    <img id="dj-a-cover" src="/icons/icon.svg" alt="Cover A">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:12px; margin-top:16px; align-items:center;">
+                                <button type="button" id="dj-a-play-btn" class="btn primary small" onclick="window.DjDeck?.togglePlay('A')">▶ PLAY</button>
+                                <span id="dj-a-pitch-val" style="font-size:11px; color:#aaa;">0%</span>
+                                <input type="range" min="0.84" max="1.16" step="0.01" value="1.0" oninput="window.DjDeck?.setPitch('A', this.value)" style="width:70px;">
+                            </div>
+                        </div>
+
+                        <!-- Central Mixer & Crossfader -->
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:16px; background:rgba(255,255,255,0.03); padding:16px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
+                            <div style="font-size:11px; font-weight:800; color:rgba(255,255,255,0.7); letter-spacing:1px;">MIXER</div>
+                            <div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:var(--text-tertiary);">
+                                <span id="dj-fader-vol-a">70%</span>
+                                <span>CROSSFADER</span>
+                                <span id="dj-fader-vol-b">70%</span>
+                            </div>
+                            <input type="range" id="dj-crossfader" min="0" max="100" value="50" oninput="window.DjDeck?.setCrossfader(this.value)" style="width:100%; cursor:ew-resize;">
+                            <div style="display:flex; gap:6px; width:100%;">
+                                <button type="button" class="btn secondary small" style="flex:1; font-size:10px; padding:4px;" onclick="window.DjDeck?.setCrossfader(0)">◀ A</button>
+                                <button type="button" class="btn secondary small" style="flex:1; font-size:10px; padding:4px;" onclick="window.DjDeck?.setCrossfader(50)">50/50</button>
+                                <button type="button" class="btn secondary small" style="flex:1; font-size:10px; padding:4px;" onclick="window.DjDeck?.setCrossfader(100)">B ▶</button>
+                            </div>
+                        </div>
+
+                        <!-- Deck B -->
+                        <div class="dj-turntable">
+                            <div style="text-align:center; margin-bottom:12px; width:100%;">
+                                <div style="font-size:11px; font-weight:700; color:#ff007f; letter-spacing:1px;">DECK B (SUIVANT)</div>
+                                <div id="dj-b-title" style="font-weight:700; font-size:14px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Piste B</div>
+                                <div id="dj-b-artist" style="font-size:12px; color:rgba(255,255,255,0.6);">Artiste</div>
+                                <div id="dj-b-bpm" style="font-size:12px; font-weight:700; color:#38ef7d; margin-top:2px;">128 BPM</div>
+                            </div>
+                            <div id="dj-vinyl-disc-b" class="dj-vinyl">
+                                <div class="dj-vinyl-center">
+                                    <img id="dj-b-cover" src="/icons/icon.svg" alt="Cover B">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:12px; margin-top:16px; align-items:center;">
+                                <button type="button" id="dj-b-play-btn" class="btn primary small" onclick="window.DjDeck?.togglePlay('B')">▶ PLAY</button>
+                                <span id="dj-b-pitch-val" style="font-size:11px; color:#aaa;">0%</span>
+                                <input type="range" min="0.84" max="1.16" step="0.01" value="1.0" oninput="window.DjDeck?.setPitch('B', this.value)" style="width:70px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Live Synchronized Jam Session Modal -->
+        <div id="modal-jam-session" class="modal-overlay hidden" style="z-index: 100050;">
+            <div class="modal-card" style="max-width: 480px;">
+                <div class="modal-header">
+                    <h3 style="display:flex; align-items:center; gap:10px;">
+                        <span>👥</span> Jam Session (Écoute Partagée)
+                    </h3>
+                    <button class="icon-btn" onclick="window.JamSession?.closeModal()" title="Fermer">✕</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <div style="text-align:center; margin-bottom:16px;">
+                        <span style="font-size:11px; color:var(--text-tertiary); letter-spacing:1px; font-weight:700;">CODE DE LA SESSION</span>
+                        <div id="jam-room-code" style="font-size:32px; font-weight:900; letter-spacing:4px; color:#00ffff; margin:4px 0;">JAM-XXXX</div>
+                        <div id="jam-user-role" style="font-size:12px; color:var(--text-secondary);">👑 Hôte de la session</div>
+                    </div>
+
+                    <!-- Share link -->
+                    <div style="display:flex; gap:8px; margin-bottom:18px;">
+                        <input type="text" id="jam-room-link" class="modern-input" readonly style="flex:1; font-size:12px; background:rgba(255,255,255,0.06); color:#fff; border-radius:8px; padding:8px 12px;">
+                        <button type="button" class="btn secondary small" onclick="window.JamSession?.copyRoomLink()">Copier</button>
+                    </div>
+
+                    <!-- Connected Listeners -->
+                    <div style="margin-bottom:18px;">
+                        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:8px;">Auditeurs connectés en direct :</div>
+                        <div id="jam-listeners-list" style="display:flex; flex-wrap:wrap; gap:8px;">
+                            <!-- live avatars -->
+                        </div>
+                    </div>
+
+                    <!-- Live Emoji Shower Reaction Buttons -->
+                    <div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:8px; text-align:center;">Réagir en direct (s'envole sur l'écran) :</div>
+                        <div style="display:flex; justify-content:center; gap:12px;">
+                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🔥')">🔥</button>
+                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('❤️')">❤️</button>
+                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🎵')">🎵</button>
+                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🚀')">🚀</button>
+                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('💃')">💃</button>
+                            <button type="button" class="icon-btn" style="font-size:24px;" onclick="window.JamSession?.sendReaction('🤯')">🤯</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <button type="button" class="btn secondary small" style="color:#ff4444;" onclick="window.JamSession?.leaveSession()">Quitter la session</button>
+                        <button type="button" class="btn primary small" onclick="window.JamSession?.closeModal()">Continuer l'écoute</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Dedicated Fullscreen High-Contrast Car Mode -->
+        <div id="view-car-mode" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:28px;">🚗</span>
+                    <span id="car-clock-display" style="font-size:26px; font-weight:900; letter-spacing:1px; color:#fff;">12:00</span>
+                </div>
+                <div id="car-gesture-feedback" class="hidden" style="background:var(--primary); color:#fff; font-weight:800; padding:6px 16px; border-radius:20px; font-size:14px;">Zapper</div>
+                <button type="button" class="icon-btn" style="background:rgba(255,255,255,0.2); width:50px; height:50px; border-radius:50%; font-size:20px;" onclick="window.CarMode?.close()" title="Quitter le mode voiture">✕</button>
+            </div>
+
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                <img id="car-track-cover" src="/icons/icon.svg" style="width:160px; height:160px; border-radius:18px; object-fit:cover; margin-bottom:20px; box-shadow:0 12px 35px rgba(0,0,0,0.8); border:2px solid rgba(255,255,255,0.2);">
+                <div id="car-track-title" style="font-size:32px; font-weight:900; line-height:1.2; margin-bottom:8px; max-width:90vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Titre</div>
+                <div id="car-track-artist" style="font-size:22px; color:rgba(255,255,255,0.7); margin-bottom:30px;">Artiste</div>
+
+                <!-- Giant Touch Buttons -->
+                <div style="display:flex; gap:25px; align-items:center; justify-content:center;">
+                    <button type="button" class="car-big-btn" onclick="window.Player?.playPrevious()">⏮</button>
+                    <button type="button" id="car-play-btn" class="car-big-btn car-big-play" onclick="window.Player?.togglePlay()">▶</button>
+                    <button type="button" class="car-big-btn" onclick="window.Player?.playNext()">⏭</button>
+                </div>
+            </div>
+
+            <div style="text-align:center; font-size:14px; color:rgba(255,255,255,0.5); padding:10px;">
+                👆 Balayez l'écran vers la gauche ou la droite pour changer de titre
+            </div>
+        </div>
+
         <!-- Toast Notifications Container -->
         <div id="toast-container" class="toast-container"></div>
     </div>
 
     <!-- Scripts -->
-    <script src="/js/api.js?v=3.6"></script>
-    <script src="/js/storage.js?v=3.6"></script>
-    <script src="/js/lyrics.js?v=3.6"></script>
-    <script src="/js/player.js?v=3.6"></script>
-    <script src="/js/app.js?v=3.6"></script>
+    <script src="/js/api.js?v=3.7"></script>
+    <script src="/js/storage.js?v=3.7"></script>
+    <script src="/js/lyrics.js?v=3.7"></script>
+    <script src="/js/player.js?v=3.7"></script>
+    <script src="/js/visualizer.js?v=3.7"></script>
+    <script src="/js/canvas-bg.js?v=3.7"></script>
+    <script src="/js/dj.js?v=3.7"></script>
+    <script src="/js/jam.js?v=3.7"></script>
+    <script src="/js/carmode.js?v=3.7"></script>
+    <script src="/js/app.js?v=3.7"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {

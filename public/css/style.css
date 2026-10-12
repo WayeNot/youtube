@@ -6597,3 +6597,152 @@ textarea#import-text-input:focus {
 .suggestion-track-item.active-nav {
   background: rgba(255, 255, 255, 0.15) !important;
 }
+
+/* ==========================================================================
+   3D VISUALIZER, DJ DOUBLE DECK, JAM SESSION & CAR MODE STYLES
+   ========================================================================== */
+
+/* 1. 3D Visualizer */
+#modal-visualizer-3d {
+  position: fixed;
+  inset: 0;
+  z-index: 100050;
+  background: #08080e;
+  overflow: hidden;
+}
+
+.vis-theme-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.vis-theme-btn:hover,
+.vis-theme-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 14px var(--primary);
+}
+
+/* 2. DJ Double Deck */
+.dj-turntable {
+  background: radial-gradient(circle, #1a1a24 0%, #0d0d13 100%);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.dj-vinyl {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, #111 0, #111 2px, #1a1a1a 3px, #111 4px);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.2s;
+}
+
+.dj-vinyl:active {
+  cursor: grabbing;
+  box-shadow: 0 0 35px var(--primary);
+}
+
+.dj-vinyl-center {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #fff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.dj-vinyl-center img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 3. Jam Session Floating Reactions */
+.jam-floating-emoji {
+  position: fixed;
+  bottom: 80px;
+  font-size: 38px;
+  pointer-events: none;
+  z-index: 999999;
+  animation: floatUpEmoji 2.5s cubic-bezier(0.12, 0.8, 0.32, 1) forwards;
+}
+
+@keyframes floatUpEmoji {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  15% { opacity: 1; transform: translateY(-40px) scale(1.3); }
+  80% { opacity: 0.9; }
+  100% { transform: translateY(-450px) scale(1.1); opacity: 0; }
+}
+
+.dancing-avatar {
+  display: inline-block;
+  animation: danceBounce 0.7s infinite alternate ease-in-out;
+}
+
+@keyframes danceBounce {
+  0% { transform: translateY(0) rotate(-6deg); }
+  100% { transform: translateY(-6px) rotate(6deg); }
+}
+
+/* 4. Car Mode */
+#view-car-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 100060;
+  background: #000000;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+  user-select: none;
+}
+
+.car-big-btn {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.car-big-btn:active {
+  transform: scale(0.92);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.car-big-play {
+  width: 120px;
+  height: 120px;
+  background: var(--primary);
+  border-color: #ff3366;
+  font-size: 42px;
+  box-shadow: 0 0 30px rgba(255, 0, 51, 0.5);
+}

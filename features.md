@@ -258,52 +258,82 @@ Voici une sélection complète et détaillée de fonctionnalités à forte valeu
 
 ---
 
-## 12. 🚀 Nouvelles Fonctionnalités Futures à Développer (Roadmap v4.0)
+## 12. 🌟 Fonctionnalités Visuelles Majeures (✅ Développées en v3.7)
 
-Voici les prochaines fonctionnalités à forte valeur ajoutée sélectionnées pour le développement futur :
+1. **Visualiseur Audio WebGL 3D Réactif (Three.js / Canvas 3D)** [✅ Déployé] :
+   - Plein écran immersif (`#modal-visualizer-3d`) avec rendu 60fps temps réel.
+   - 3 modes dynamiques switchables :
+     - **Sphère Néon Cyberpunk** : Géométrie 3D à maillage déformé par les basses fréquences et anneaux en orbite.
+     - **Tunnel 3D Hyperespace** : Polygones concentriques et champ stellaire à vitesse calée sur l'énergie sonore.
+     - **Grille Synthwave** : Soleil couchant retrowave avec scanlines et perspective filaire oscillante.
+   - Double système d'analyse : Web Audio `AnalyserNode` FFT + fallback algorithmique pour compatibilité 100% navigateurs.
 
-### 🎛️ A. Traitement Audio & Expérience d'Écoute
-1. **Normalisation Sonore Intelligente (ReplayGain / EBU R128)** :
-   - Ajustement automatique du gain pour éviter les écarts de volume brutaux entre différents morceaux d'une même playlist.
-2. **Mode DJ & Beatmatching Automatique** :
-   - Analyse du BPM et de la tonalité harmonique (Camelot Wheel) avec transitions synchronisées sur les mesures (4 ou 8 temps).
-3. **Suppression Vocale IA en Temps Réel (Mode Karaoké Instrumental Pur)** :
-   - Séparation de source audio en temps réel pour atténuer la voix et chanter par-dessus l'instrumentale.
-4. **Visualiseur Audio WebGL 3D Réactif** :
-   - Visualiseur plein écran animé (ondes 3D, particules néon, nébuleuse) calé sur les fréquences de basse, médium et aiguës de la musique.
+2. **Pochettes Animées & Effet Canvas (Style Spotify Canvas)** [✅ Déployé] :
+   - Module [`canvas-bg.js`](file:///home/wayenot/youtube/public/js/canvas-bg.js) générant un fond de gradient liquide organique polychrome (`#spotify-canvas-bg`).
+   - Mouvement et déformation des bulles chromatiques modulés en temps réel par les BPM et l'intensité musicale.
+   - Bouton d'activation rapide sur la barre de lecture desktop et dans les paramètres.
 
----
+3. **Traduction & Explication des Paroles en direct (Mode Génie)** [✅ Déployé] :
+   - Intégré dans [`lyrics.js`](file:///home/wayenot/youtube/public/js/lyrics.js) et le backend [`/api/lyrics/translate`](file:///home/wayenot/youtube/server.js).
+   - **Traduction instantanée en français** : Affiche les paroles traduites en sous-titres sous chaque ligne originale synchronisée avec la voix.
+   - **Mode Génie & Analyse** : Clic sur n'importe quelle ligne pour ouvrir une analyse contextuelle des métaphores, rimes et punchlines.
 
-### 🤖 B. Intelligence Artificielle & Découverte
-5. **Générateur de Playlist par Prompt IA ("Smart DJ")** :
-   - Génération de sélection sur-mesure à partir d'une description libre (ex: *"Ambiance cyberpunk nuit pluvieuse Tokyo"*).
-6. **Mode "Flow Infini" (Smart Autoplay)** :
-   - Enchaînement automatique sans interruption avec des morceaux similaires une fois la file d'attente terminée.
-7. **Reconnaissance Musicale Intégrée (Shazam Web)** :
-   - Identification en 3 secondes d'un morceau capté par le micro avec ajout instantané en bibliothèque.
-8. **Traduction & Explication des Paroles par IA** :
-   - Bouton de traduction simultanée des paroles vers le français et explications des figures de style et métaphores.
+4. **Mode DJ & Crossfade Visuel (Double Deck Interactif)** [✅ Déployé] :
+   - Vue studio DJ complète (`#modal-dj-deck`) avec deux platines vinyles 33 tours rotatives (Deck A et Deck B).
+   - **Scratch interactif au doigt / souris** avec inertie réaliste.
+   - **Crossfader central horizontal** à puissance égale (*Equal Power Crossfade*) pour mixer en direct.
+   - Faders de pitch (-16% à +16%), affichage BPM en temps réel et bouton **SYNC BPM**.
 
----
+5. **Session d'Écoute Partagée ("Jam Session" en direct)** [✅ Déployé] :
+   - Système de salon collaboratif (`/api/jam/create`, `/api/jam/sync`, `/api/jam/react`).
+   - Code de salon unique (ex: `JAM-XXXX`) et lien direct d'invitation avec auto-connexion (`?jam=JAM-XXXX`).
+   - Synchronisation automatique de la lecture entre l'Hôte et tous les invités connectés.
+   - **Pluie d'Émojis en direct** : Boutons de réaction (🔥, ❤️, 🎵, 🚀, 💃, 🤯) faisant flotter des émojis animés sur les écrans de tous les participants simultanément.
 
-### 👥 C. Social & Temps Réel
-9. **Sessions d'Écoute Partagée ("Jam Session" / Listening Party)** :
-   - Synchronisation multi-utilisateurs en temps réel via WebSockets : écoute synchronisée à la milliseconde près, file d'attente collaborative et mini-chat avec émojis.
-10. **Commentaires Temporels sur les Morceaux (façon SoundCloud)** :
-    - Possibilité d'épingler un commentaire à une seconde précise du morceau le long de la barre de progression.
-11. **Rétrospective Annuelle Interactive ("Mon YTM Wrapped")** :
-    - Bilan annuel personnalisé avec statistiques d'écoute animées et export direct en format Story Instagram / TikTok.
-
----
-
-### 🚗 D. Mobilité & Vie Quotidienne
-12. **Mode Voiture Dédié (Car Mode)** :
-    - Interface épurée avec boutons géants tactiles, typographie agrandie et commandes vocales simples pour une utilisation sécurisée en conduite.
-13. **Minuteur de Sommeil Intelligent (Sleep Timer avec Fade-Out)** :
-    - Arrêt programmable de la musique (15 min, 30 min, 45 min ou fin du morceau courant) avec baisse progressive et douce du volume.
-14. **Téléchargements Intelligents Hors-Ligne (Smart Offline Sync)** :
-    - Téléchargement automatique en cache PWA des 50 morceaux les plus écoutés pour un accès sans connexion Internet.
+6. **Mode "Car Play / Voiture Dédié"** [✅ Déployé] :
+   - Interface plein écran ultra-contrastée (`#view-car-mode`) optimisée pour la conduite sécurisée.
+   - Boutons géants tactiles (> 100px) et typographie grand format lisible à 2 mètres.
+   - **Commandes gestuelles intégrales** : Balayage vers la gauche = Morceau suivant, Balayage vers la droite = Morceau précédent.
+   - Horloge digitale grand format et retour tactile visuel instantané.
 
 ---
 
-*Documentation mise à jour — Version 3.6*
+## 13. 🏷️ Idées de Noms pour la Plateforme (Remplacer "YouTube Music")
+
+Voici une sélection de noms percutants, modernes et mémorables classés par univers pour doter l'application d'une véritable identité de marque :
+
+### 💎 A. Noms Électro, Tech & Aériens
+- **Aura Music** *(Évoque l'ambiance lumineuse, les ondes et l'aura visuelle 3D de l'app)*
+- **PulseWave** / **Pulse** *(Rapide, dynamique, axé sur le rythme et le son instantané)*
+- **NovaSound** / **Novafy** *(Moderne, stellaire, rappelle l'effet tunnel et les néons)*
+- **VibeStream** / **Vibe** *(Universel, détendu, très axé sur le feeling et les playlists)*
+
+### 🚀 B. Noms Courts & Synthétiques (Style Spotify / Deezer)
+- **Sonora** *(Chic, intemporel, racine latine de son)*
+- **Wavely** *(Fluide, jeune, rappelle les ondes sonores et la navigation rapide)*
+- **Trackify** *(Efficace, orienté découverte et gestion de morceaux)*
+- **Kroma** / **Kroma Music** *(Fait écho aux visuels colorés, au visualiseur et au mode canvas)*
+
+### 🎧 C. Noms Audiophiles & Urbains
+- **SoundVault** *(L'écrin de musique, évoque la richesse de la bibliothèque et la qualité)*
+- **Dropbeat** *(Très dynamique, axé sur les drops et l'énergie musicale)*
+- **JamSphere** *(Met l'accent sur les Jam Sessions collaboratives et la communauté)*
+
+---
+
+## 14. 🚀 Roadmap Visionnaire : Prochaines Fonctionnalités à Développer
+
+1. **Séparation de Source IA (Karaoké Instrumental Pur)** :
+   - Algorithme WebAssembly permettant d'isoler ou supprimer la voix en direct d'un simple curseur.
+2. **Commentaires Temporels sur Waveform (Style SoundCloud)** :
+   - Visualisation de la forme d'onde audio complète avec avatars et commentaires épinglés à la seconde exacte (ex: *"Ce drop à 1:42 🔥"*).
+3. **Reconnaissance Audio Micro (Clone Shazam Web)** :
+   - Identification d'une musique ambiante en 3 secondes via capture microphone et empreinte acoustique.
+4. **Mix Automatisé Intelligent (AI Beatmatching Transition)** :
+   - Enchaînement parfait au tempo entre deux morceaux sans aucun temps mort ni coupure.
+5. **Rétrospective Annuelle Animée ("Mon Wrapped")** :
+   - Générateur de bilan annuel d'écoute interactif avec infographies et export Story Instagram / TikTok.
+
+---
+
+*Documentation mise à jour — Version 3.7*

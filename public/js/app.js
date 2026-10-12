@@ -54,6 +54,13 @@ const App = {
         },
 
         handleRoute() {
+            // Auto-join Jam Session via URL query ?jam=XXXX
+            const urlParams = new URLSearchParams(window.location.search);
+            const jamCode = urlParams.get('jam');
+            if (jamCode && window.JamSession) {
+                setTimeout(() => window.JamSession.joinRoom(jamCode), 500);
+            }
+
             const pathname = decodeURIComponent(window.location.pathname);
             const hash = window.location.hash.replace('#', '');
             const path = pathname !== '/' ? pathname : (hash ? '/' + hash : '/');

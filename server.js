@@ -39,6 +39,8 @@ const streamCache = new Map(); // id -> { url, expiresAt }
 const searchCache = new Map(); // key -> { data, expiresAt }
 const relatedCache = new Map(); // id -> { data, expiresAt }
 const lyricsCache = new Map(); // key -> { data, expiresAt }
+const translationCache = new Map(); // text_hash -> { frText, expiresAt }
+const jamRooms = new Map(); // roomId -> { id, host, track, currentTime, isPlaying, listeners, reactions, updatedAt }
 const homeCache = { data: null, expiresAt: 0 };
 
 function getCached(cache, key) {
@@ -1203,6 +1205,130 @@ app.get('/api/lyrics', async (req, res) => {
         console.error('Lyrics error:', err.message);
         res.json({ lyrics: null });
     }
+});
+
+// Translation API for lyrics (English / World -> French)
+app.post('/api/lyrics/translate', async (req, res) => {
+    const { lines, targetLang = 'fr' } = req.body;
+    if (!Array.isArray(lines) || lines.length === 0) {
+        return res.json({ translated: [] });
+    }
+
+    try {
+        const results = [];
+        // Batch translate up to 40 lines
+        const slice = lines.slice(0, 50);
+        for (const item of slice) {
+            const rawText = (item.text || item).trim();
+            if (!rawText) {
+                results.push({ text: rawText, translated: '' });
+                continue;
+            }
+
+            const cacheKey = rawText.toLowerCase();
+            const cached = getCached(translationCache, cacheKey);
+            if (cached) {
+                results.push({ text: rawText, translated: cached });
+                continue;
+            }
+
+            try {
+                // Free MyMemory Translate API
+                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(rawText)}&langpair=autodetect|${targetLang}`;
+                const resp = await fetch(url, { headers: { 'User-Agent': 'YouTubeMusicClone/3.6' } });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const trans = data.responseData?.translatedText || rawText;
+                    setCache(translationCache, cacheKey, trans, 7 * 24 * 3600 * 1000);
+                    results.push({ text: rawText, translated: trans });
+                    continue;
+                }
+            } catch (e) {}
+
+            results.push({ text: rawText, translated: rawText });
+        }
+        res.json({ translated: results });
+    } catch (err) {
+        console.warn('Translation error:', err.message);
+        res.json({ translated: [] });
+    }
+});
+
+// Jam Session Rooms (Synchronized Social Listening)
+app.post('/api/jam/create', (req, res) => {
+    const { hostName = 'Anonyme', track } = req.body;
+    const roomId = 'JAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const room = {
+        id: roomId,
+        host: hostName,
+        track: track || null,
+        currentTime: 0,
+        isPlaying: true,
+        updatedAt: Date.now(),
+        listeners: [{ id: 'host', name: hostName, avatar: '🎧', joinedAt: Date.now() }],
+        reactions: []
+    };
+    jamRooms.set(roomId, room);
+    res.json({ success: true, room });
+});
+
+app.get('/api/jam/:roomId', (req, res) => {
+    const roomId = (req.params.roomId || '').toUpperCase();
+    const room = jamRooms.get(roomId);
+    if (!room) return res.status(404).json({ error: 'Session introuvable' });
+
+    // Clean old reactions (> 10s)
+    const now = Date.now();
+    room.reactions = room.reactions.filter(r => now - r.timestamp < 10000);
+    res.json({ success: true, room });
+});
+
+app.post('/api/jam/sync', (req, res) => {
+    const { roomId, track, currentTime, isPlaying, user, isHost } = req.body;
+    const cleanId = (roomId || '').toUpperCase();
+    let room = jamRooms.get(cleanId);
+    if (!room) {
+        room = {
+            id: cleanId,
+            host: user?.name || 'Hôte',
+            track: track || null,
+            currentTime: currentTime || 0,
+            isPlaying: isPlaying !== undefined ? isPlaying : true,
+            updatedAt: Date.now(),
+            listeners: [],
+            reactions: []
+        };
+        jamRooms.set(cleanId, room);
+    }
+
+    if (user && user.name) {
+        const existing = room.listeners.find(l => l.name === user.name);
+        if (!existing) {
+            room.listeners.push({ id: user.id || 'guest', name: user.name, avatar: user.avatar || '🎵', joinedAt: Date.now() });
+        }
+    }
+
+    if (isHost) {
+        if (track) room.track = track;
+        if (typeof currentTime === 'number') room.currentTime = currentTime;
+        if (typeof isPlaying === 'boolean') room.isPlaying = isPlaying;
+        room.updatedAt = Date.now();
+    }
+
+    const now = Date.now();
+    room.reactions = room.reactions.filter(r => now - r.timestamp < 10000);
+    res.json({ success: true, room });
+});
+
+app.post('/api/jam/react', (req, res) => {
+    const { roomId, emoji = '🔥', user = 'Auditeur' } = req.body;
+    const cleanId = (roomId || '').toUpperCase();
+    const room = jamRooms.get(cleanId);
+    if (!room) return res.status(404).json({ error: 'Session introuvable' });
+
+    const reaction = { id: Math.random().toString(36).substring(7), emoji, user, timestamp: Date.now() };
+    room.reactions.push(reaction);
+    res.json({ success: true, reaction });
 });
 
 // 8. Explore & Home categories

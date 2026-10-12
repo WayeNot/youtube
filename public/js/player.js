@@ -1317,6 +1317,53 @@ class PlayerEngine {
     this.emit('sleep_timer_cancelled');
   }
 
+  // Audio Visualizer Analyser Node
+  getAudioVisualizerData() {
+    if (!this.analyser && this.audio && !isMobileDevice()) {
+      try {
+        if (!this.audioCtx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.audioCtx = new AudioContext();
+        }
+        if (this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume().catch(() => {});
+        }
+        if (!this._mediaSourceNode) {
+          this._mediaSourceNode = this.audioCtx.createMediaElementSource(this.audio);
+          this.analyser = this.audioCtx.createAnalyser();
+          this.analyser.fftSize = 128;
+          this.analyser.smoothingTimeConstant = 0.8;
+          this._mediaSourceNode.connect(this.analyser);
+          this.analyser.connect(this.audioCtx.destination);
+        }
+      } catch (e) { }
+    }
+
+    if (this.analyser) {
+      const bufferLength = this.analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      this.analyser.getByteFrequencyData(dataArray);
+      let bass = 0, mid = 0, treble = 0;
+      const bassCount = Math.floor(bufferLength * 0.2);
+      const midCount = Math.floor(bufferLength * 0.5);
+      for (let i = 0; i < bassCount; i++) bass += dataArray[i];
+      for (let i = bassCount; i < midCount; i++) mid += dataArray[i];
+      for (let i = midCount; i < bufferLength; i++) treble += dataArray[i];
+      bass = bass / (bassCount * 255 || 1);
+      mid = mid / ((midCount - bassCount) * 255 || 1);
+      treble = treble / ((bufferLength - midCount) * 255 || 1);
+      return { bass, mid, treble, energy: (bass + mid + treble) / 3, raw: dataArray };
+    }
+
+    // Algorithmic beat simulator fallback when Analyser is restricted or offline
+    const t = Date.now() / 1000;
+    const isP = this.isPlaying;
+    const simBass = isP ? (Math.sin(t * 4) * 0.5 + 0.5) * 0.7 + (Math.sin(t * 8) > 0.7 ? 0.3 : 0) : 0;
+    const simMid = isP ? (Math.cos(t * 3) * 0.5 + 0.5) * 0.5 : 0;
+    const simTreble = isP ? (Math.sin(t * 6) * 0.5 + 0.5) * 0.5 : 0;
+    return { bass: simBass, mid: simMid, treble: simTreble, energy: (simBass + simMid + simTreble) / 3, raw: null };
+  }
+
   // Events dispatcher
   emit(eventName, detail = {}) {
     window.dispatchEvent(new CustomEvent(`player_${eventName}`, { detail }));

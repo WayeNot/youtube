@@ -1,5 +1,5 @@
 // Service Worker - Network First Strategy for Realtime Updates
-const CACHE_NAME = 'ytm-v10';
+const CACHE_NAME = 'ytm-v11';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();
