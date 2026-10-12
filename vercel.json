@@ -5,7 +5,7 @@
             "src": "server.js",
             "use": "@vercel/node",
             "config": {
-                "includeFiles": ["bin/**", "public/**"]
+                "includeFiles": ["bin/**", "public/**", "cookies.txt"]
             }
         }
     ],

@@ -83,6 +83,16 @@ function syncCookiesFile() {
             fs.writeFileSync(cookiesPath, process.env.YTDLP_COOKIES.trim(), 'utf-8');
             return true;
         }
+        // If cookies.txt is bundled in the repository, copy it to /tmp/cookies.txt in serverless
+        const bundledCookies = path.join(__dirname, 'cookies.txt');
+        if (cookiesPath !== bundledCookies && fs.existsSync(bundledCookies) && (!fs.existsSync(cookiesPath) || fs.statSync(cookiesPath).size < 10)) {
+            try {
+                fs.copyFileSync(bundledCookies, cookiesPath);
+                return true;
+            } catch (e) {
+                console.warn('⚠️ Échec copie bundled cookies.txt vers /tmp:', e.message);
+            }
+        }
     } catch (e) {
         console.error('❌ Erreur écriture cookies.txt:', e.message);
     }

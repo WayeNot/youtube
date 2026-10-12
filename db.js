@@ -68,16 +68,31 @@ const db = {
       `;
 
       await neonSql`
-        CREATE TABLE IF NOT EXISTS user_data (
+        CREATE TABLE IF NOT EXISTS user_settings (
           user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-          favorites JSONB NOT NULL DEFAULT '[]'::jsonb,
-          playlists JSONB NOT NULL DEFAULT '[]'::jsonb,
-          history JSONB NOT NULL DEFAULT '[]'::jsonb,
+          theme TEXT DEFAULT '#ff0033',
+          accent_color TEXT DEFAULT '#ff0033',
+          accent_hover_color TEXT DEFAULT '#cc0029',
+          ambient_glow BOOLEAN DEFAULT TRUE,
+          audio_quality TEXT DEFAULT 'high',
+          eq_preset TEXT DEFAULT 'flat',
+          autoplay_radio BOOLEAN DEFAULT TRUE,
           recent_searches JSONB NOT NULL DEFAULT '[]'::jsonb,
-          settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+          custom_settings JSONB NOT NULL DEFAULT '{}'::jsonb,
           updated_at BIGINT NOT NULL
         );
       `;
+
+      // Safe migration from legacy user_data table if it existed
+      try {
+        await neonSql`
+          INSERT INTO user_settings (user_id, recent_searches, custom_settings, updated_at)
+          SELECT user_id, COALESCE(recent_searches, '[]'::jsonb), COALESCE(settings, '{}'::jsonb), updated_at
+          FROM user_data
+          ON CONFLICT (user_id) DO NOTHING;
+        `;
+        await neonSql`DROP TABLE IF EXISTS user_data CASCADE;`;
+      } catch (e) {}
 
       // Dedicated Tables for Relational Queries, Indexes & Direct Sync
       await neonSql`
@@ -167,13 +182,17 @@ const db = {
           is_public INTEGER DEFAULT 1
         );
 
-        CREATE TABLE IF NOT EXISTS user_data (
+        CREATE TABLE IF NOT EXISTS user_settings (
           user_id TEXT PRIMARY KEY,
-          favorites TEXT NOT NULL DEFAULT '[]',
-          playlists TEXT NOT NULL DEFAULT '[]',
-          history TEXT NOT NULL DEFAULT '[]',
+          theme TEXT DEFAULT '#ff0033',
+          accent_color TEXT DEFAULT '#ff0033',
+          accent_hover_color TEXT DEFAULT '#cc0029',
+          ambient_glow INTEGER DEFAULT 1,
+          audio_quality TEXT DEFAULT 'high',
+          eq_preset TEXT DEFAULT 'flat',
+          autoplay_radio INTEGER DEFAULT 1,
           recent_searches TEXT NOT NULL DEFAULT '[]',
-          settings TEXT NOT NULL DEFAULT '{}',
+          custom_settings TEXT NOT NULL DEFAULT '{}',
           updated_at INTEGER NOT NULL,
           FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -253,6 +272,15 @@ const db = {
 
       try {
         sqliteDb.exec('ALTER TABLE users ADD COLUMN is_public INTEGER DEFAULT 1');
+      } catch (e) {}
+
+      // Safe migration from legacy user_data in SQLite
+      try {
+        sqliteDb.exec(`
+          INSERT OR IGNORE INTO user_settings (user_id, recent_searches, custom_settings, updated_at)
+          SELECT user_id, recent_searches, settings, updated_at FROM user_data;
+        `);
+        sqliteDb.exec('DROP TABLE IF EXISTS user_data;');
       } catch (e) {}
       console.log('✅ Tables relationnelles SQLite prêtes !');
     }
@@ -483,52 +511,220 @@ const db = {
         VALUES (${id}, ${username.trim()}, ${passwordHash}, '', '', ${createdAt})
       `;
       await neonSql`
-        INSERT INTO user_data (user_id, favorites, playlists, history, recent_searches, settings, updated_at)
-        VALUES (${id}, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '{}'::jsonb, ${createdAt})
+        INSERT INTO user_settings (user_id, theme, accent_color, accent_hover_color, ambient_glow, audio_quality, eq_preset, autoplay_radio, recent_searches, custom_settings, updated_at)
+        VALUES (${id}, '#ff0033', '#ff0033', '#cc0029', TRUE, 'high', 'flat', TRUE, '[]'::jsonb, '{}'::jsonb, ${createdAt})
       `;
     } else {
       sqliteDb.prepare('INSERT INTO users (id, username, password_hash, avatar, bio, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, username.trim(), passwordHash, '', '', createdAt);
       sqliteDb.prepare(`
-        INSERT INTO user_data (user_id, favorites, playlists, history, recent_searches, settings, updated_at)
-        VALUES (?, '[]', '[]', '[]', '[]', '{}', ?)
+        INSERT INTO user_settings (user_id, theme, accent_color, accent_hover_color, ambient_glow, audio_quality, eq_preset, autoplay_radio, recent_searches, custom_settings, updated_at)
+        VALUES (?, '#ff0033', '#ff0033', '#cc0029', 1, 'high', 'flat', 1, '[]', '{}', ?)
       `).run(id, createdAt);
     }
   },
 
-  // User Data: Get all consolidated data
+  // User Data: Reconstruct all consolidated data directly from dedicated relational tables and user_settings
   async getUserData(userId) {
     if (isNeon) {
-      const rows = await neonSql`
-        SELECT favorites, playlists, history, recent_searches, settings, updated_at
-        FROM user_data
+      // 1. Liked tracks
+      const favRows = await neonSql`
+        SELECT track_id AS id, title, artist, thumbnail, duration, duration_sec AS "durationSec", added_at AS "addedAt"
+        FROM liked_tracks
+        WHERE user_id = ${userId}
+        ORDER BY added_at DESC
+      `;
+
+      // 2. Playlists with their tracks
+      const plRows = await neonSql`
+        SELECT id, name, is_public AS "isPublic", created_at AS "createdAt", updated_at AS "updatedAt"
+        FROM playlists
+        WHERE user_id = ${userId}
+        ORDER BY updated_at DESC
+      `;
+
+      const playlists = [];
+      for (const pl of plRows) {
+        const trRows = await neonSql`
+          SELECT track_id AS id, title, artist, thumbnail, duration, duration_sec AS "durationSec", added_at AS "addedAt"
+          FROM playlist_tracks
+          WHERE playlist_id = ${pl.id}
+          ORDER BY position ASC
+        `;
+        playlists.push({
+          id: pl.id,
+          name: pl.name,
+          isPublic: pl.isPublic !== false,
+          createdAt: Number(pl.createdAt),
+          updatedAt: Number(pl.updatedAt),
+          tracks: trRows.map(tr => ({
+            id: tr.id,
+            title: tr.title,
+            artist: tr.artist || '',
+            thumbnail: tr.thumbnail || '',
+            duration: tr.duration || '',
+            durationSec: tr.durationSec || 0,
+            addedAt: Number(tr.addedAt)
+          }))
+        });
+      }
+
+      // 3. Listen history (latest 100)
+      const histRows = await neonSql`
+        SELECT track_id AS id, title, artist, thumbnail, duration, duration_sec AS "durationSec", listened_at AS "listenedAt"
+        FROM listen_history
+        WHERE user_id = ${userId}
+        ORDER BY listened_at DESC
+        LIMIT 100
+      `;
+
+      // 4. User settings & recent searches
+      const setRows = await neonSql`
+        SELECT theme, accent_color AS "accentColor", accent_hover_color AS "accentHoverColor",
+               ambient_glow AS "ambientGlow", audio_quality AS "audioQuality", eq_preset AS "eqPreset",
+               autoplay_radio AS "autoplayRadio", recent_searches, custom_settings, updated_at
+        FROM user_settings
         WHERE user_id = ${userId}
         LIMIT 1
       `;
-      if (!rows || rows.length === 0) return null;
-      const r = rows[0];
+
+      let settings = {};
+      let recentSearches = [];
+      let updatedAt = Date.now();
+
+      if (setRows && setRows.length > 0) {
+        const sr = setRows[0];
+        const custom = typeof sr.custom_settings === 'string' ? JSON.parse(sr.custom_settings || '{}') : (sr.custom_settings || {});
+        settings = {
+          theme: sr.theme || '#ff0033',
+          accentColor: sr.accentColor || '#ff0033',
+          accentHoverColor: sr.accentHoverColor || '#cc0029',
+          ambientGlow: sr.ambientGlow !== false,
+          audioQuality: sr.audioQuality || 'high',
+          eqPreset: sr.eqPreset || 'flat',
+          autoplayRadio: sr.autoplayRadio !== false,
+          ...custom
+        };
+        recentSearches = typeof sr.recent_searches === 'string' ? JSON.parse(sr.recent_searches || '[]') : (sr.recent_searches || []);
+        updatedAt = Number(sr.updated_at) || updatedAt;
+      }
+
       return {
-        favorites: typeof r.favorites === 'string' ? JSON.parse(r.favorites) : (r.favorites || []),
-        playlists: typeof r.playlists === 'string' ? JSON.parse(r.playlists) : (r.playlists || []),
-        history: typeof r.history === 'string' ? JSON.parse(r.history) : (r.history || []),
-        recent_searches: typeof r.recent_searches === 'string' ? JSON.parse(r.recent_searches) : (r.recent_searches || []),
-        settings: typeof r.settings === 'string' ? JSON.parse(r.settings) : (r.settings || {}),
-        updatedAt: Number(r.updated_at)
+        favorites: favRows.map(t => ({
+          id: t.id,
+          title: t.title,
+          artist: t.artist || '',
+          thumbnail: t.thumbnail || '',
+          duration: t.duration || '',
+          durationSec: t.durationSec || 0,
+          addedAt: Number(t.addedAt)
+        })),
+        playlists,
+        history: histRows.map(h => ({
+          id: h.id,
+          title: h.title,
+          artist: h.artist || '',
+          thumbnail: h.thumbnail || '',
+          duration: h.duration || '',
+          durationSec: h.durationSec || 0,
+          listenedAt: Number(h.listenedAt)
+        })),
+        recent_searches: recentSearches,
+        settings,
+        updatedAt
       };
     } else {
-      const row = sqliteDb.prepare('SELECT favorites, playlists, history, recent_searches, settings, updated_at FROM user_data WHERE user_id = ?').get(userId);
-      if (!row) return null;
+      // Local SQLite
+      // 1. Liked tracks
+      const favRows = sqliteDb.prepare(`
+        SELECT track_id AS id, title, artist, thumbnail, duration, duration_sec AS durationSec, added_at AS addedAt
+        FROM liked_tracks
+        WHERE user_id = ?
+        ORDER BY added_at DESC
+      `).all(userId);
+
+      // 2. Playlists
+      const plRows = sqliteDb.prepare(`
+        SELECT id, name, is_public AS isPublic, created_at AS createdAt, updated_at AS updatedAt
+        FROM playlists
+        WHERE user_id = ?
+        ORDER BY updated_at DESC
+      `).all(userId);
+
+      const plTrackStmt = sqliteDb.prepare(`
+        SELECT track_id AS id, title, artist, thumbnail, duration, duration_sec AS durationSec, added_at AS addedAt
+        FROM playlist_tracks
+        WHERE playlist_id = ?
+        ORDER BY position ASC
+      `);
+
+      const playlists = plRows.map(pl => ({
+        id: pl.id,
+        name: pl.name,
+        isPublic: pl.isPublic !== 0,
+        createdAt: pl.createdAt,
+        updatedAt: pl.updatedAt,
+        tracks: plTrackStmt.all(pl.id).map(tr => ({
+          id: tr.id,
+          title: tr.title,
+          artist: tr.artist || '',
+          thumbnail: tr.thumbnail || '',
+          duration: tr.duration || '',
+          durationSec: tr.durationSec || 0,
+          addedAt: tr.addedAt
+        }))
+      }));
+
+      // 3. History
+      const histRows = sqliteDb.prepare(`
+        SELECT track_id AS id, title, artist, thumbnail, duration, duration_sec AS durationSec, listened_at AS listenedAt
+        FROM listen_history
+        WHERE user_id = ?
+        ORDER BY listened_at DESC
+        LIMIT 100
+      `).all(userId);
+
+      // 4. Settings
+      const sr = sqliteDb.prepare(`
+        SELECT theme, accent_color AS accentColor, accent_hover_color AS accentHoverColor,
+               ambient_glow AS ambientGlow, audio_quality AS audioQuality, eq_preset AS eqPreset,
+               autoplay_radio AS autoplayRadio, recent_searches, custom_settings, updated_at
+        FROM user_settings
+        WHERE user_id = ?
+      `).get(userId);
+
+      let settings = {};
+      let recentSearches = [];
+      let updatedAt = Date.now();
+
+      if (sr) {
+        let custom = {};
+        try { custom = JSON.parse(sr.custom_settings || '{}'); } catch(e){}
+        settings = {
+          theme: sr.theme || '#ff0033',
+          accentColor: sr.accentColor || '#ff0033',
+          accentHoverColor: sr.accentHoverColor || '#cc0029',
+          ambientGlow: sr.ambientGlow !== 0,
+          audioQuality: sr.audioQuality || 'high',
+          eqPreset: sr.eqPreset || 'flat',
+          autoplayRadio: sr.autoplayRadio !== 0,
+          ...custom
+        };
+        try { recentSearches = JSON.parse(sr.recent_searches || '[]'); } catch(e){}
+        updatedAt = sr.updated_at || updatedAt;
+      }
+
       return {
-        favorites: JSON.parse(row.favorites || '[]'),
-        playlists: JSON.parse(row.playlists || '[]'),
-        history: JSON.parse(row.history || '[]'),
-        recent_searches: JSON.parse(row.recent_searches || '[]'),
-        settings: JSON.parse(row.settings || '{}'),
-        updatedAt: row.updated_at
+        favorites: favRows,
+        playlists,
+        history: histRows,
+        recent_searches: recentSearches,
+        settings,
+        updatedAt
       };
     }
   },
 
-  // Save User Data: Updates both JSON documents AND structured relational tables
+  // Save User Data: Updates dedicated relational tables and user_settings directly
   async saveUserData(userId, { favorites, playlists, history, recent_searches, settings }, updatedAt) {
     const favsArr = Array.isArray(favorites) ? favorites : [];
     const plsArr = Array.isArray(playlists) ? playlists : [];
@@ -536,23 +732,47 @@ const db = {
     const recArr = Array.isArray(recent_searches) ? recent_searches : [];
     const settObj = settings && typeof settings === 'object' ? settings : {};
 
-    const favsStr = JSON.stringify(favsArr);
-    const plsStr = JSON.stringify(plsArr);
-    const histStr = JSON.stringify(histArr);
     const recStr = JSON.stringify(recArr);
-    const setStr = JSON.stringify(settObj);
+    const customSett = { ...settObj };
+    const theme = customSett.theme || customSett.accentColor || '#ff0033';
+    const accentColor = customSett.accentColor || '#ff0033';
+    const accentHoverColor = customSett.accentHoverColor || '#cc0029';
+    const ambientGlow = customSett.ambientGlow !== false;
+    const audioQuality = customSett.audioQuality || 'high';
+    const eqPreset = customSett.eqPreset || 'flat';
+    const autoplayRadio = customSett.autoplayRadio !== false;
+
+    delete customSett.theme;
+    delete customSett.accentColor;
+    delete customSett.accentHoverColor;
+    delete customSett.ambientGlow;
+    delete customSett.audioQuality;
+    delete customSett.eqPreset;
+    delete customSett.autoplayRadio;
+
+    const customStr = JSON.stringify(customSett);
 
     if (isNeon) {
-      // 1. Update user_data JSON cache
+      // 1. Update user_settings table
       await neonSql`
-        INSERT INTO user_data (user_id, favorites, playlists, history, recent_searches, settings, updated_at)
-        VALUES (${userId}, ${favsStr}::jsonb, ${plsStr}::jsonb, ${histStr}::jsonb, ${recStr}::jsonb, ${setStr}::jsonb, ${updatedAt})
+        INSERT INTO user_settings (
+          user_id, theme, accent_color, accent_hover_color, ambient_glow,
+          audio_quality, eq_preset, autoplay_radio, recent_searches, custom_settings, updated_at
+        )
+        VALUES (
+          ${userId}, ${theme}, ${accentColor}, ${accentHoverColor}, ${ambientGlow},
+          ${audioQuality}, ${eqPreset}, ${autoplayRadio}, ${recStr}::jsonb, ${customStr}::jsonb, ${updatedAt}
+        )
         ON CONFLICT (user_id) DO UPDATE SET
-          favorites = EXCLUDED.favorites,
-          playlists = EXCLUDED.playlists,
-          history = EXCLUDED.history,
+          theme = EXCLUDED.theme,
+          accent_color = EXCLUDED.accent_color,
+          accent_hover_color = EXCLUDED.accent_hover_color,
+          ambient_glow = EXCLUDED.ambient_glow,
+          audio_quality = EXCLUDED.audio_quality,
+          eq_preset = EXCLUDED.eq_preset,
+          autoplay_radio = EXCLUDED.autoplay_radio,
           recent_searches = EXCLUDED.recent_searches,
-          settings = EXCLUDED.settings,
+          custom_settings = EXCLUDED.custom_settings,
           updated_at = EXCLUDED.updated_at
       `;
 
@@ -578,7 +798,6 @@ const db = {
         if (validPlIds.length === 0) {
           await neonSql`DELETE FROM playlists WHERE user_id = ${userId}`;
         } else {
-          // Delete playlists no longer present for this user
           const existing = await neonSql`SELECT id FROM playlists WHERE user_id = ${userId}`;
           for (const row of existing) {
             if (!validPlIds.includes(row.id)) {
@@ -601,7 +820,6 @@ const db = {
               updated_at = EXCLUDED.updated_at
           `;
 
-          // Clear existing tracks for this playlist before inserting updated ones
           await neonSql`DELETE FROM playlist_tracks WHERE playlist_id = ${pl.id}`;
 
           if (Array.isArray(pl.tracks) && pl.tracks.length > 0) {
@@ -613,14 +831,12 @@ const db = {
                   INSERT INTO playlist_tracks (playlist_id, track_id, title, artist, thumbnail, duration, duration_sec, position, added_at)
                   VALUES (${pl.id}, ${tr.id}, ${tr.title || 'Inconnu'}, ${tr.artist || ''}, ${tr.thumbnail || ''}, ${tr.duration || ''}, ${tr.durationSec || 0}, ${i}, ${tr.addedAt || plTime})
                 `;
-              } catch (trackInsertErr) {
-                // Ignore transient concurrent track conflict
-              }
+              } catch (trackInsertErr) {}
             }
           }
         }
       } catch (plSyncErr) {
-        console.warn('⚠️ Playlist relational sync warning (user_data json is safely preserved):', plSyncErr.message);
+        console.warn('⚠️ Playlist relational sync warning:', plSyncErr.message);
       }
 
       // 4. Synchronize listen_history relational table (keep latest 100)
@@ -635,18 +851,28 @@ const db = {
     } else {
       // SQLite execution in transaction
       const syncTx = sqliteDb.transaction(() => {
-        // user_data
+        // user_settings
         sqliteDb.prepare(`
-          INSERT INTO user_data (user_id, favorites, playlists, history, recent_searches, settings, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO user_settings (
+            user_id, theme, accent_color, accent_hover_color, ambient_glow,
+            audio_quality, eq_preset, autoplay_radio, recent_searches, custom_settings, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(user_id) DO UPDATE SET
-            favorites = excluded.favorites,
-            playlists = excluded.playlists,
-            history = excluded.history,
+            theme = excluded.theme,
+            accent_color = excluded.accent_color,
+            accent_hover_color = excluded.accent_hover_color,
+            ambient_glow = excluded.ambient_glow,
+            audio_quality = excluded.audio_quality,
+            eq_preset = excluded.eq_preset,
+            autoplay_radio = excluded.autoplay_radio,
             recent_searches = excluded.recent_searches,
-            settings = excluded.settings,
+            custom_settings = excluded.custom_settings,
             updated_at = excluded.updated_at
-        `).run(userId, favsStr, plsStr, histStr, recStr, setStr, updatedAt);
+        `).run(
+          userId, theme, accentColor, accentHoverColor, ambientGlow ? 1 : 0,
+          audioQuality, eqPreset, autoplayRadio ? 1 : 0, recStr, customStr, updatedAt
+        );
 
         // liked_tracks
         sqliteDb.prepare('DELETE FROM liked_tracks WHERE user_id = ?').run(userId);
@@ -697,7 +923,7 @@ const db = {
     }
   },
 
-  // Direct fast operations for likes
+  // Direct fast operations for likes (atomic operation directly on liked_tracks)
   async toggleLike(userId, track) {
     if (!userId || !track || !track.id) return false;
     const now = Date.now();
@@ -715,9 +941,6 @@ const db = {
         `;
         isLiked = true;
       }
-      // Re-aggregate favorites in user_data
-      const favRows = await neonSql`SELECT track_id as id, title, artist, thumbnail, duration, duration_sec as "durationSec", added_at as "addedAt" FROM liked_tracks WHERE user_id = ${userId} ORDER BY added_at DESC`;
-      await neonSql`UPDATE user_data SET favorites = ${JSON.stringify(favRows)}::jsonb, updated_at = ${now} WHERE user_id = ${userId}`;
     } else {
       const existing = sqliteDb.prepare('SELECT track_id FROM liked_tracks WHERE user_id = ? AND track_id = ?').get(userId, track.id);
       if (existing) {
@@ -730,8 +953,6 @@ const db = {
         `).run(userId, track.id, track.title || 'Inconnu', track.artist || '', track.thumbnail || '', track.duration || '', track.durationSec || 0, now);
         isLiked = true;
       }
-      const favRows = sqliteDb.prepare('SELECT track_id as id, title, artist, thumbnail, duration, duration_sec as durationSec, added_at as addedAt FROM liked_tracks WHERE user_id = ? ORDER BY added_at DESC').all(userId);
-      sqliteDb.prepare('UPDATE user_data SET favorites = ?, updated_at = ? WHERE user_id = ?').run(JSON.stringify(favRows), now, userId);
     }
     return isLiked;
   },
