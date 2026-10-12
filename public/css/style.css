@@ -8215,3 +8215,82 @@ textarea#import-text-input:focus {
     height: 36px;
   }
 }
+
+/* ==========================================================================
+   VIBETUBE LIBRARY & SECTIONS (History, Watch Later, Liked, Playlists)
+   ========================================================================== */
+.vibetube-library-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.vibetube-library-header-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vibetube-lib-icon-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: rgba(255, 0, 51, 0.16);
+  border: 1px solid rgba(255, 0, 51, 0.35);
+  box-shadow: 0 0 16px rgba(255, 0, 51, 0.2);
+  flex-shrink: 0;
+}
+
+.vibetube-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  gap: 12px;
+}
+
+.vibetube-empty-icon {
+  font-size: 54px;
+  margin-bottom: 8px;
+}
+
+.vibetube-empty-state h3 {
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.vibetube-empty-state p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 380px;
+}
+
+.vibetube-playlist-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vibetube-playlist-item-row:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateX(3px);
+}

@@ -12,7 +12,11 @@ const Storage = {
     IS_GUEST: 'ytm_is_guest',
     TRASH: 'ytm_trash',
     LASTFM: 'ytm_lastfm',
-    VIBETUBE_RECENT_SEARCHES: 'vibetube_recent_searches'
+    VIBETUBE_RECENT_SEARCHES: 'vibetube_recent_searches',
+    VIBETUBE_HISTORY: 'vibetube_history',
+    VIBETUBE_WATCH_LATER: 'vibetube_watch_later',
+    VIBETUBE_LIKED: 'vibetube_liked',
+    VIBETUBE_PLAYLISTS: 'vibetube_playlists'
   },
 
   syncTimer: null,
@@ -230,6 +234,135 @@ const Storage = {
   clearVibeTubeRecentSearches() {
     localStorage.removeItem(this.KEYS.VIBETUBE_RECENT_SEARCHES);
     window.dispatchEvent(new CustomEvent('vibetube_recent_searches_changed', { detail: { list: [] } }));
+  },
+
+  // --- VibeTube History ---
+  getVibeTubeHistory() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.VIBETUBE_HISTORY)) || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  addVibeTubeHistory(video) {
+    if (!video || !video.id) return;
+    let list = this.getVibeTubeHistory();
+    list = list.filter(v => v.id !== video.id);
+    list.unshift({ ...video, watchedAt: Date.now() });
+    if (list.length > 100) list = list.slice(0, 100);
+    localStorage.setItem(this.KEYS.VIBETUBE_HISTORY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_history_changed', { detail: { list } }));
+  },
+
+  removeVibeTubeHistory(videoId) {
+    let list = this.getVibeTubeHistory().filter(v => v.id !== videoId);
+    localStorage.setItem(this.KEYS.VIBETUBE_HISTORY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_history_changed', { detail: { list } }));
+  },
+
+  clearVibeTubeHistory() {
+    localStorage.removeItem(this.KEYS.VIBETUBE_HISTORY);
+    window.dispatchEvent(new CustomEvent('vibetube_history_changed', { detail: { list: [] } }));
+  },
+
+  // --- VibeTube Watch Later ---
+  getVibeTubeWatchLater() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.VIBETUBE_WATCH_LATER)) || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  isVibeTubeWatchLater(videoId) {
+    return this.getVibeTubeWatchLater().some(v => v.id === videoId);
+  },
+
+  toggleVibeTubeWatchLater(video) {
+    if (!video || !video.id) return false;
+    let list = this.getVibeTubeWatchLater();
+    const exists = list.some(v => v.id === video.id);
+    if (exists) {
+      list = list.filter(v => v.id !== video.id);
+    } else {
+      list.unshift({ ...video, addedAt: Date.now() });
+    }
+    localStorage.setItem(this.KEYS.VIBETUBE_WATCH_LATER, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_watchlater_changed', { detail: { list } }));
+    return !exists;
+  },
+
+  // --- VibeTube Liked Videos ---
+  getVibeTubeLiked() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.VIBETUBE_LIKED)) || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  isVibeTubeLiked(videoId) {
+    return this.getVibeTubeLiked().some(v => v.id === videoId);
+  },
+
+  toggleVibeTubeLiked(video) {
+    if (!video || !video.id) return false;
+    let list = this.getVibeTubeLiked();
+    const exists = list.some(v => v.id === video.id);
+    if (exists) {
+      list = list.filter(v => v.id !== video.id);
+    } else {
+      list.unshift({ ...video, likedAt: Date.now() });
+    }
+    localStorage.setItem(this.KEYS.VIBETUBE_LIKED, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_liked_changed', { detail: { list } }));
+    return !exists;
+  },
+
+  // --- VibeTube Playlists ---
+  getVibeTubePlaylists() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.VIBETUBE_PLAYLISTS)) || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  createVibeTubePlaylist(name, description = '') {
+    const list = this.getVibeTubePlaylists();
+    const newPl = {
+      id: 'vtp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      name: name.trim(),
+      description,
+      videos: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    list.push(newPl);
+    localStorage.setItem(this.KEYS.VIBETUBE_PLAYLISTS, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_playlists_changed', { detail: { playlists: list } }));
+    return newPl;
+  },
+
+  addVideoToVibeTubePlaylist(playlistId, video) {
+    const list = this.getVibeTubePlaylists();
+    const pl = list.find(p => p.id === playlistId);
+    if (!pl) return false;
+    if (!pl.videos.some(v => v.id === video.id)) {
+      pl.videos.push(video);
+      pl.updatedAt = Date.now();
+      localStorage.setItem(this.KEYS.VIBETUBE_PLAYLISTS, JSON.stringify(list));
+      window.dispatchEvent(new CustomEvent('vibetube_playlists_changed', { detail: { playlists: list } }));
+      return true;
+    }
+    return false;
+  },
+
+  deleteVibeTubePlaylist(playlistId) {
+    const list = this.getVibeTubePlaylists().filter(p => p.id !== playlistId);
+    localStorage.setItem(this.KEYS.VIBETUBE_PLAYLISTS, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('vibetube_playlists_changed', { detail: { playlists: list } }));
   },
 
   getFavorites() {

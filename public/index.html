@@ -276,6 +276,33 @@
 
                 <div class="sidebar-divider"></div>
 
+                <!-- VibeTube You / Library Section -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header">
+                        <span>Vous</span>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <a href="/vibetube/history" class="vibetube-nav-item" data-vibetube-nav="history" onclick="event.preventDefault(); window.App && window.App.openVibeTubeLibrarySection('history')">
+                            <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg>
+                            <span>Historique</span>
+                        </a>
+                        <a href="/vibetube/watch-later" class="vibetube-nav-item" data-vibetube-nav="watch-later" onclick="event.preventDefault(); window.App && window.App.openVibeTubeLibrarySection('watch-later')">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" fill="currentColor"/></svg>
+                            <span>À regarder plus tard</span>
+                        </a>
+                        <a href="/vibetube/liked" class="vibetube-nav-item" data-vibetube-nav="liked" onclick="event.preventDefault(); window.App && window.App.openVibeTubeLibrarySection('liked')">
+                            <svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" fill="currentColor"/></svg>
+                            <span>Vidéos « J'aime »</span>
+                        </a>
+                        <a href="/vibetube/playlists" class="vibetube-nav-item" data-vibetube-nav="playlists" onclick="event.preventDefault(); window.App && window.App.openVibeTubeLibrarySection('playlists')">
+                            <svg viewBox="0 0 24 24"><path d="M19 9H2v2h17V9zm0-4H2v2h17V5zM2 15h13v-2H2v2zm15-2v6l5-3-5-3z" fill="currentColor"/></svg>
+                            <span>Playlists</span>
+                        </a>
+                    </nav>
+                </div>
+
+                <div class="sidebar-divider"></div>
+
                 <!-- VibeTube Video Categories - Master Cybersécurité & Tech -->
                 <div class="sidebar-section">
                     <div class="sidebar-section-header">
@@ -541,8 +568,12 @@
                                             <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" fill="currentColor"/></svg>
                                             <span>Partager</span>
                                         </button>
-                                        <button type="button" id="vibetube-watch-save-btn" class="vibetube-action-pill" onclick="window.App && window.App.saveWatchVideoToFavorites()" title="Ajouter aux favoris VibeTube">
-                                            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>
+                                        <button type="button" id="vibetube-watch-later-btn" class="vibetube-action-pill" onclick="window.App && window.App.toggleWatchLater()" title="À regarder plus tard">
+                                            <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" fill="currentColor"/></svg>
+                                            <span id="vibetube-watch-later-text">Plus tard</span>
+                                        </button>
+                                        <button type="button" id="vibetube-watch-save-btn" class="vibetube-action-pill" onclick="window.App && window.App.openVibeTubePlaylistModal()" title="Ajouter à une playlist VibeTube">
+                                            <svg viewBox="0 0 24 24"><path d="M19 9H2v2h17V9zm0-4H2v2h17V5zM2 15h13v-2H2v2zm15-2v6l5-3-5-3z" fill="currentColor"/></svg>
                                             <span>Enregistrer</span>
                                         </button>
                                     </div>
@@ -589,6 +620,37 @@
                             </div>
                             <div id="vibetube-related-videos-list" class="vibetube-related-list"></div>
                         </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: VIBETUBE LIBRARY / SECTIONS (History, Watch Later, Liked Videos, Playlists) -->
+                <section id="view-vibetube-library" class="view-section">
+                    <div class="vibetube-library-header">
+                        <div class="vibetube-library-header-main">
+                            <div class="vibetube-lib-icon-badge" id="vibetube-lib-icon">🕒</div>
+                            <div>
+                                <h1 class="section-title" id="vibetube-lib-title">Historique</h1>
+                                <p class="section-subtitle" id="vibetube-lib-subtitle">Vos vidéos récemment visionnées sur VibeTube</p>
+                            </div>
+                        </div>
+                        <div class="vibetube-library-header-actions" id="vibetube-lib-actions">
+                            <button type="button" id="vibetube-lib-clear-btn" class="btn secondary small" onclick="window.App && window.App.clearCurrentVibeTubeSection()">
+                                <span>Effacer l'historique</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Video Grid for Library Sections -->
+                    <div id="vibetube-library-grid" class="vibetube-video-grid" style="margin-top:24px;"></div>
+
+                    <!-- Empty State -->
+                    <div id="vibetube-library-empty" class="vibetube-empty-state hidden">
+                        <div class="vibetube-empty-icon" id="vibetube-empty-icon">📺</div>
+                        <h3 id="vibetube-empty-title">Aucune vidéo pour le moment</h3>
+                        <p id="vibetube-empty-sub">Explorez VibeTube pour découvrir et enregistrer vos premières vidéos.</p>
+                        <button type="button" class="btn primary" onclick="window.App && window.App.switchView('vibetube')">
+                            <span>Explorer VibeTube</span>
+                        </button>
                     </div>
                 </section>
 
@@ -2683,6 +2745,8 @@
             <div style="text-align:center; font-size:14px; color:rgba(255,255,255,0.5); padding:10px;">
                 👆 Balayez l'écran vers la gauche ou la droite pour changer de titre
             </div>
+        </div>
+
         <!-- MODAL: VibeTube Video Player Overlay -->
         <div id="modal-vibetube-player" class="modal-overlay hidden">
             <div class="vibetube-player-container">
@@ -2707,6 +2771,23 @@
                             <div id="vibetube-channel-name" class="vibetube-channel-name">Nom de la chaîne</div>
                             <div id="vibetube-video-stats" class="vibetube-video-stats">Vues • Date</div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: VibeTube Add to Playlist Dialog -->
+        <div id="modal-vibetube-playlist" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width:420px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Enregistrer dans une playlist</h3>
+                    <button type="button" class="icon-btn modal-close-btn" onclick="window.App && window.App.closeVibeTubePlaylistModal()">✕</button>
+                </div>
+                <div class="modal-body" style="padding:16px 20px;">
+                    <div id="vibetube-playlist-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; margin-bottom:16px;"></div>
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:14px;">
+                        <input type="text" id="vibetube-new-playlist-input" placeholder="Nouvelle playlist..." style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; font-size:14px; margin-bottom:10px;">
+                        <button type="button" class="btn primary" style="width:100%;" onclick="window.App && window.App.createNewVibeTubePlaylist()">+ Créer la playlist</button>
                     </div>
                 </div>
             </div>
