@@ -1792,7 +1792,7 @@ async function ensureYtDlp() {
                     console.log('⬇️ yt-dlp introuvable, téléchargement automatique vers /tmp/yt-dlp...');
                     try {
                         const { execSync } = require('child_process');
-                        execSync(`curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "${tmpPath}" && chmod a+rx "${tmpPath}"`, { timeout: 45000 });
+                        execSync(`curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o "${tmpPath}" && chmod a+rx "${tmpPath}"`, { timeout: 45000 });
                         console.log('✅ yt-dlp téléchargé et prêt dans /tmp/yt-dlp !');
                     } catch (e) {
                         console.error('❌ Échec du téléchargement de yt-dlp:', e.message);
@@ -1809,7 +1809,7 @@ async function ensureYtDlp() {
                 if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
                 try {
                     const { execSync } = require('child_process');
-                    execSync(`curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "${bundledPath}" && chmod a+rx "${bundledPath}"`, { timeout: 45000 });
+                    execSync(`curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o "${bundledPath}" && chmod a+rx "${bundledPath}"`, { timeout: 45000 });
                 } catch (e) {
                     console.error('❌ Échec téléchargement local yt-dlp:', e.message);
                 }
