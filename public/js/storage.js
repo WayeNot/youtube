@@ -48,6 +48,12 @@ const Storage = {
     }
   },
 
+  setUser(user) {
+    if (user) {
+      localStorage.setItem(this.KEYS.AUTH_USER, JSON.stringify(user));
+    }
+  },
+
   isLoggedIn() {
     return !!this.getToken() && !this.isGuest();
   },

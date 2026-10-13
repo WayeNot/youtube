@@ -203,7 +203,7 @@ const App = {
         bindDOM() {
             this.dom = {
                 // App container & Views
-                appSidebar: document.getElementById('app-sidebar'),
+                appSidebar: document.getElementById('app-sidebar') || document.getElementById('vibestream-sidebar') || document.querySelector('.app-sidebar'),
                 sidebarToggleBtn: document.getElementById('sidebar-toggle-btn'),
                 brandHomeBtn: document.getElementById('brand-home-btn'),
                 ambientGlow: document.getElementById('ambient-glow'),
@@ -535,7 +535,12 @@ const App = {
             // Sidebar Toggle
             if (this.dom.sidebarToggleBtn) {
                 this.dom.sidebarToggleBtn.addEventListener('click', () => {
-                    this.dom.appSidebar.classList.toggle('collapsed');
+                    const sidebars = document.querySelectorAll('.app-sidebar');
+                    if (sidebars && sidebars.length > 0) {
+                        sidebars.forEach(sb => sb.classList.toggle('collapsed'));
+                    } else if (this.dom.appSidebar) {
+                        this.dom.appSidebar.classList.toggle('collapsed');
+                    }
                 });
             }
 
@@ -7622,12 +7627,23 @@ const App = {
             admin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>',
             vip: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6.4-4.8-6.4 4.8 2.4-7.2-6-4.8h7.6z"/></svg>',
             pioneer: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1c1.8-.45 3.19-1.93 3.61-3.96C19.08 11.63 21 9.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>',
-            melophile: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+            melophile: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3c3.08 0 5.5 2.42 5.5 5.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
             curator: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h3v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h3c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9z"/></svg>',
             explorer: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 21h-1l1-7H7.5c-.88 0-.33-.75-.31-.78C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.13L11 21z"/></svg>',
             influencer: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>',
             newbie: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.09 9.09 2 12l7.09 2.91L12 22l2.91-7.09L22 12l-7.09-2.91z"/></svg>',
             default: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>'
+        },
+
+        saveUserSession(user) {
+            if (!user) return;
+            if (typeof Storage !== 'undefined' && typeof Storage.setUser === 'function') {
+                Storage.setUser(user);
+            } else {
+                try {
+                    localStorage.setItem('ytm_auth_user', JSON.stringify(user));
+                } catch (e) {}
+            }
         },
 
         getBadgeSvg(b = {}) {
@@ -7769,7 +7785,7 @@ const App = {
                     const user = Storage.getUser();
                     if (user) {
                         user.social_links = socials;
-                        Storage.setUser(user);
+                        this.saveUserSession(user);
                     }
                     this.showToast('Réseaux gamer enregistrés avec succès ! 🎮');
                 } else {
@@ -7845,8 +7861,12 @@ const App = {
         stopBioAudio() {
             if (this.bioAudio) {
                 try {
+                    this.bioAudio.onplay = null;
+                    this.bioAudio.onpause = null;
+                    this.bioAudio.onerror = null;
                     this.bioAudio.pause();
-                    this.bioAudio.src = '';
+                    this.bioAudio.removeAttribute('src');
+                    this.bioAudio.load();
                 } catch (e) {}
                 this.bioAudio = null;
             }
@@ -8311,7 +8331,7 @@ const App = {
                         if (profile.badges) {
                             this.userAvailableBadges = profile.badges;
                         }
-                        Storage.setUser(curUser);
+                        this.saveUserSession(curUser);
                         this.populateBioStudioFields(curUser.bio_config || {}, curUser);
                     }
                 }).catch(e => console.warn('Could not refresh bio studio from server:', e));
@@ -8529,8 +8549,11 @@ const App = {
         stopBioTrackPreview() {
             if (this.bioPreviewAudio) {
                 try {
+                    this.bioPreviewAudio.onended = null;
+                    this.bioPreviewAudio.onerror = null;
                     this.bioPreviewAudio.pause();
-                    this.bioPreviewAudio.src = '';
+                    this.bioPreviewAudio.removeAttribute('src');
+                    this.bioPreviewAudio.load();
                 } catch (e) {}
                 this.bioPreviewAudio = null;
             }
@@ -8760,7 +8783,7 @@ const App = {
                         if (config.bioDesc && (!user.bio || !user.bio.trim())) {
                             user.bio = config.bioDesc;
                         }
-                        Storage.setUser(user);
+                        this.saveUserSession(user);
                         this.populateBioStudioFields(user.bio_config, user);
                     }
                     this.showToast('Page guns.lol sauvegardée avec succès ! ⚡');
