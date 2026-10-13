@@ -2297,68 +2297,162 @@
 
         <!-- MODAL: Authentification (Connexion, Inscription, Invité) -->
         <div id="modal-auth" class="modal-overlay hidden">
-            <div class="modal-card auth-modal-card">
-                <div class="modal-header">
-                    <h3 id="auth-modal-title">🔐 Connexion</h3>
-                    <button class="icon-btn close-modal-btn"
-                        onclick="document.getElementById('modal-auth').classList.add('hidden')">
-                        <svg viewBox="0 0 24 24">
-                            <path
+            <div class="modal-card auth-modal-card modern-auth-card">
+                <!-- Ambient Top Glow Effect -->
+                <div class="auth-card-glow"></div>
+
+                <div class="modal-header auth-modal-header">
+                    <div class="auth-brand-badge">
+                        <div class="auth-brand-icon">
+                            <svg viewBox="0 0 24 24" width="22" height="22">
+                                <circle cx="12" cy="12" r="10" fill="#ff0033" />
+                                <polygon points="9.5,7.5 16.5,12 9.5,16.5" fill="#ffffff" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 id="auth-modal-title" class="auth-modal-title">Connexion à YouTube Music</h3>
+                            <p class="auth-brand-subtitle" id="auth-mode-subtitle">Synchronisez vos favoris, écoutes et playlists</p>
+                        </div>
+                    </div>
+                    <button class="icon-btn close-modal-btn auth-close-btn"
+                        onclick="document.getElementById('modal-auth').classList.add('hidden')"
+                        aria-label="Fermer">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor"
                                 d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                         </svg>
                     </button>
                 </div>
-                <div class="modal-body">
+
+                <div class="modal-body auth-modal-body">
+                    <!-- Statut si déjà connecté -->
                     <div id="auth-status-box" class="auth-status-box hidden">
-                        <p id="auth-status-msg"></p>
-                        <button id="auth-logout-btn" class="btn secondary full-width"
-                            onclick="window.Storage && window.Storage.logout(); window.App && window.App.closeAuthModal(); window.App && window.App.showToast('Déconnecté');">Se
-                            déconnecter</button>
+                        <div class="auth-user-badge">
+                            <div class="auth-user-avatar" id="auth-status-avatar">👤</div>
+                            <div class="auth-user-info">
+                                <span class="auth-user-state">Session active</span>
+                                <p id="auth-status-msg" class="auth-user-name"></p>
+                            </div>
+                        </div>
+                        <button id="auth-logout-btn" class="btn secondary full-width auth-logout-btn"
+                            onclick="window.Storage && window.Storage.logout(); window.App && window.App.closeAuthModal(); window.App && window.App.showToast('Déconnecté');">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                            </svg>
+                            <span>Se déconnecter</span>
+                        </button>
                     </div>
 
+                    <!-- Formulaire Connexion / Inscription -->
                     <form id="auth-form"
                         onsubmit="event.preventDefault(); window.App && window.App.handleAuthSubmit();">
-                        <div class="auth-tabs">
-                            <button type="button" class="auth-tab-btn active" id="auth-tab-login"
-                                onclick="window.App && window.App.switchAuthTab('login')">Se connecter</button>
-                            <button type="button" class="auth-tab-btn" id="auth-tab-register"
-                                onclick="window.App && window.App.switchAuthTab('register')">Créer un compte</button>
+                        <!-- Switcher Tabs modernisés -->
+                        <div class="auth-tabs-wrapper">
+                            <div class="auth-tabs">
+                                <button type="button" class="auth-tab-btn active" id="auth-tab-login"
+                                    onclick="window.App && window.App.switchAuthTab('login')">
+                                    <span>Se connecter</span>
+                                </button>
+                                <button type="button" class="auth-tab-btn" id="auth-tab-register"
+                                    onclick="window.App && window.App.switchAuthTab('register')">
+                                    <span>Créer un compte</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <p class="auth-desc" id="auth-mode-desc">Connectez-vous pour synchroniser vos playlists et
-                            favoris automatiquement.</p>
+                        <p class="auth-desc" id="auth-mode-desc">
+                            Accédez à votre bibliothèque musicale partout avec la synchronisation Cloud instantanée.
+                        </p>
 
-                        <div class="input-row" style="margin-top: 14px;">
-                            <input type="text" id="auth-username-input" placeholder="Nom d'utilisateur" required
-                                autocomplete="username" minlength="2">
+                        <!-- Champ Pseudo -->
+                        <div class="auth-field-group">
+                            <label class="auth-field-label" for="auth-username-input">Nom d'utilisateur</label>
+                            <div class="auth-input-wrapper">
+                                <svg class="auth-input-icon" viewBox="0 0 24 24" width="18" height="18">
+                                    <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
+                                <input type="text" id="auth-username-input" class="auth-text-input"
+                                    placeholder="Ex: musiclover" required autocomplete="username" minlength="3" maxlength="30">
+                            </div>
                         </div>
-                        <div class="input-row" style="margin-top: 10px;">
-                            <input type="password" id="auth-password-input" placeholder="Mot de passe" required
-                                autocomplete="current-password" minlength="4">
+
+                        <!-- Champ Mot de passe -->
+                        <div class="auth-field-group" style="margin-top: 14px;">
+                            <div class="auth-field-header">
+                                <label class="auth-field-label" for="auth-password-input">Mot de passe</label>
+                                <span class="auth-password-hint" id="auth-password-req">Min. 6 caractères</span>
+                            </div>
+                            <div class="auth-input-wrapper">
+                                <svg class="auth-input-icon" viewBox="0 0 24 24" width="18" height="18">
+                                    <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                                </svg>
+                                <input type="password" id="auth-password-input" class="auth-text-input"
+                                    placeholder="••••••••••••" required autocomplete="current-password" minlength="4">
+                                <button type="button" id="auth-toggle-password-btn" class="auth-eye-btn"
+                                    onclick="window.App && window.App.togglePasswordVisibility('auth-password-input', this)"
+                                    aria-label="Afficher/masquer le mot de passe" title="Afficher/masquer">
+                                    <svg class="eye-open-icon" viewBox="0 0 24 24" width="18" height="18">
+                                        <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                    <svg class="eye-closed-icon hidden" viewBox="0 0 24 24" width="18" height="18">
+                                        <path fill="currentColor" d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.44-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
-                        <div id="auth-error-msg" class="auth-error hidden"></div>
+                        <!-- Jauge de solidité du mot de passe (mode Inscription) -->
+                        <div id="auth-password-strength-container" class="auth-strength-container hidden">
+                            <div class="auth-strength-track">
+                                <div id="auth-strength-bar" class="auth-strength-bar"></div>
+                            </div>
+                            <div class="auth-strength-labels">
+                                <span class="auth-strength-title">Force :</span>
+                                <span id="auth-strength-text" class="auth-strength-text">Faible</span>
+                            </div>
+                        </div>
 
-                        <button type="submit" id="auth-submit-btn" class="btn primary full-width"
-                            style="margin-top: 16px;">
+                        <!-- Options : Se souvenir de moi -->
+                        <div class="auth-options-row">
+                            <label class="auth-checkbox-label">
+                                <input type="checkbox" id="auth-remember-me" checked>
+                                <span class="custom-checkbox-box"></span>
+                                <span class="auth-checkbox-text">Rester connecté</span>
+                            </label>
+                            <span class="auth-security-chip" title="Chiffrement bcrypt & JWT sécurisé">
+                                <svg viewBox="0 0 24 24" width="12" height="12">
+                                    <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                                </svg>
+                                <span>Sécurisé</span>
+                            </span>
+                        </div>
+
+                        <!-- Message d'erreur dynamique -->
+                        <div id="auth-error-msg" class="auth-error hidden" role="alert"></div>
+
+                        <!-- Bouton de soumission -->
+                        <button type="submit" id="auth-submit-btn" class="btn primary full-width auth-submit-btn"
+                            style="margin-top: 14px;">
+                            <span id="auth-submit-spinner" class="auth-btn-spinner hidden"></span>
                             <span id="auth-submit-label">Se connecter</span>
                         </button>
                     </form>
 
+                    <!-- Divider Visuel -->
                     <div class="auth-divider">
-                        <span>OU</span>
+                        <span>OU CONTINUER SANS COMPTE</span>
                     </div>
 
-                    <button type="button" id="auth-guest-btn" class="btn secondary full-width"
+                    <!-- Mode Invité -->
+                    <button type="button" id="auth-guest-btn" class="btn secondary full-width auth-guest-btn"
                         onclick="window.App && window.App.continueAsGuest()">
-                        <svg viewBox="0 0 24 24">
-                            <path
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor"
                                 d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
                         </svg>
                         <span>Continuer en tant qu'invité</span>
                     </button>
-                    <p class="auth-guest-hint">En mode invité, vous pouvez tout écouter et créer des playlists locales
-                        sans compte. Les données ne seront pas sauvegardées sur le cloud.</p>
+                    <p class="auth-guest-hint">Écoute illimitée et playlists locales sans inscription. Les favoris restent enregistrés sur votre appareil.</p>
                 </div>
             </div>
         </div>

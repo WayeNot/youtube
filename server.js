@@ -2144,18 +2144,55 @@ function authMiddleware(req, res, next) {
     }
 }
 
-// 1. Register User (Username + Password only)
+// In-memory brute-force protection for Auth routes
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkLoginRateLimit(identifier) {
+    const now = Date.now();
+    const record = loginAttempts.get(identifier);
+    if (!record) return { allowed: true };
+    if (now > record.resetAt) {
+        loginAttempts.delete(identifier);
+        return { allowed: true };
+    }
+    if (record.count >= MAX_LOGIN_ATTEMPTS) {
+        const remainingMinutes = Math.ceil((record.resetAt - now) / 60000);
+        return {
+            allowed: false,
+            message: `Trop de tentatives de connexion échouées. Réessayez dans ${remainingMinutes} minute(s).`
+        };
+    }
+    return { allowed: true };
+}
+
+function recordLoginFailure(identifier) {
+    const now = Date.now();
+    const record = loginAttempts.get(identifier) || { count: 0, resetAt: now + LOGIN_LOCKOUT_MS };
+    record.count += 1;
+    loginAttempts.set(identifier, record);
+}
+
+function clearLoginFailures(identifier) {
+    loginAttempts.delete(identifier);
+}
+
+// 1. Register User (Username + Password)
 app.post('/api/auth/register', async (req, res) => {
     const { username, password } = req.body || {};
     if (!username || !password) {
         return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis' });
     }
-    const cleanUsername = username.trim();
-    if (cleanUsername.length < 2) {
-        return res.status(400).json({ error: 'Le nom d\'utilisateur doit contenir au moins 2 caractères' });
+    const cleanUsername = String(username).trim();
+    if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+        return res.status(400).json({ error: 'Le pseudo doit comporter entre 3 et 30 caractères.' });
     }
-    if (password.length < 3) {
-        return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 3 caractères' });
+    if (!/^[a-zA-Z0-9_\-\.]+$/.test(cleanUsername)) {
+        return res.status(400).json({ error: 'Le pseudo ne peut contenir que des lettres, chiffres, tirets et points.' });
+    }
+    if (typeof password !== 'string' || password.length < 6) {
+        return res.status(400).json({ error: 'Le mot de passe doit comporter au moins 6 caractères pour des raisons de sécurité.' });
     }
 
     try {
@@ -2191,18 +2228,31 @@ app.post('/api/auth/login', async (req, res) => {
     if (!username || !password) {
         return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis' });
     }
-    const cleanUsername = username.trim();
+    const cleanUsername = String(username).trim();
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown-ip';
+    const rateLimitKey = `${clientIp}_${cleanUsername.toLowerCase()}`;
+
+    // Rate limit check
+    const rateLimitStatus = checkLoginRateLimit(rateLimitKey);
+    if (!rateLimitStatus.allowed) {
+        return res.status(429).json({ error: rateLimitStatus.message });
+    }
 
     try {
         const user = await db.findUserByUsername(cleanUsername);
         if (!user) {
+            recordLoginFailure(rateLimitKey);
             return res.status(401).json({ error: 'Nom d\'utilisateur ou mot de passe incorrect' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
+            recordLoginFailure(rateLimitKey);
             return res.status(401).json({ error: 'Nom d\'utilisateur ou mot de passe incorrect' });
         }
+
+        // Login succeeded, clear failures
+        clearLoginFailures(rateLimitKey);
 
         const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, { expiresIn: '30d' });
 

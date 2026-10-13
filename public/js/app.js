@@ -927,6 +927,15 @@ const App = {
                 });
             });
 
+            // Live password strength feedback on input
+            if (this.dom.authPasswordInput) {
+                this.dom.authPasswordInput.addEventListener('input', (e) => {
+                    if (this.authMode === 'register') {
+                        this.evaluatePasswordStrength(e.target.value);
+                    }
+                });
+            }
+
             // Search Filter Pills (Tous, Titres, Artistes)
             document.querySelectorAll('.filter-pill').forEach((pill) => {
                 pill.addEventListener('click', () => {
@@ -5241,14 +5250,18 @@ const App = {
         updateAuthModalView() {
             if (Storage.isLoggedIn()) {
                 const u = Storage.getUser();
-                this.dom.authStatusBox.classList.remove('hidden');
-                this.dom.authStatusMsg.textContent = `Connecté en tant que "${u ? u.username : 'utilisateur'}" • Synchronisation Cloud active ☁️`;
-                this.dom.authForm.classList.add('hidden');
+                if (this.dom.authStatusBox) this.dom.authStatusBox.classList.remove('hidden');
+                if (this.dom.authStatusMsg) this.dom.authStatusMsg.textContent = `${u ? u.username : 'utilisateur'}`;
+                const avatarEl = document.getElementById('auth-status-avatar');
+                if (avatarEl) {
+                    avatarEl.textContent = (u && u.username) ? u.username.charAt(0).toUpperCase() : '👤';
+                }
+                if (this.dom.authForm) this.dom.authForm.classList.add('hidden');
             } else {
-                this.dom.authStatusBox.classList.add('hidden');
-                this.dom.authForm.classList.remove('hidden');
+                if (this.dom.authStatusBox) this.dom.authStatusBox.classList.add('hidden');
+                if (this.dom.authForm) this.dom.authForm.classList.remove('hidden');
             }
-            this.dom.authErrorMsg.classList.add('hidden');
+            if (this.dom.authErrorMsg) this.dom.authErrorMsg.classList.add('hidden');
         },
 
         switchAuthTab(mode) {
@@ -5256,28 +5269,126 @@ const App = {
             const isLogin = mode === 'login';
             if (this.dom.authTabLogin) this.dom.authTabLogin.classList.toggle('active', isLogin);
             if (this.dom.authTabRegister) this.dom.authTabRegister.classList.toggle('active', !isLogin);
-            if (this.dom.authModalTitle) this.dom.authModalTitle.textContent = isLogin ? '🔐 Connexion' : '✨ Créer un compte';
+            
+            const subtitle = document.getElementById('auth-mode-subtitle');
+            if (this.dom.authModalTitle) {
+                this.dom.authModalTitle.textContent = isLogin ? 'Connexion à YouTube Music' : 'Créer un compte';
+            }
+            if (subtitle) {
+                subtitle.textContent = isLogin
+                    ? 'Synchronisez vos favoris, écoutes et playlists'
+                    : 'Rejoignez la communauté et gardez votre musique partout';
+            }
             if (this.dom.authModeDesc) {
                 this.dom.authModeDesc.textContent = isLogin
-                    ? 'Connectez-vous pour synchroniser vos playlists et favoris automatiquement sur la base de données.'
-                    : 'Créez un compte rapide (juste pseudo & mot de passe, aucun email requis) avec sauvegarde BDD.';
+                    ? 'Accédez à votre bibliothèque musicale partout avec la synchronisation Cloud instantanée.'
+                    : 'Inscription rapide (sans email obligatoire) avec sauvegarde permanente de votre musique sur NeonDB.';
             }
-            if (this.dom.authSubmitLabel) this.dom.authSubmitLabel.textContent = isLogin ? 'Se connecter' : 'Créer mon compte';
+            if (this.dom.authSubmitLabel) {
+                this.dom.authSubmitLabel.textContent = isLogin ? 'Se connecter' : 'Créer mon compte';
+            }
+            
+            // Password strength container visibility
+            const strengthContainer = document.getElementById('auth-password-strength-container');
+            const passwordReq = document.getElementById('auth-password-req');
+            if (strengthContainer) {
+                strengthContainer.classList.toggle('hidden', isLogin);
+            }
+            if (passwordReq) {
+                passwordReq.textContent = isLogin ? 'Mot de passe de votre compte' : 'Min. 6 caractères';
+            }
+
             if (this.dom.authErrorMsg) this.dom.authErrorMsg.classList.add('hidden');
+        },
+
+        togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+
+            const openIcon = btn.querySelector('.eye-open-icon');
+            const closedIcon = btn.querySelector('.eye-closed-icon');
+            if (openIcon && closedIcon) {
+                openIcon.classList.toggle('hidden', isPassword);
+                closedIcon.classList.toggle('hidden', !isPassword);
+            }
+        },
+
+        evaluatePasswordStrength(password) {
+            const bar = document.getElementById('auth-strength-bar');
+            const text = document.getElementById('auth-strength-text');
+            if (!bar || !text) return;
+
+            if (!password || password.length === 0) {
+                bar.style.width = '0%';
+                text.textContent = 'Vide';
+                text.style.color = '#7c7c82';
+                return;
+            }
+
+            let score = 0;
+            if (password.length >= 6) score += 1;
+            if (password.length >= 9) score += 1;
+            if (/[0-9]/.test(password)) score += 1;
+            if (/[^A-Za-z0-9]/.test(password) || (/[A-Z]/.test(password) && /[a-z]/.test(password))) score += 1;
+
+            if (score <= 1) {
+                bar.style.width = '25%';
+                bar.style.backgroundColor = '#ff453a';
+                text.textContent = 'Faible';
+                text.style.color = '#ff453a';
+            } else if (score === 2) {
+                bar.style.width = '55%';
+                bar.style.backgroundColor = '#ff9f0a';
+                text.textContent = 'Moyen';
+                text.style.color = '#ff9f0a';
+            } else if (score === 3) {
+                bar.style.width = '80%';
+                bar.style.backgroundColor = '#30d158';
+                text.textContent = 'Bon';
+                text.style.color = '#30d158';
+            } else {
+                bar.style.width = '100%';
+                bar.style.backgroundColor = '#00d084';
+                text.textContent = 'Excellent';
+                text.style.color = '#00d084';
+            }
         },
 
         async handleAuthSubmit() {
             const username = (this.dom.authUsernameInput.value || '').trim();
             const password = (this.dom.authPasswordInput.value || '').trim();
+            const rememberMe = document.getElementById('auth-remember-me')?.checked ?? true;
 
             if (!username || !password) {
-                this.showAuthError('Veuillez remplir le pseudo et le mot de passe.');
+                this.showAuthError('Veuillez remplir le nom d\'utilisateur et le mot de passe.');
                 return;
+            }
+
+            if (this.authMode === 'register') {
+                if (username.length < 3) {
+                    this.showAuthError('Le nom d\'utilisateur doit comporter au moins 3 caractères.');
+                    return;
+                }
+                if (!/^[a-zA-Z0-9_\-\.]+$/.test(username)) {
+                    this.showAuthError('Le nom d\'utilisateur ne doit contenir que des lettres, chiffres, tirets et points.');
+                    return;
+                }
+                if (password.length < 6) {
+                    this.showAuthError('Le mot de passe doit comporter au moins 6 caractères pour votre sécurité.');
+                    return;
+                }
             }
 
             this.dom.authErrorMsg.classList.add('hidden');
             const submitBtn = document.getElementById('auth-submit-btn');
+            const spinner = document.getElementById('auth-submit-spinner');
+            const submitLabel = document.getElementById('auth-submit-label');
+            
             if (submitBtn) submitBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (submitLabel) submitLabel.textContent = this.authMode === 'register' ? 'Création en cours...' : 'Connexion...';
 
             try {
                 let res;
@@ -5291,12 +5402,19 @@ const App = {
 
                 // Save session & pull data
                 Storage.setSession(res.token, res.user);
+                if (!rememberMe) {
+                    sessionStorage.setItem('ytm_temp_session', 'true');
+                }
                 await Storage.pullFromCloud();
                 this.closeAuthModal();
             } catch (err) {
                 this.showAuthError(err.message || 'Erreur lors de l\'authentification');
             } finally {
                 if (submitBtn) submitBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+                if (submitLabel) {
+                    submitLabel.textContent = this.authMode === 'register' ? 'Créer mon compte' : 'Se connecter';
+                }
             }
         },
 
