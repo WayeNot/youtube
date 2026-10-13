@@ -4031,6 +4031,13 @@ const App = {
                     if (this.dom.authBtnAvatar) this.dom.authBtnAvatar.classList.add('hidden');
                     if (this.dom.authBtnIcon) this.dom.authBtnIcon.classList.remove('hidden');
                 }
+
+                const adminLink = document.getElementById('dropdown-admin-link');
+                const userRole = (u?.role || 'user').toLowerCase();
+                const canAccessAdmin = userRole === 'admin' || userRole === 'mod';
+                if (adminLink) {
+                    adminLink.classList.toggle('hidden', !canAccessAdmin);
+                }
             } else if (Storage.isGuest()) {
                 this.dom.authBtnLabel.textContent = 'Invité';
                 this.dom.authBtn.classList.remove('logged-in');
@@ -4038,6 +4045,8 @@ const App = {
                 if (this.dom.authBtnAvatar) this.dom.authBtnAvatar.classList.add('hidden');
                 if (this.dom.authBtnIcon) this.dom.authBtnIcon.classList.remove('hidden');
                 if (this.dom.dropdownUsernameDisplay) this.dom.dropdownUsernameDisplay.textContent = 'Invité';
+                const adminLink = document.getElementById('dropdown-admin-link');
+                if (adminLink) adminLink.classList.add('hidden');
             } else {
                 this.dom.authBtnLabel.textContent = 'Connexion';
                 this.dom.authBtn.classList.remove('logged-in');
@@ -4045,6 +4054,8 @@ const App = {
                 if (this.dom.authBtnAvatar) this.dom.authBtnAvatar.classList.add('hidden');
                 if (this.dom.authBtnIcon) this.dom.authBtnIcon.classList.remove('hidden');
                 if (this.dom.dropdownUsernameDisplay) this.dom.dropdownUsernameDisplay.textContent = 'Connexion';
+                const adminLink = document.getElementById('dropdown-admin-link');
+                if (adminLink) adminLink.classList.add('hidden');
             }
         },
 
@@ -4642,7 +4653,7 @@ const App = {
                     this.updateAuthUI();
                     const preview = document.getElementById('settings-avatar-preview');
                     if (preview && json.user.avatar) preview.src = json.user.avatar;
-                    this.showToast('Profil mis à jour avec succès sur NeonDB ! 🎉');
+                    this.showToast('Profil mis à jour avec succès sur le Cloud ! 🎉');
                 } else {
                     this.showToast(json.error || 'Erreur lors de la sauvegarde du profil');
                 }
@@ -5282,7 +5293,7 @@ const App = {
             if (this.dom.authModeDesc) {
                 this.dom.authModeDesc.textContent = isLogin
                     ? 'Accédez à votre bibliothèque musicale partout avec la synchronisation Cloud instantanée.'
-                    : 'Inscription rapide (sans email obligatoire) avec sauvegarde permanente de votre musique sur NeonDB.';
+                    : 'Inscription rapide (sans email obligatoire) avec sauvegarde permanente de votre musique sur votre compte Cloud.';
             }
             if (this.dom.authSubmitLabel) {
                 this.dom.authSubmitLabel.textContent = isLogin ? 'Se connecter' : 'Créer mon compte';
@@ -7136,7 +7147,7 @@ const App = {
             const tbody = document.getElementById('admin-users-tbody');
             if (!tbody) return;
 
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Chargement des utilisateurs NeonDB...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Chargement des utilisateurs...</td></tr>';
 
             try {
                 const res = await API.getAdminUsers(100);

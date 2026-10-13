@@ -36,7 +36,7 @@ const Storage = {
         if (parts.length === 3) {
           const payload = JSON.parse(atob(parts[1]));
           if (payload && payload.username) {
-            const fallback = { id: payload.id, username: payload.username };
+            const fallback = { id: payload.id, username: payload.username, role: payload.role || 'user' };
             localStorage.setItem(this.KEYS.AUTH_USER, JSON.stringify(fallback));
             return fallback;
           }

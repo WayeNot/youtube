@@ -3233,10 +3233,29 @@ textarea#import-text-input:focus {
   font-size: 13.5px;
   padding: 11px 12px 11px 10px;
   font-family: inherit;
+  color-scheme: dark;
 }
 
 .auth-text-input::placeholder {
   color: rgba(255, 255, 255, 0.3);
+}
+
+/* Override default browser autocomplete/autofill light background */
+.auth-text-input:-webkit-autofill,
+.auth-text-input:-webkit-autofill:hover,
+.auth-text-input:-webkit-autofill:focus,
+.auth-text-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 1000px #18181b inset !important;
+  box-shadow: 0 0 0 1000px #18181b inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #ffffff;
+  border-radius: 8px;
+}
+
+.auth-text-input:autofill {
+  color: #ffffff !important;
+  background-color: #18181b !important;
 }
 
 .auth-eye-btn {

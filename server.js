@@ -2213,7 +2213,7 @@ app.post('/api/auth/register', async (req, res) => {
         res.json({
             success: true,
             token,
-            user: { id: userId, username: cleanUsername },
+            user: { id: userId, username: cleanUsername, role: 'user' },
             data: { favorites: [], playlists: [], history: [], recent_searches: [], settings: {} }
         });
     } catch (err) {
@@ -2254,7 +2254,7 @@ app.post('/api/auth/login', async (req, res) => {
         // Login succeeded, clear failures
         clearLoginFailures(rateLimitKey);
 
-        const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, { expiresIn: '30d' });
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role || 'user' }, config.jwtSecret, { expiresIn: '30d' });
 
         // Fetch user saved data
         const userData = (await db.getUserData(user.id)) || {
@@ -2268,7 +2268,7 @@ app.post('/api/auth/login', async (req, res) => {
         res.json({
             success: true,
             token,
-            user: { id: user.id, username: user.username },
+            user: { id: user.id, username: user.username, avatar: user.avatar || '', role: user.role || 'user' },
             data: userData
         });
     } catch (err) {
@@ -2297,6 +2297,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
                 username: user.username,
                 avatar: user.avatar || '',
                 bio: user.bio || '',
+                role: user.role || 'user',
                 isPublic: user.is_public !== false && user.is_public !== 0,
                 createdAt: Number(user.created_at)
             },

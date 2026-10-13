@@ -162,7 +162,7 @@
                             </svg>
                             <span>Paramètres</span>
                         </a>
-                        <a href="/admin" class="dropdown-item" id="dropdown-admin-link"
+                        <a href="/admin" class="dropdown-item hidden" id="dropdown-admin-link"
                             onclick="event.preventDefault(); window.App && window.App.openAdminPanel()">
                             <span style="font-size:16px;">🛡️</span>
                             <span>Administration RBAC</span>
@@ -798,7 +798,7 @@
                         <div id="admin-tab-maintenance" class="admin-tab-content hidden">
                             <div class="admin-panel-card">
                                 <h3>⚙️ Infrastructure & Cache Haute Performance</h3>
-                                <p style="color:var(--text-secondary); font-size:14px; margin-top:6px; line-height:1.5;">Gérez la mémoire vive, les flux CDN YouTube et l'intégrité de la base de données NeonDB.</p>
+                                <p style="color:var(--text-secondary); font-size:14px; margin-top:6px; line-height:1.5;">Gérez la mémoire vive, les flux CDN YouTube et l'intégrité de la base de données Cloud.</p>
                                 
                                 <div class="admin-maintenance-grid" style="margin-top:20px;">
                                     <div class="admin-maint-box">
@@ -843,7 +843,7 @@
                     <div class="library-header">
                         <div>
                             <h1 class="section-title">📚 Votre Bibliothèque</h1>
-                            <p class="section-subtitle">Playlists, favoris et historique synchronisés sur NeonDB.</p>
+                            <p class="section-subtitle">Playlists, favoris et historique synchronisés dans le Cloud.</p>
                         </div>
                         <div class="library-tabs-carousel-wrapper">
                             <button id="lib-tabs-prev-btn" class="icon-btn carousel-arrow-btn prev hidden" title="Défiler à gauche" onclick="document.querySelector('.library-tabs')?.scrollBy({left: -180, behavior: 'smooth'})">
@@ -1238,7 +1238,7 @@
                                 </div>
                                 <div class="profile-header-meta">
                                     <h4 id="settings-username-display">Mon Compte</h4>
-                                    <span class="user-dropdown-badge">Membre Cloud NeonDB</span>
+                                    <span class="user-dropdown-badge">Membre Cloud</span>
                                     <a href="/profile" id="settings-view-profile-btn" class="text-link-btn"
                                         style="margin-top: 6px;"
                                         onclick="window.App && window.App.openMyProfile(event)">
@@ -1426,13 +1426,13 @@
 
                     <!-- Setting Section: Base de données & Données -->
                     <div class="settings-group">
-                        <h3 class="settings-group-title">☁️ Données & Cloud NeonDB</h3>
+                        <h3 class="settings-group-title">☁️ Données & Synchronisation Cloud</h3>
                         <div class="settings-card">
                             <p class="settings-info-text">Toutes vos playlists créées, importées, titres likés et
-                                historiques sont automatiquement synchronisés sur votre base NeonDB PostgreSQL.</p>
+                                historiques sont automatiquement synchronisés sur votre espace Cloud sécurisé.</p>
                             <div class="settings-actions-row">
                                 <button class="btn secondary small"
-                                    onclick="window.Storage && window.Storage.pushToCloud(); window.App && window.App.showToast('Synchronisation forcée avec NeonDB !');">
+                                    onclick="window.Storage && window.Storage.pushToCloud(); window.App && window.App.showToast('Synchronisation Cloud effectuée !');">
                                     <svg viewBox="0 0 24 24">
                                         <path
                                             d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 13l-1.41-1.41L13 16.17V10h-2v6.17l-4.59-4.59L5 13l7 7 7-7z" />
