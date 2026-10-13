@@ -1034,10 +1034,13 @@
                                 </div>
                             </div>
 
-                            <!-- Tier 2: Quote Bio Card -->
-                            <div class="profile-bio-card">
-                                <div class="bio-quote-icon">
-                                    <svg viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z" fill="currentColor"/></svg>
+                            <!-- Tier 2: Profile Bio Showcase Card -->
+                            <div class="profile-bio-card" id="profile-bio-card">
+                                <div class="profile-bio-card-header">
+                                    <div class="profile-bio-header-badge">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                                        <span>Bio & Présentation</span>
+                                    </div>
                                 </div>
                                 <p id="profile-bio-text" class="profile-bio-text">Passionné de musique sur VibeStream.</p>
                             </div>
@@ -1660,6 +1663,16 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                            </div>
+
+                            <!-- Card 1b: Sélection des Badges Guns.lol -->
+                            <div class="settings-card bio-form-card" id="bio-badges-selector-card">
+                                <div class="bio-card-title-row">
+                                    <h3 class="bio-card-title">🏷️ Badges sur la page bio</h3>
+                                    <span class="bio-card-subbadge" id="bio-badges-count-badge">Affichage au choix</span>
+                                </div>
+                                <p class="bio-card-subdesc">Cochez ou décochez les badges que vous souhaitez afficher sur votre carte guns.lol.</p>
+                                <div class="bio-badges-selector-list" id="bio-studio-badges-selector"></div>
                             </div>
 
                             <!-- Card 2: Thème & Fond d'écran -->

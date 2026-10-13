@@ -2460,69 +2460,78 @@ app.put('/api/bio/config', authMiddleware, async (req, res) => {
             bioDesc: bioRaw.trim().slice(0, 200),
             bioText: bioRaw.trim().slice(0, 200),
             location: typeof rawConfig.location === 'string' ? rawConfig.location.trim().slice(0, 60) : '',
-            theme: ['dark_void', 'obsidian', 'minimal', 'cyberpunk', 'matrix', 'synthwave', 'crimson_shadow', 'midnight_blue'].includes(rawConfig.theme) ? rawConfig.theme : 'dark_void',
+            theme: ['dark_void', 'obsidian', 'minimal', 'cyberpunk', 'matrix', 'synthwave', 'crimson_shadow', 'midnight_blue', 'midnight_neon', 'anime_sunset', 'custom'].includes(rawConfig.theme) ? rawConfig.theme : 'dark_void',
             showViews: Boolean(rawConfig.showViews !== false)
         };
 
-        // VIP-exclusive features: wallpapers, custom audio, particles, card blur/opacity, neon glow
-        if (isVip) {
-            // Advanced themes allowed for VIP
-            if (['matrix', 'synthwave', 'cyberpunk', 'crimson_shadow', 'midnight_blue', 'midnight_neon', 'anime_sunset', 'custom'].includes(rawConfig.theme)) {
-                sanitized.theme = rawConfig.theme;
+        // Custom Background URL (image, gif, animated)
+        if (typeof rawConfig.customBgUrl === 'string') {
+            const bg = rawConfig.customBgUrl.trim();
+            if (!bg || /^https?:\/\//i.test(bg) || bg.startsWith('data:image/')) {
+                sanitized.customBgUrl = bg.slice(0, 500);
             }
+        }
+        sanitized.customBgType = ['image', 'animated', 'video'].includes(rawConfig.customBgType) ? rawConfig.customBgType : 'image';
 
-            // Custom Background URL (image, gif, animated)
-            if (typeof rawConfig.customBgUrl === 'string') {
-                const bg = rawConfig.customBgUrl.trim();
-                if (!bg || /^https?:\/\//i.test(bg) || bg.startsWith('data:image/')) {
-                    sanitized.customBgUrl = bg.slice(0, 500);
-                }
+        // Background Song / Audio (VibeStream stream or direct audio)
+        if (typeof rawConfig.customAudioUrl === 'string') {
+            const aud = rawConfig.customAudioUrl.trim();
+            if (!aud || /^https?:\/\//i.test(aud) || aud.startsWith('/api/stream')) {
+                sanitized.customAudioUrl = aud.slice(0, 500);
             }
-            sanitized.customBgType = ['image', 'animated', 'video'].includes(rawConfig.customBgType) ? rawConfig.customBgType : 'image';
+        }
+        if (typeof rawConfig.customAudioTitle === 'string') {
+            sanitized.customAudioTitle = rawConfig.customAudioTitle.trim().slice(0, 100);
+        }
+        sanitized.audioAutoplay = rawConfig.audioAutoplay !== false;
 
-            // Background Song / Audio
-            if (typeof rawConfig.customAudioUrl === 'string') {
-                const aud = rawConfig.customAudioUrl.trim();
-                if (!aud || /^https?:\/\//i.test(aud) || aud.startsWith('/api/stream')) {
-                    sanitized.customAudioUrl = aud.slice(0, 500);
-                }
-            }
-            if (typeof rawConfig.customAudioTitle === 'string') {
-                sanitized.customAudioTitle = rawConfig.customAudioTitle.trim().slice(0, 80);
-            }
-            sanitized.audioAutoplay = Boolean(rawConfig.audioAutoplay);
+        // Visual Effects (particles: snow, stars, rain, glow, none)
+        if (['snow', 'stars', 'rain', 'glow', 'none'].includes(rawConfig.effect)) {
+            sanitized.effect = rawConfig.effect;
+        } else {
+            sanitized.effect = 'none';
+        }
 
-            // Visual Effects (particles: snow, stars, rain, glow, none)
-            if (['snow', 'stars', 'rain', 'glow', 'none'].includes(rawConfig.effect)) {
-                sanitized.effect = rawConfig.effect;
-            } else {
-                sanitized.effect = 'none';
-            }
+        // Card customizer
+        if (typeof rawConfig.cardOpacity === 'number') {
+            sanitized.cardOpacity = Math.max(0.2, Math.min(1.0, rawConfig.cardOpacity));
+        }
+        if (typeof rawConfig.cardBlur === 'number') {
+            sanitized.cardBlur = Math.max(0, Math.min(50, rawConfig.cardBlur));
+        }
+        const glow = (typeof rawConfig.glowColor === 'string' ? rawConfig.glowColor : (typeof rawConfig.accentGlow === 'string' ? rawConfig.accentGlow : '')).trim();
+        if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(glow)) {
+            sanitized.glowColor = glow;
+            sanitized.accentGlow = glow;
+        } else {
+            sanitized.glowColor = '#ff0033';
+            sanitized.accentGlow = '#ff0033';
+        }
 
-            // Card customizer
-            if (typeof rawConfig.cardOpacity === 'number') {
-                sanitized.cardOpacity = Math.max(0.2, Math.min(1.0, rawConfig.cardOpacity));
-            }
-            if (typeof rawConfig.cardBlur === 'number') {
-                sanitized.cardBlur = Math.max(0, Math.min(50, rawConfig.cardBlur));
-            }
-            const glow = (typeof rawConfig.glowColor === 'string' ? rawConfig.glowColor : (typeof rawConfig.accentGlow === 'string' ? rawConfig.accentGlow : '')).trim();
-            if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(glow)) {
-                sanitized.glowColor = glow;
-                sanitized.accentGlow = glow;
-            } else {
-                sanitized.glowColor = '#ff0033';
-                sanitized.accentGlow = '#ff0033';
-            }
+        const deco = (typeof rawConfig.avatarDeco === 'string' ? rawConfig.avatarDeco : (typeof rawConfig.badgeDecoration === 'string' ? rawConfig.badgeDecoration : '')).trim();
+        if (['crown', 'fire', 'star', 'none'].includes(deco)) {
+            sanitized.avatarDeco = deco;
+            sanitized.badgeDecoration = deco;
+        } else {
+            sanitized.avatarDeco = 'none';
+            sanitized.badgeDecoration = 'none';
+        }
 
-            const deco = (typeof rawConfig.avatarDeco === 'string' ? rawConfig.avatarDeco : (typeof rawConfig.badgeDecoration === 'string' ? rawConfig.badgeDecoration : '')).trim();
-            if (['crown', 'fire', 'star', 'none'].includes(deco)) {
-                sanitized.avatarDeco = deco;
-                sanitized.badgeDecoration = deco;
-            } else {
-                sanitized.avatarDeco = 'none';
-                sanitized.badgeDecoration = 'none';
-            }
+        // Badges choice on guns.lol bio
+        if (Array.isArray(rawConfig.selectedBadges)) {
+            sanitized.selectedBadges = rawConfig.selectedBadges
+                .filter(b => typeof b === 'string')
+                .map(b => b.trim().slice(0, 50))
+                .slice(0, 30);
+        }
+
+        // If user profile bio is empty, auto-sync with guns.lol bio
+        if (sanitized.bioDesc && (!user.bio || !user.bio.trim())) {
+            await db.updateUserProfile(req.user.id, {
+                avatar: user.avatar,
+                bio: sanitized.bioDesc,
+                isPublic: user.is_public
+            }).catch(() => {});
         }
 
         await db.updateUserBioConfig(req.user.id, sanitized);

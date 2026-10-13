@@ -4127,7 +4127,20 @@ const App = {
                 this.switchView('profile', false);
 
                 this.dom.profileDisplayUsername.textContent = profile.username;
-                this.dom.profileBioText.textContent = profile.bio || 'Passionné de musique sur YouTube Music Maison.';
+                const isOwner = Boolean(profile.isOwner);
+                const rawBio = (profile.bio && profile.bio.trim()) || (profile.bioConfig && profile.bioConfig.bioDesc && profile.bioConfig.bioDesc.trim()) || '';
+                if (this.dom.profileBioText) {
+                    if (rawBio) {
+                        this.dom.profileBioText.textContent = rawBio;
+                        this.dom.profileBioText.classList.remove('bio-empty-placeholder');
+                    } else if (isOwner) {
+                        this.dom.profileBioText.innerHTML = `Aucune biographie rédigée pour le moment. <span class="profile-bio-add-hint" onclick="window.App && window.App.openSettings(event)">Ajouter une bio ✎</span>`;
+                        this.dom.profileBioText.classList.add('bio-empty-placeholder');
+                    } else {
+                        this.dom.profileBioText.textContent = "Cet utilisateur n'a pas encore rédigé de biographie.";
+                        this.dom.profileBioText.classList.add('bio-empty-placeholder');
+                    }
+                }
                 this.dom.profileStatLikes.textContent = profile.stats ? profile.stats.likesCount : 0;
                 this.dom.profileStatPlaylists.textContent = profile.stats ? profile.stats.playlistsCount : 0;
                 if (this.dom.profileStatHistory) {
@@ -4151,8 +4164,8 @@ const App = {
                 if (this.dom.profileBadgesRow) {
                     const badges = profile.badges || [];
                     this.dom.profileBadgesRow.innerHTML = badges.map(b => `
-                        <div class="loyalty-badge-pill ${b.type ? 'badge-type-' + b.type : ''}" title="${this.escapeHtml(b.desc)}">
-                            <span class="badge-icon">${b.icon}</span>
+                        <div class="loyalty-badge-pill ${b.type ? 'badge-type-' + b.type : ''}" title="${this.escapeHtml(b.desc || b.title)}">
+                            <span class="badge-icon">${this.getBadgeSvg ? this.getBadgeSvg(b) : (b.icon || '⭐')}</span>
                             <span class="badge-title">${this.escapeHtml(b.title)}</span>
                         </div>
                     `).join('');
@@ -7605,6 +7618,34 @@ const App = {
             telegram: '<svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.562 8.161c-.18.865-1.782 7.49-2.593 11.182-.343 1.562-1.026 1.83-1.728 1.186l-4.524-3.428-2.183 2.102c-.242.242-.446.446-.913.446l.325-4.61 8.39-7.58c.365-.325-.08-.506-.566-.182l-10.37 6.53-4.468-1.396c-.971-.304-.991-.971.203-1.438l17.466-6.73c.809-.304 1.517.182 1.253 1.488z"/></svg>'
         },
 
+        badgeSvgIcons: {
+            owner: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .55-.45 1-1 1H6c-.55 0-1-.45-1-1s.45-1 1-1h12c.55 0 1 .45 1 1z"/></svg>',
+            admin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>',
+            vip: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6.4-4.8-6.4 4.8 2.4-7.2-6-4.8h7.6z"/></svg>',
+            pioneer: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1c1.8-.45 3.19-1.93 3.61-3.96C19.08 11.63 21 9.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>',
+            melophile: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+            curator: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h3v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h3c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9z"/></svg>',
+            explorer: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 21h-1l1-7H7.5c-.88 0-.33-.75-.31-.78C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.13L11 21z"/></svg>',
+            influencer: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>',
+            newbie: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.09 9.09 2 12l7.09 2.91L12 22l2.91-7.09L22 12l-7.09-2.91z"/></svg>',
+            default: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>'
+        },
+
+        getBadgeSvg(b = {}) {
+            const id = (b.id || '').toLowerCase();
+            const type = (b.type || '').toLowerCase();
+            if (id === 'owner' || type === 'owner') return this.badgeSvgIcons.owner;
+            if (id === 'admin' || type === 'admin') return this.badgeSvgIcons.admin;
+            if (id === 'vip' || type === 'vip') return this.badgeSvgIcons.vip;
+            if (id === 'pioneer') return this.badgeSvgIcons.pioneer;
+            if (id === 'melophile') return this.badgeSvgIcons.melophile;
+            if (id === 'curator') return this.badgeSvgIcons.curator;
+            if (id === 'explorer') return this.badgeSvgIcons.explorer;
+            if (id === 'influencer') return this.badgeSvgIcons.influencer;
+            if (id === 'newbie') return this.badgeSvgIcons.newbie;
+            return this.badgeSvgIcons.default;
+        },
+
         renderProfileSocials(container, socials) {
             if (!container) return;
             if (!socials || typeof socials !== 'object' || Object.keys(socials).length === 0) {
@@ -7912,8 +7953,9 @@ const App = {
                     verifiedBadge.classList.toggle('hidden', !isVerified);
                 }
 
-                // Badges row (Sleek Guns.lol style icon chips)
-                this.renderBioBadges('bio-badges-row', profile.badges || [], isVip, profile.role);
+                // Badges row (Sleek Guns.lol style icon chips, respecting user choice)
+                const selectedBadgeIds = Array.isArray(cfg.selectedBadges) ? cfg.selectedBadges : null;
+                this.renderBioBadges('bio-badges-row', profile.badges || [], isVip, profile.role, selectedBadgeIds);
 
                 // Background / Theme
                 const bgEl = document.getElementById('bio-ambient-bg');
@@ -7996,26 +8038,135 @@ const App = {
                 this.showToast(url);
             }
         },
-
         bioPreviewAudio: null,
         bioMusicSearchDebounce: null,
+        userAvailableBadges: null,
 
-        renderBioBadges(containerId, badges = [], isVip = false, role = '') {
+        renderBioBadges(containerId, badges = [], isVip = false, role = '', selectedBadgeIds = null) {
             const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
             if (!container) return;
             if (!badges || !Array.isArray(badges) || badges.length === 0) {
                 container.innerHTML = '';
                 return;
             }
-            container.innerHTML = badges.map(b => {
-                const bType = b.type || (b.id === 'owner' ? 'owner' : (b.id === 'vip' ? 'vip' : (b.id === 'admin' ? 'admin' : '')));
+            let list = badges;
+            if (Array.isArray(selectedBadgeIds)) {
+                list = list.filter(b => selectedBadgeIds.includes(b.id));
+            }
+            if (list.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = list.map(b => {
+                const bType = b.type || (b.id === 'owner' ? 'owner' : (b.id === 'vip' ? 'vip' : (b.id === 'admin' ? 'admin' : (b.id || ''))));
                 const titleStr = `${b.title || 'Badge'}${b.desc ? ' • ' + b.desc : ''}`;
                 return `
-                    <div class="bio-badge-chip ${bType ? 'chip-' + bType : ''}" title="${this.escapeHtml(titleStr)}">
-                        <span class="bio-badge-icon">${b.icon || '⭐'}</span>
+                    <div class="bio-badge-chip chip-${bType}" title="${this.escapeHtml(titleStr)}">
+                        ${this.getBadgeSvg(b)}
                     </div>
                 `;
             }).join('');
+        },
+
+        getStudioAvailableBadges(user = {}) {
+            if (this.userAvailableBadges && Array.isArray(this.userAvailableBadges) && this.userAvailableBadges.length > 0) {
+                return this.userAvailableBadges;
+            }
+            const list = [];
+            const role = (user.role || '').toLowerCase();
+            let customBadges = [];
+            if (user.custom_badges) {
+                try {
+                    customBadges = typeof user.custom_badges === 'string' ? JSON.parse(user.custom_badges) : user.custom_badges;
+                } catch (e) { customBadges = []; }
+            }
+            const isVip = role === 'vip' || role === 'admin' || role === 'owner' || (Array.isArray(customBadges) && customBadges.some(b => (typeof b === 'string' ? b : b.id) === 'vip'));
+
+            if (role === 'owner') {
+                list.push({ id: 'owner', type: 'owner', title: 'Fondateur', desc: 'Créateur & Propriétaire de VibeStream' });
+            }
+            if (role === 'admin') {
+                list.push({ id: 'admin', type: 'admin', title: 'Administrateur', desc: 'Gestion de la communauté' });
+            }
+            if (isVip) {
+                list.push({ id: 'vip', type: 'vip', title: 'VIP Privilégié', desc: 'Membre VIP d\'honneur' });
+            }
+            if (Array.isArray(customBadges)) {
+                customBadges.forEach(b => {
+                    const bId = typeof b === 'string' ? b : b.id;
+                    if (bId && !list.some(x => x.id === bId) && bId !== 'vip') {
+                        list.push(typeof b === 'string' ? { id: b, title: b.toUpperCase(), desc: 'Badge exclusif' } : b);
+                    }
+                });
+            }
+            list.push({ id: 'pioneer', title: 'Pionnier', desc: 'Membre actif de la communauté' });
+            list.push({ id: 'melophile', title: 'Mélomane', desc: 'Passionné de musique' });
+            list.push({ id: 'curator', title: 'Curateur', desc: 'Créateur de playlists' });
+            list.push({ id: 'explorer', title: 'Auditeur Passionné', desc: 'Explorateur de vibes' });
+            list.push({ id: 'influencer', title: 'Vedette', desc: 'Membre populaire' });
+
+            return list;
+        },
+
+        populateStudioBadgesSelector(selectedBadgeIds = null, user = {}) {
+            const container = document.getElementById('bio-studio-badges-selector');
+            if (!container) return;
+
+            const badges = this.getStudioAvailableBadges(user);
+            if (!badges || badges.length === 0) {
+                container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:10px;">Aucun badge disponible.</div>';
+                return;
+            }
+
+            const isSelected = (id) => {
+                if (!Array.isArray(selectedBadgeIds)) return true;
+                return selectedBadgeIds.includes(id);
+            };
+
+            let activeCount = 0;
+            container.innerHTML = badges.map(b => {
+                const checked = isSelected(b.id);
+                if (checked) activeCount++;
+                const bType = b.type || (b.id === 'owner' ? 'owner' : (b.id === 'vip' ? 'vip' : (b.id === 'admin' ? 'admin' : (b.id || ''))));
+                const svg = this.getBadgeSvg(b);
+                return `
+                    <label class="bio-badge-select-item ${checked ? 'active' : ''}">
+                        <input type="checkbox" class="bio-badge-checkbox" data-badge-id="${b.id}" ${checked ? 'checked' : ''} onchange="window.App && window.App.onBioBadgeToggled(this)">
+                        <div class="bio-badge-chip chip-${bType}">
+                            ${svg}
+                        </div>
+                        <div class="bio-badge-select-info">
+                            <span class="bio-badge-select-title">${this.escapeHtml(b.title || b.id)}</span>
+                            <span class="bio-badge-select-desc">${this.escapeHtml(b.desc || 'Badge de profil')}</span>
+                        </div>
+                        <div class="bio-badge-toggle-check">✓</div>
+                    </label>
+                `;
+            }).join('');
+
+            const countBadge = document.getElementById('bio-badges-count-badge');
+            if (countBadge) {
+                countBadge.textContent = `${activeCount} sélectionné${activeCount > 1 ? 's' : ''}`;
+            }
+        },
+
+        onBioBadgeToggled(checkbox) {
+            if (!checkbox) return;
+            const parentLabel = checkbox.closest('.bio-badge-select-item');
+            if (parentLabel) {
+                parentLabel.classList.toggle('active', checkbox.checked);
+            }
+            const activeBoxes = document.querySelectorAll('#bio-studio-badges-selector input[type="checkbox"]:checked');
+            const countBadge = document.getElementById('bio-badges-count-badge');
+            if (countBadge) {
+                countBadge.textContent = `${activeBoxes.length} sélectionné${activeBoxes.length > 1 ? 's' : ''}`;
+            }
+            this.syncBioStudioPreview();
+        },
+
+        getSelectedStudioBadgeIds() {
+            const checkedEls = document.querySelectorAll('#bio-studio-badges-selector input[type="checkbox"]:checked');
+            return Array.from(checkedEls).map(el => el.getAttribute('data-badge-id')).filter(Boolean);
         },
 
         populateBioStudioFields(cfg = {}, user = {}) {
@@ -8023,7 +8174,6 @@ const App = {
                 try { cfg = JSON.parse(cfg); } catch (e) { cfg = {}; }
             }
 
-            const isVip = !!this.studioUserIsVip;
             const setVal = (id, v) => {
                 const el = document.getElementById(id);
                 if (el) el.value = v !== undefined && v !== null ? v : '';
@@ -8077,6 +8227,9 @@ const App = {
             setVal('bio-input-glow-hex', glowColor);
             const picker = document.getElementById('bio-input-glow-picker');
             if (picker) picker.value = glowColor.startsWith('#') && glowColor.length === 7 ? glowColor : '#ff0033';
+
+            // Populate badges selector
+            this.populateStudioBadgesSelector(cfg.selectedBadges, user);
 
             this.syncBioStudioPreview();
         },
@@ -8152,12 +8305,15 @@ const App = {
             if (user.username) {
                 API.getBioPage(user.username).then(res => {
                     const profile = res?.profile || res?.bio;
-                    if (profile && profile.bioConfig) {
+                    if (profile) {
                         const curUser = Storage.getUser() || user;
-                        curUser.bio_config = profile.bioConfig;
+                        if (profile.bioConfig) curUser.bio_config = profile.bioConfig;
                         if (profile.socialLinks) curUser.social_links = profile.socialLinks;
+                        if (profile.badges) {
+                            this.userAvailableBadges = profile.badges;
+                        }
                         Storage.setUser(curUser);
-                        this.populateBioStudioFields(profile.bioConfig, curUser);
+                        this.populateBioStudioFields(curUser.bio_config || {}, curUser);
                     }
                 }).catch(e => console.warn('Could not refresh bio studio from server:', e));
             }
@@ -8450,9 +8606,9 @@ const App = {
             const location = getVal('bio-input-location');
             const showViews = document.getElementById('bio-input-show-views')?.checked ?? true;
             const customBg = isVip ? getVal('bio-input-custom-bg') : '';
-            const audioTitle = isVip ? getVal('bio-input-audio-title') : '';
-            const audioUrl = isVip ? getVal('bio-input-audio-url') : '';
-            const glowColor = (isVip && getVal('bio-input-glow-hex')) ? getVal('bio-input-glow-hex') : '#ff0033';
+            const audioTitle = getVal('bio-input-audio-title');
+            const audioUrl = getVal('bio-input-audio-url');
+            const glowColor = getVal('bio-input-glow-hex') || '#ff0033';
 
             // Mockup Card elements
             const prevName = document.getElementById('bio-prev-name');
@@ -8464,23 +8620,10 @@ const App = {
             const prevDesc = document.getElementById('bio-prev-desc');
             if (prevDesc) prevDesc.textContent = desc;
 
-            // Mockup Badges
-            let userBadges = [];
-            if (user.custom_badges) {
-                try {
-                    const parsed = typeof user.custom_badges === 'string' ? JSON.parse(user.custom_badges) : user.custom_badges;
-                    if (Array.isArray(parsed)) {
-                        userBadges = parsed.map(b => typeof b === 'string' ? { id: b, title: b.toUpperCase(), icon: '⭐' } : b);
-                    }
-                } catch (e) {}
-            }
-            if (user.role === 'owner' && !userBadges.some(b => b.id === 'owner')) {
-                userBadges.unshift({ id: 'owner', type: 'owner', title: 'Fondateur', icon: '👑', desc: 'Créateur & Propriétaire de VibeStream' });
-            }
-            if (isVip && !userBadges.some(b => b.id === 'vip')) {
-                userBadges.push({ id: 'vip', type: 'vip', title: 'VIP Privilégié', icon: '⭐', desc: 'Membre VIP' });
-            }
-            this.renderBioBadges('bio-prev-badges', userBadges, isVip, user.role);
+            // Mockup Badges (Only user-selected badges)
+            const availableBadges = this.getStudioAvailableBadges(user);
+            const selectedBadgeIds = this.getSelectedStudioBadgeIds();
+            this.renderBioBadges('bio-prev-badges', availableBadges, isVip, user.role, selectedBadgeIds);
 
             const prevAvatar = document.getElementById('bio-prev-avatar-img');
             if (prevAvatar) {
@@ -8597,15 +8740,16 @@ const App = {
                 location: getVal('bio-input-location'),
                 showViews: document.getElementById('bio-input-show-views')?.checked ?? true,
                 theme: this.selectedStudioTheme || 'dark_void',
-                customBgUrl: isVip ? getVal('bio-input-custom-bg') : '',
-                customAudioTitle: isVip ? getVal('bio-input-audio-title') : '',
-                customAudioUrl: isVip ? getVal('bio-input-audio-url') : '',
-                audioAutoplay: isVip ? (document.getElementById('bio-input-audio-autoplay')?.checked ?? true) : false,
-                effect: isVip ? (this.selectedStudioEffect || 'none') : 'none',
-                avatarDeco: isVip ? (this.selectedStudioDeco || 'none') : 'none',
-                badgeDecoration: isVip ? (this.selectedStudioDeco || 'none') : 'none',
-                glowColor: isVip ? (getVal('bio-input-glow-hex') || '#ff0033') : '#ff0033',
-                accentGlow: isVip ? (getVal('bio-input-glow-hex') || '#ff0033') : '#ff0033'
+                customBgUrl: getVal('bio-input-custom-bg'),
+                customAudioTitle: getVal('bio-input-audio-title'),
+                customAudioUrl: getVal('bio-input-audio-url'),
+                audioAutoplay: document.getElementById('bio-input-audio-autoplay')?.checked ?? true,
+                effect: this.selectedStudioEffect || 'none',
+                avatarDeco: this.selectedStudioDeco || 'none',
+                badgeDecoration: this.selectedStudioDeco || 'none',
+                glowColor: getVal('bio-input-glow-hex') || '#ff0033',
+                accentGlow: getVal('bio-input-glow-hex') || '#ff0033',
+                selectedBadges: this.getSelectedStudioBadgeIds()
             };
 
             try {
@@ -8614,6 +8758,9 @@ const App = {
                     const user = Storage.getUser();
                     if (user) {
                         user.bio_config = res.bioConfig || config;
+                        if (config.bioDesc && (!user.bio || !user.bio.trim())) {
+                            user.bio = config.bioDesc;
+                        }
                         Storage.setUser(user);
                         this.populateBioStudioFields(user.bio_config, user);
                     }
