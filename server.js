@@ -469,6 +469,7 @@ app.get('/api/search', async (req, res) => {
     const query = (req.query.q || '').trim();
     if (!query) return res.json({ results: [], artist: null });
     res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
 
     try {
         const [results, artist] = await Promise.all([
@@ -554,6 +555,7 @@ app.get('/api/suggestions', async (req, res) => {
     const query = (req.query.q || '').trim();
     if (!query) return res.json({ suggestions: [], artist: null, tracks: [] });
     res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
 
     try {
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(
@@ -1488,6 +1490,7 @@ app.get('/api/related/:id', async (req, res) => {
     const artist = req.query.artist || '';
     const title = req.query.title || '';
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
     const cacheKey = `${videoId}_${artist}`;
     const cached = getCached(relatedCache, cacheKey);
     if (cached && cached.length >= 10) return res.json({ results: cached });
