@@ -505,11 +505,13 @@ const db = {
 
   // Users
   async findUserByUsername(username) {
+    if (!username) return null;
+    const clean = String(username).trim();
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE LOWER(username) = LOWER(${clean}) LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE username = ?').get(username.trim()) || null;
+      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE LOWER(username) = LOWER(?)').get(clean) || null;
     }
   },
 

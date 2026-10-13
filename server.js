@@ -2413,7 +2413,7 @@ app.get('/api/bio/:username', async (req, res) => {
         if (!bioData) {
             return res.status(404).json({ error: 'Page bio introuvable pour cet utilisateur' });
         }
-        res.json({ success: true, bio: bioData });
+        res.json({ success: true, bio: bioData, profile: bioData });
     } catch (err) {
         console.error('Bio page fetch error:', err);
         res.status(500).json({ error: 'Erreur lors de la récupération de la page bio' });
@@ -2439,18 +2439,20 @@ app.put('/api/bio/config', authMiddleware, async (req, res) => {
         const rawConfig = req.body || {};
 
         // Base config (allowed for everyone)
+        const bioRaw = typeof rawConfig.bioDesc === 'string' ? rawConfig.bioDesc : (typeof rawConfig.bioText === 'string' ? rawConfig.bioText : '');
         const sanitized = {
             displayName: typeof rawConfig.displayName === 'string' ? rawConfig.displayName.trim().slice(0, 50) : user.username,
-            bioText: typeof rawConfig.bioText === 'string' ? rawConfig.bioText.trim().slice(0, 300) : '',
+            bioDesc: bioRaw.trim().slice(0, 200),
+            bioText: bioRaw.trim().slice(0, 200),
             location: typeof rawConfig.location === 'string' ? rawConfig.location.trim().slice(0, 60) : '',
-            theme: ['dark_void', 'obsidian', 'minimal'].includes(rawConfig.theme) ? rawConfig.theme : 'dark_void',
+            theme: ['dark_void', 'obsidian', 'minimal', 'cyberpunk', 'matrix', 'synthwave', 'crimson_shadow', 'midnight_blue'].includes(rawConfig.theme) ? rawConfig.theme : 'dark_void',
             showViews: Boolean(rawConfig.showViews !== false)
         };
 
         // VIP-exclusive features: wallpapers, custom audio, particles, card blur/opacity, neon glow
         if (isVip) {
             // Advanced themes allowed for VIP
-            if (['matrix', 'synthwave', 'cyberpunk', 'midnight_neon', 'anime_sunset', 'custom'].includes(rawConfig.theme)) {
+            if (['matrix', 'synthwave', 'cyberpunk', 'crimson_shadow', 'midnight_blue', 'midnight_neon', 'anime_sunset', 'custom'].includes(rawConfig.theme)) {
                 sanitized.theme = rawConfig.theme;
             }
 
@@ -2466,7 +2468,7 @@ app.put('/api/bio/config', authMiddleware, async (req, res) => {
             // Background Song / Audio
             if (typeof rawConfig.customAudioUrl === 'string') {
                 const aud = rawConfig.customAudioUrl.trim();
-                if (!aud || /^https?:\/\//i.test(aud) || aud.startsWith('/api/stream/')) {
+                if (!aud || /^https?:\/\//i.test(aud) || aud.startsWith('/api/stream')) {
                     sanitized.customAudioUrl = aud.slice(0, 500);
                 }
             }

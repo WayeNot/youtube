@@ -180,6 +180,9 @@ const App = {
                 } else {
                     this.switchView('library', false);
                 }
+            } else if (path === '/studio/bio' || path === '/bio/studio' || path === '/bio-studio') {
+                this.setAppMode('vibestream', false);
+                this.openBioStudio(false);
             } else if (path === '/settings') {
                 this.setAppMode('vibestream', false);
                 this.openSettings(null, false);
@@ -1486,6 +1489,11 @@ const App = {
                 if (this.bioParticlesEngine) this.bioParticlesEngine.stop('bio-particles-canvas');
             }
 
+            // If switching away from bio studio, stop track preview
+            if (viewName !== 'bio-studio') {
+                if (this.stopBioTrackPreview) this.stopBioTrackPreview();
+            }
+
             if (updatePath) {
                 const pathMap = {
                     home: '/vibestream',
@@ -1496,6 +1504,7 @@ const App = {
                     album: '/album',
                     admin: '/admin',
                     'bio-page': this.currentBioUsername ? `/bio/${encodeURIComponent(this.currentBioUsername)}` : '/bio',
+                    'bio-studio': '/studio/bio',
                     vibetube: '/vibetube',
                     'vibetube-shorts': '/vibetube/shorts',
                     'vibetube-subscriptions': '/vibetube/subscriptions',
@@ -7778,12 +7787,14 @@ const App = {
 
             try {
                 const res = await API.getBioPage(username);
-                if (!res || !res.profile) {
+                const profile = (res && (res.profile || res.bio)) || null;
+                if (!profile) {
                     this.showErrorView('Page introuvable', `La page guns.lol pour @${this.escapeHtml(username)} n'existe pas.`);
                     return;
                 }
 
-                const { profile, isOwner } = res;
+                const currentUser = Storage.getUser();
+                const isOwner = res.isOwner || (currentUser && currentUser.username && currentUser.username.toLowerCase() === (profile.username || '').toLowerCase());
                 this.currentBioData = profile;
 
                 this.switchView('bio-page', false);
@@ -7957,7 +7968,10 @@ const App = {
             }
         },
 
-        openBioStudio() {
+        bioPreviewAudio: null,
+        bioMusicSearchDebounce: null,
+
+        openBioStudio(updateUrl = true) {
             this.closeUserDropdown();
             if (!Storage.isLoggedIn()) {
                 this.openAuthModal();
@@ -7968,8 +7982,8 @@ const App = {
             const user = Storage.getUser();
             if (!user) return;
 
-            const modal = document.getElementById('modal-bio-studio');
-            if (!modal) return;
+            // Switch to full studio view
+            this.switchView('bio-studio', updateUrl);
 
             // Determine VIP status
             const role = (user.role || '').toLowerCase();
@@ -7989,26 +8003,26 @@ const App = {
             if (vipBanner) {
                 if (isVip) {
                     vipBanner.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:24px;">⭐</span>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span style="font-size:22px;">⭐</span>
                             <div>
-                                <div style="font-weight:700; font-size:13px; color:#ffd700;">Statut VIP Actif ✨</div>
-                                <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">Toutes les options guns.lol (fond animé, musique d'ambiance, particules, décorations) sont débloquées !</div>
+                                <div style="font-weight:700; font-size:13.5px; color:#ffd700;">Statut VIP Actif ✨</div>
+                                <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Accès illimité aux fonds personnalisés, musique d'ambiance VibeStream, particules et décorations exclusives.</div>
                             </div>
                         </div>
                     `;
                 } else {
                     vipBanner.innerHTML = `
-                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-                            <div style="display:flex; align-items:center; gap:10px;">
-                                <span style="font-size:24px;">⭐</span>
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span style="font-size:22px;">⭐</span>
                                 <div>
-                                    <div style="font-weight:700; font-size:13px; color:#ffd700;">Statut Standard</div>
-                                    <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">Débloquez le VIP pour vos fonds animés, musiques et particules.</div>
+                                    <div style="font-weight:700; font-size:13.5px; color:#ffd700;">Statut Standard</div>
+                                    <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Débloquez le VIP pour vos fonds animés, la musique d'ambiance et les effets de particules.</div>
                                 </div>
                             </div>
-                            <button type="button" class="btn primary small" onclick="window.App && window.App.openVipUpgradeInfo()" style="padding:4px 10px; font-size:11px;">
-                                <span>En savoir +</span>
+                            <button type="button" class="btn primary small" onclick="window.App && window.App.openVipUpgradeInfo()" style="padding:5px 14px; font-size:11.5px;">
+                                <span>Découvrir le VIP</span>
                             </button>
                         </div>
                     `;
@@ -8032,7 +8046,11 @@ const App = {
             };
 
             setVal('bio-input-display-name', cfg.displayName || user.username);
-            setVal('bio-input-desc', cfg.bioDesc || user.bio || '');
+            const bioDescVal = cfg.bioDesc || cfg.bioText || user.bio || '';
+            setVal('bio-input-desc', bioDescVal);
+            const descCounter = document.getElementById('bio-desc-char-count');
+            if (descCounter) descCounter.textContent = `${bioDescVal.length} / 200`;
+
             setVal('bio-input-location', cfg.location || '');
             const showViewsEl = document.getElementById('bio-input-show-views');
             if (showViewsEl) showViewsEl.checked = cfg.showViews !== false;
@@ -8044,8 +8062,19 @@ const App = {
             });
 
             setVal('bio-input-custom-bg', cfg.customBgUrl || '');
-            setVal('bio-input-audio-title', cfg.customAudioTitle || '');
-            setVal('bio-input-audio-url', cfg.customAudioUrl || '');
+
+            // Audio track
+            const audioTitle = cfg.customAudioTitle || '';
+            const audioUrl = cfg.customAudioUrl || '';
+            setVal('bio-input-audio-title', audioTitle);
+            setVal('bio-input-audio-url', audioUrl);
+            const trackDisp = document.getElementById('bio-selected-track-display');
+            const previewBtn = document.getElementById('bio-preview-track-btn');
+            const clearTrackBtn = document.getElementById('bio-clear-track-btn');
+            if (trackDisp) trackDisp.textContent = audioTitle || 'Aucun morceau sélectionné';
+            if (previewBtn) previewBtn.disabled = !audioUrl;
+            if (clearTrackBtn) clearTrackBtn.style.display = audioUrl ? 'inline-block' : 'none';
+
             const autoplayEl = document.getElementById('bio-input-audio-autoplay');
             if (autoplayEl) autoplayEl.checked = cfg.audioAutoplay !== false;
 
@@ -8065,36 +8094,199 @@ const App = {
             const picker = document.getElementById('bio-input-glow-picker');
             if (picker) picker.value = glowColor.startsWith('#') && glowColor.length === 7 ? glowColor : '#ff0033';
 
-            // Switch to first tab
-            this.switchBioStudioTab('identity');
-
-            modal.classList.remove('hidden');
             this.syncBioStudioPreview();
         },
 
-        closeBioStudio() {
-            const modal = document.getElementById('modal-bio-studio');
-            if (modal) modal.classList.add('hidden');
+        exitBioStudio() {
+            this.stopBioTrackPreview();
             this.bioParticlesEngine.stop('bio-preview-particles');
-        },
-
-        switchBioStudioTab(tab) {
-            document.querySelectorAll('.bio-studio-tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
-            });
-            document.querySelectorAll('.bio-studio-tab-content').forEach(c => {
-                c.classList.add('hidden');
-                c.classList.remove('active');
-            });
-            const target = document.getElementById(`bio-studio-tab-${tab}`);
-            if (target) {
-                target.classList.remove('hidden');
-                target.classList.add('active');
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                this.switchView('home');
             }
         },
 
+        handleBioMusicSearch(query) {
+            clearTimeout(this.bioMusicSearchDebounce);
+            const resultsBox = document.getElementById('bio-music-search-results');
+            if (!resultsBox) return;
+
+            const q = (query || '').trim();
+            if (q.length < 2) {
+                resultsBox.classList.add('hidden');
+                resultsBox.innerHTML = '';
+                return;
+            }
+
+            this.bioMusicSearchDebounce = setTimeout(async () => {
+                try {
+                    resultsBox.classList.remove('hidden');
+                    resultsBox.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-secondary); text-align:center;">Recherche en cours...</div>';
+                    const results = await API.search(q);
+                    const tracks = Array.isArray(results) ? results.slice(0, 6) : [];
+
+                    if (tracks.length === 0) {
+                        resultsBox.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-muted); text-align:center;">Aucun titre trouvé sur VibeStream.</div>';
+                        return;
+                    }
+
+                    resultsBox.innerHTML = tracks.map(t => {
+                        const safeTitle = (t.title || 'Sans titre').replace(/'/g, "\\'");
+                        const safeArtist = (t.artist || '').replace(/'/g, "\\'");
+                        const safeId = (t.id || '').replace(/'/g, "\\'");
+                        return `
+                        <div class="bio-music-result-item">
+                            <img src="${t.thumbnail || '/icons/icon.svg'}" class="bio-music-result-thumb" alt="">
+                            <div class="bio-music-result-meta">
+                                <span class="bio-music-result-title">${this.escapeHtml(t.title || 'Sans titre')}</span>
+                                <span class="bio-music-result-artist">${this.escapeHtml(t.artist || 'Artiste inconnu')}</span>
+                            </div>
+                            <div class="bio-music-result-actions">
+                                <button type="button" class="btn secondary small" onclick="window.App && window.App.previewStreamAudio('/api/stream?v=${encodeURIComponent(t.id)}', this)" title="Tester">
+                                    ▶ Tester
+                                </button>
+                                <button type="button" class="btn primary small" onclick="window.App && window.App.selectBioMusicTrack('${safeId}', '${safeTitle}', '${safeArtist}')">
+                                    Choisir
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    }).join('');
+                } catch (e) {
+                    resultsBox.innerHTML = '<div style="padding:12px; font-size:12px; color:#ff4444; text-align:center;">Erreur lors de la recherche.</div>';
+                }
+            }, 250);
+        },
+
+        selectBioMusicTrack(id, title, artist) {
+            const fullTitle = artist ? `${title} - ${artist}` : title;
+            const streamUrl = `/api/stream?v=${encodeURIComponent(id)}`;
+
+            const titleInput = document.getElementById('bio-input-audio-title');
+            const urlInput = document.getElementById('bio-input-audio-url');
+            if (titleInput) titleInput.value = fullTitle;
+            if (urlInput) urlInput.value = streamUrl;
+
+            const dispEl = document.getElementById('bio-selected-track-display');
+            if (dispEl) dispEl.textContent = fullTitle;
+
+            const previewBtn = document.getElementById('bio-preview-track-btn');
+            if (previewBtn) previewBtn.disabled = false;
+
+            const clearBtn = document.getElementById('bio-clear-track-btn');
+            if (clearBtn) clearBtn.style.display = 'inline-block';
+
+            const resultsBox = document.getElementById('bio-music-search-results');
+            if (resultsBox) {
+                resultsBox.classList.add('hidden');
+                resultsBox.innerHTML = '';
+            }
+
+            const searchInput = document.getElementById('bio-music-search-input');
+            if (searchInput) searchInput.value = '';
+
+            this.stopBioTrackPreview();
+            this.syncBioStudioPreview();
+            this.showToast(`Morceau sélectionné : ${fullTitle} 🎵`);
+        },
+
+        clearBioMusicSelection() {
+            const titleInput = document.getElementById('bio-input-audio-title');
+            const urlInput = document.getElementById('bio-input-audio-url');
+            if (titleInput) titleInput.value = '';
+            if (urlInput) urlInput.value = '';
+
+            const dispEl = document.getElementById('bio-selected-track-display');
+            if (dispEl) dispEl.textContent = 'Aucun morceau sélectionné';
+
+            const previewBtn = document.getElementById('bio-preview-track-btn');
+            if (previewBtn) previewBtn.disabled = true;
+
+            const clearBtn = document.getElementById('bio-clear-track-btn');
+            if (clearBtn) clearBtn.style.display = 'none';
+
+            this.stopBioTrackPreview();
+            this.syncBioStudioPreview();
+            this.showToast('Musique d\'ambiance retirée.');
+        },
+
+        previewStreamAudio(streamUrl, btnEl) {
+            if (this.bioPreviewAudio) {
+                this.stopBioTrackPreview();
+                if (btnEl && btnEl.getAttribute('data-playing') === 'true') {
+                    return;
+                }
+            }
+
+            try {
+                this.bioPreviewAudio = new Audio(streamUrl);
+                this.bioPreviewAudio.volume = 0.7;
+                this.bioPreviewAudio.play().catch(e => console.warn('Preview blocked:', e));
+
+                if (btnEl) {
+                    btnEl.textContent = '⏹ Arrêter';
+                    btnEl.setAttribute('data-playing', 'true');
+                    this.bioPreviewAudio.onended = () => {
+                        btnEl.textContent = '▶ Tester';
+                        btnEl.removeAttribute('data-playing');
+                    };
+                }
+            } catch (e) {}
+        },
+
+        toggleBioTrackPreview() {
+            const urlInput = document.getElementById('bio-input-audio-url');
+            const url = urlInput ? urlInput.value : '';
+            if (!url) return;
+
+            const labelEl = document.getElementById('bio-preview-track-label');
+
+            if (this.bioPreviewAudio && !this.bioPreviewAudio.paused) {
+                this.stopBioTrackPreview();
+                if (labelEl) labelEl.textContent = '▶ Écouter l\'extrait';
+            } else {
+                this.stopBioTrackPreview();
+                try {
+                    this.bioPreviewAudio = new Audio(url);
+                    this.bioPreviewAudio.volume = 0.7;
+                    this.bioPreviewAudio.play().then(() => {
+                        if (labelEl) labelEl.textContent = '⏹ Arrêter';
+                    }).catch(e => console.warn('Play preview blocked:', e));
+
+                    this.bioPreviewAudio.onended = () => {
+                        if (labelEl) labelEl.textContent = '▶ Écouter l\'extrait';
+                    };
+                } catch (e) {}
+            }
+        },
+
+        stopBioTrackPreview() {
+            if (this.bioPreviewAudio) {
+                try {
+                    this.bioPreviewAudio.pause();
+                    this.bioPreviewAudio.src = '';
+                } catch (e) {}
+                this.bioPreviewAudio = null;
+            }
+            const labelEl = document.getElementById('bio-preview-track-label');
+            if (labelEl) labelEl.textContent = '▶ Écouter l\'extrait';
+            document.querySelectorAll('[data-playing="true"]').forEach(el => {
+                el.textContent = '▶ Tester';
+                el.removeAttribute('data-playing');
+            });
+        },
+
+        setGlowColor(color) {
+            const picker = document.getElementById('bio-input-glow-picker');
+            const hexInput = document.getElementById('bio-input-glow-hex');
+            if (picker) picker.value = color;
+            if (hexInput) hexInput.value = color;
+            this.syncBioStudioPreview();
+        },
+
         selectBioStudioTheme(theme) {
-            const isVipTheme = ['cyberpunk', 'matrix', 'synthwave'].includes(theme);
+            const isVipTheme = ['crimson_shadow', 'cyberpunk', 'matrix', 'synthwave'].includes(theme);
             if (isVipTheme && !this.studioUserIsVip) {
                 this.showToast('⭐ Ce thème de style guns.lol nécessite le statut VIP !');
                 this.openVipUpgradeInfo();
@@ -8211,6 +8403,7 @@ const App = {
                         dark_void: 'radial-gradient(circle at 50% 30%, #1a1a24 0%, #050508 100%)',
                         obsidian: 'linear-gradient(135deg, #16161a 0%, #0a0a0c 100%)',
                         minimal: '#0d0d0f',
+                        crimson_shadow: 'radial-gradient(circle at 50% 30%, #2d0408 0%, #080304 100%)',
                         cyberpunk: 'linear-gradient(135deg, #1f0525 0%, #061528 100%)',
                         matrix: 'linear-gradient(180deg, #001205 0%, #020703 100%)',
                         synthwave: 'linear-gradient(135deg, #220626 0%, #0a0d24 100%)'
@@ -8270,7 +8463,7 @@ const App = {
 
             const config = {
                 displayName: getVal('bio-input-display-name'),
-                bioDesc: getVal('bio-input-desc'),
+                bioDesc: getVal('bio-input-desc').slice(0, 200),
                 location: getVal('bio-input-location'),
                 showViews: document.getElementById('bio-input-show-views')?.checked ?? true,
                 theme: this.selectedStudioTheme || 'dark_void',
@@ -8306,7 +8499,6 @@ const App = {
                 this.openAuthModal();
                 return;
             }
-            this.closeBioStudio();
             this.openBioPage(u.username);
         },
 

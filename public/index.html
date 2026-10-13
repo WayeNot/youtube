@@ -1582,6 +1582,260 @@
                     </div>
                 </section>
 
+                <!-- VIEW 8b: STUDIO BIO GUNS.LOL (/studio/bio) -->
+                <section id="view-bio-studio" class="view-section">
+                    <div class="bio-studio-page-header">
+                        <div class="bio-studio-header-left">
+                            <button type="button" class="btn secondary small bio-studio-back-btn" onclick="window.App && window.App.exitBioStudio()" title="Retour">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                                <span>Retour</span>
+                            </button>
+                            <div class="bio-studio-title-box">
+                                <div class="bio-studio-title-row">
+                                    <h1 class="bio-studio-heading">Studio Page Bio</h1>
+                                    <span id="bio-studio-vip-pill" class="admin-badge-pill vip-pill hidden">VIP ⭐</span>
+                                </div>
+                                <p class="bio-studio-subheading">Personnalisez votre vitrine guns.lol accessible publiquement par tous vos visiteurs.</p>
+                            </div>
+                        </div>
+                        <div class="bio-studio-header-actions">
+                            <button type="button" class="btn secondary small" onclick="window.App && window.App.copyMyBioLink()" title="Copier l'adresse de ma page">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <span>Copier le lien</span>
+                            </button>
+                            <button type="button" class="btn secondary small" onclick="window.App && window.App.openMyBioPage()" title="Ouvrir ma page publique">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                                <span>Voir en direct</span>
+                            </button>
+                            <button type="button" class="btn primary small" id="bio-save-config-btn" onclick="window.App && window.App.saveBioStudioConfig()">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm2 16H5V5h11.17L19 7.83V19zm-7-7c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM6 6h9v4H6z"/></svg>
+                                <span>Enregistrer</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- VIP Callout Notice -->
+                    <div id="bio-studio-vip-banner" class="bio-studio-banner-card"></div>
+
+                    <!-- Main Studio Workspace Grid -->
+                    <div class="bio-studio-layout-grid">
+                        <!-- Left Pane: Configuration Panels -->
+                        <div class="bio-studio-form-col">
+                            <!-- Card 1: Identité -->
+                            <div class="settings-card bio-form-card">
+                                <h3 class="bio-card-title">👤 Identité & Présentation</h3>
+                                <div class="bio-form-field">
+                                    <label for="bio-input-display-name">Nom d'affichage</label>
+                                    <input type="text" id="bio-input-display-name" class="modern-input" placeholder="Votre pseudo ou nom d'artiste" maxlength="50" oninput="window.App && window.App.syncBioStudioPreview()">
+                                </div>
+                                <div class="bio-form-field">
+                                    <div class="bio-field-label-row">
+                                        <label for="bio-input-desc">Biographie / Statut</label>
+                                        <span id="bio-desc-char-count" class="bio-char-counter">0 / 200</span>
+                                    </div>
+                                    <textarea id="bio-input-desc" class="modern-input bio-textarea-fixed" rows="3" maxlength="200" placeholder="Présentation courte, statut de gamer..." oninput="document.getElementById('bio-desc-char-count').textContent = this.value.length + ' / 200'; window.App && window.App.syncBioStudioPreview();"></textarea>
+                                </div>
+                                <div class="bio-form-field">
+                                    <label for="bio-input-location">Localisation (facultatif)</label>
+                                    <input type="text" id="bio-input-location" class="modern-input" placeholder="Ex: Paris, France" maxlength="60" oninput="window.App && window.App.syncBioStudioPreview()">
+                                </div>
+                                <div class="bio-form-toggle-row">
+                                    <div class="bio-toggle-info">
+                                        <span class="bio-toggle-title">Compteur de visites</span>
+                                        <span class="bio-toggle-desc">Affiche le nombre d'auditeurs ayant consulté votre page.</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="bio-input-show-views" checked onchange="window.App && window.App.syncBioStudioPreview()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Thème & Fond d'écran -->
+                            <div class="settings-card bio-form-card">
+                                <h3 class="bio-card-title">🎨 Habillage & Fond d'écran</h3>
+                                <label class="bio-sublabel">Thèmes sombres VibeStream</label>
+                                <div class="bio-themes-selector-grid">
+                                    <div class="bio-theme-card active" data-theme="dark_void" onclick="window.App && window.App.selectBioStudioTheme('dark_void')">
+                                        <div class="bio-theme-swatch" style="background: radial-gradient(circle, #1a1a24 0%, #050508 100%);"></div>
+                                        <div class="bio-theme-name">Dark Void</div>
+                                        <div class="bio-theme-badge">Inclus</div>
+                                    </div>
+                                    <div class="bio-theme-card" data-theme="obsidian" onclick="window.App && window.App.selectBioStudioTheme('obsidian')">
+                                        <div class="bio-theme-swatch" style="background: linear-gradient(135deg, #16161a 0%, #0a0a0c 100%);"></div>
+                                        <div class="bio-theme-name">Obsidian</div>
+                                        <div class="bio-theme-badge">Inclus</div>
+                                    </div>
+                                    <div class="bio-theme-card" data-theme="minimal" onclick="window.App && window.App.selectBioStudioTheme('minimal')">
+                                        <div class="bio-theme-swatch" style="background: #0d0d0f;"></div>
+                                        <div class="bio-theme-name">Minimal</div>
+                                        <div class="bio-theme-badge">Inclus</div>
+                                    </div>
+                                    <div class="bio-theme-card vip-locked" data-theme="crimson_shadow" onclick="window.App && window.App.selectBioStudioTheme('crimson_shadow')">
+                                        <div class="bio-theme-swatch" style="background: radial-gradient(circle, #2d0408 0%, #080304 100%);"></div>
+                                        <div class="bio-theme-name">Crimson</div>
+                                        <div class="bio-theme-badge vip">VIP ⭐</div>
+                                    </div>
+                                    <div class="bio-theme-card vip-locked" data-theme="cyberpunk" onclick="window.App && window.App.selectBioStudioTheme('cyberpunk')">
+                                        <div class="bio-theme-swatch" style="background: linear-gradient(135deg, #ff0055 0%, #00f0ff 100%);"></div>
+                                        <div class="bio-theme-name">Cyberpunk</div>
+                                        <div class="bio-theme-badge vip">VIP ⭐</div>
+                                    </div>
+                                    <div class="bio-theme-card vip-locked" data-theme="matrix" onclick="window.App && window.App.selectBioStudioTheme('matrix')">
+                                        <div class="bio-theme-swatch" style="background: linear-gradient(180deg, #001a00 0%, #00ff66 100%);"></div>
+                                        <div class="bio-theme-name">Matrix</div>
+                                        <div class="bio-theme-badge vip">VIP ⭐</div>
+                                    </div>
+                                </div>
+
+                                <div class="bio-vip-field-box">
+                                    <div class="bio-vip-box-header">
+                                        <span class="bio-vip-tag">Exclusivité VIP ⭐</span>
+                                        <span class="bio-vip-box-desc">Fond d'écran animé ou image sur mesure</span>
+                                    </div>
+                                    <input type="url" id="bio-input-custom-bg" class="modern-input" placeholder="https://... URL directe d'image, GIF animé ou wallpaper" oninput="window.App && window.App.syncBioStudioPreview()">
+                                </div>
+                            </div>
+
+                            <!-- Card 3: Musique guns.lol (avec recherche instantanée et preview !) -->
+                            <div class="settings-card bio-form-card">
+                                <div class="bio-card-title-row">
+                                    <h3 class="bio-card-title">🎵 Ambiance Musicale (Guns.lol Player)</h3>
+                                    <span class="bio-vip-tag">VIP ⭐</span>
+                                </div>
+                                <p class="bio-card-subdesc">Votre musique favorite se lance automatiquement ou au clic sur votre page bio.</p>
+
+                                <!-- Instant Music Search Engine -->
+                                <div class="bio-music-search-section">
+                                    <label class="bio-sublabel">Rechercher un morceau sur VibeStream</label>
+                                    <div class="bio-search-bar-wrap">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="var(--text-secondary)" class="bio-search-icon"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                                        <input type="text" id="bio-music-search-input" class="modern-input bio-music-input" placeholder="Tapez le nom d'un titre, artiste (ex: Daft Punk, Laylow...)" autocomplete="off" oninput="window.App && window.App.handleBioMusicSearch(this.value)">
+                                    </div>
+                                    <!-- Results Container Dropdown/List -->
+                                    <div id="bio-music-search-results" class="bio-music-results-list hidden"></div>
+                                </div>
+
+                                <!-- Current Selected Track Display -->
+                                <div class="bio-selected-track-card" id="bio-selected-track-card">
+                                    <div class="bio-track-info-line">
+                                        <span class="bio-track-label">Morceau sélectionné :</span>
+                                        <span class="bio-track-name" id="bio-selected-track-display">Aucun morceau sélectionné</span>
+                                    </div>
+                                    <div class="bio-track-actions" id="bio-track-preview-actions">
+                                        <button type="button" class="btn secondary small" id="bio-preview-track-btn" onclick="window.App && window.App.toggleBioTrackPreview()" disabled>
+                                            <span id="bio-preview-track-label">▶ Écouter l'extrait</span>
+                                        </button>
+                                        <button type="button" class="text-link-btn" id="bio-clear-track-btn" onclick="window.App && window.App.clearBioMusicSelection()" style="display:none;">
+                                            Retirer
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden direct inputs synced -->
+                                <input type="hidden" id="bio-input-audio-title" value="">
+                                <input type="hidden" id="bio-input-audio-url" value="">
+
+                                <div class="bio-form-toggle-row" style="margin-top:14px;">
+                                    <div class="bio-toggle-info">
+                                        <span class="bio-toggle-title">Lecture automatique</span>
+                                        <span class="bio-toggle-desc">Démarre le son dès l'arrivée d'un visiteur sur votre page.</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="bio-input-audio-autoplay" checked onchange="window.App && window.App.syncBioStudioPreview()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Card 4: Atmosphère & Effets spéciaux -->
+                            <div class="settings-card bio-form-card">
+                                <div class="bio-card-title-row">
+                                    <h3 class="bio-card-title">✨ Atmosphère & Effets</h3>
+                                    <span class="bio-vip-tag">VIP ⭐</span>
+                                </div>
+
+                                <div class="bio-form-field">
+                                    <label>Particules météo d'ambiance</label>
+                                    <div class="bio-effects-pills-row">
+                                        <button type="button" class="bio-effect-pill active" data-effect="none" onclick="window.App && window.App.selectBioStudioEffect('none')">Aucun</button>
+                                        <button type="button" class="bio-effect-pill" data-effect="snow" onclick="window.App && window.App.selectBioStudioEffect('snow')">❄️ Neige</button>
+                                        <button type="button" class="bio-effect-pill" data-effect="stars" onclick="window.App && window.App.selectBioStudioEffect('stars')">✨ Étoiles</button>
+                                        <button type="button" class="bio-effect-pill" data-effect="rain" onclick="window.App && window.App.selectBioStudioEffect('rain')">🌧️ Pluie</button>
+                                    </div>
+                                </div>
+
+                                <div class="bio-form-field">
+                                    <label>Décoration d'avatar</label>
+                                    <div class="bio-avatar-deco-pills">
+                                        <button type="button" class="bio-deco-pill active" data-deco="none" onclick="window.App && window.App.selectBioStudioDeco('none')">Standard</button>
+                                        <button type="button" class="bio-deco-pill" data-deco="crown" onclick="window.App && window.App.selectBioStudioDeco('crown')">👑 Couronne</button>
+                                        <button type="button" class="bio-deco-pill" data-deco="fire" onclick="window.App && window.App.selectBioStudioDeco('fire')">🔥 Flammes</button>
+                                        <button type="button" class="bio-deco-pill" data-deco="star" onclick="window.App && window.App.selectBioStudioDeco('star')">⭐ Étoile</button>
+                                    </div>
+                                </div>
+
+                                <div class="bio-form-field">
+                                    <label>Halo néon lumineux</label>
+                                    <div class="bio-glow-picker-row">
+                                        <input type="color" id="bio-input-glow-picker" value="#ff0033" class="bio-glow-color-box" oninput="document.getElementById('bio-input-glow-hex').value = this.value; window.App && window.App.syncBioStudioPreview();">
+                                        <input type="text" id="bio-input-glow-hex" class="modern-input" value="#ff0033" maxlength="7" oninput="window.App && window.App.syncBioStudioPreview();">
+                                        <div class="bio-glow-swatches">
+                                            <span class="bio-swatch-dot" style="background:#ff0033;" onclick="window.App && window.App.setGlowColor('#ff0033')"></span>
+                                            <span class="bio-swatch-dot" style="background:#00f0ff;" onclick="window.App && window.App.setGlowColor('#00f0ff')"></span>
+                                            <span class="bio-swatch-dot" style="background:#a855f7;" onclick="window.App && window.App.setGlowColor('#a855f7')"></span>
+                                            <span class="bio-swatch-dot" style="background:#ffd700;" onclick="window.App && window.App.setGlowColor('#ffd700')"></span>
+                                            <span class="bio-swatch-dot" style="background:#22c55e;" onclick="window.App && window.App.setGlowColor('#22c55e')"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Pane: Sticky Live Mockup -->
+                        <div class="bio-studio-preview-col">
+                            <div class="bio-studio-sticky-preview">
+                                <div class="bio-preview-col-header">
+                                    <span class="bio-preview-badge">Aperçu en direct (guns.lol)</span>
+                                    <span class="bio-preview-tagline">Rendu fidèle pour vos visiteurs</span>
+                                </div>
+                                <div class="bio-preview-container-mockup" id="bio-preview-container">
+                                    <div class="bio-preview-ambient-bg" id="bio-preview-bg"></div>
+                                    <canvas id="bio-preview-particles" class="bio-preview-particles"></canvas>
+                                    <div class="bio-preview-card" id="bio-preview-card">
+                                        <div class="bio-avatar-wrapper" style="width:78px; height:78px; margin:0 auto 12px;">
+                                            <div class="bio-avatar-halo" id="bio-prev-avatar-halo"></div>
+                                            <img id="bio-prev-avatar-img" src="/icons/icon.svg" class="bio-avatar-img" alt="Avatar">
+                                            <div class="bio-avatar-badge-decoration hidden" id="bio-prev-avatar-deco">👑</div>
+                                        </div>
+                                        <div class="bio-name-row" style="justify-content:center;">
+                                            <div class="bio-display-name" id="bio-prev-name" style="font-size:18px;">Pseudo</div>
+                                            <span class="bio-verified-badge" style="font-size:11px;">✓</span>
+                                        </div>
+                                        <div class="bio-handle" id="bio-prev-handle" style="text-align:center; margin-bottom:8px;">@pseudo</div>
+                                        <div class="bio-badges-row" id="bio-prev-badges" style="justify-content:center;"></div>
+                                        <div class="bio-desc-text" id="bio-prev-desc" style="text-align:center; font-size:12.5px; margin:10px 0;">Description guns.lol</div>
+                                        <div class="bio-meta-row" style="justify-content:center; margin-bottom:12px;">
+                                            <span class="bio-location-tag hidden" id="bio-prev-location">📍 <span id="bio-prev-location-txt">Paris</span></span>
+                                            <span class="bio-views-tag" id="bio-prev-views">👁️ 0 vues</span>
+                                        </div>
+                                        <div class="bio-socials-grid" id="bio-prev-socials" style="margin-bottom:10px;"></div>
+                                        <div class="bio-audio-widget hidden" id="bio-prev-audio" style="margin-top:8px;">
+                                            <div class="bio-audio-disk"><span>🎵</span></div>
+                                            <div class="bio-audio-info">
+                                                <div class="bio-audio-title" id="bio-prev-audio-title">Musique</div>
+                                            </div>
+                                        </div>
+                                        <div class="bio-vip-promo-card hidden" id="bio-prev-vip-promo" style="margin-top:10px; padding:10px;">
+                                            <div style="font-size:11px; font-weight:700; color:#ffd700;">⭐ Personnaliser cette page (VIP)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- VIEW 9: PAGE PUBLIQUE BIO GUNS.LOL (/bio/:username) -->
                 <section id="view-bio-page" class="view-section bio-page-fullscreen">
                     <div class="bio-page-ambient-bg" id="bio-ambient-bg"></div>
@@ -2983,232 +3237,7 @@
             </div>
         </div>
 
-        <!-- MODAL: Guns.lol Bio Studio & Customizer (with Live Preview) -->
-        <div id="modal-bio-studio" class="modal-overlay hidden">
-            <div class="modal-card bio-studio-modal-card">
-                <div class="modal-header">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:20px;">⚡</span>
-                        <div>
-                            <h3 style="margin:0; font-size:17px;">Studio Page Bio <span style="font-size:12px; font-weight:600; color:var(--text-muted);">(guns.lol)</span></h3>
-                            <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">Personnalisez votre vitrine publique accessible à tous.</div>
-                        </div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span id="bio-studio-vip-pill" class="admin-badge-pill vip-pill hidden">⭐ VIP</span>
-                        <button type="button" class="icon-btn close-modal-btn" onclick="window.App && window.App.closeBioStudio()">✕</button>
-                    </div>
-                </div>
-                <div class="modal-body bio-studio-modal-body">
-                    <div class="bio-studio-split-layout">
-                        <!-- Left Panel: Customizer Controls -->
-                        <div class="bio-studio-controls-pane">
-                            <!-- VIP Promo / Status Notice -->
-                            <div id="bio-studio-vip-banner" class="bio-studio-vip-banner">
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    <span style="font-size:24px;">⭐</span>
-                                    <div>
-                                        <div style="font-weight:700; font-size:13px; color:#ffd700;">Statut VIP & Avantages Exclusifs</div>
-                                        <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">Les membres VIP peuvent définir un fond animé, une musique d'ambiance et des effets de particules.</div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Tabs Switcher -->
-                            <div class="bio-studio-tabs">
-                                <button type="button" class="bio-studio-tab-btn active" data-tab="identity" onclick="window.App && window.App.switchBioStudioTab('identity')">🪪 Identité</button>
-                                <button type="button" class="bio-studio-tab-btn" data-tab="theme" onclick="window.App && window.App.switchBioStudioTab('theme')">🎨 Thèmes</button>
-                                <button type="button" class="bio-studio-tab-btn" data-tab="audio" onclick="window.App && window.App.switchBioStudioTab('audio')">🎵 Musique</button>
-                                <button type="button" class="bio-studio-tab-btn" data-tab="effects" onclick="window.App && window.App.switchBioStudioTab('effects')">✨ Effets</button>
-                            </div>
-
-                            <!-- Tab 1: Identity & Meta -->
-                            <div id="bio-studio-tab-identity" class="bio-studio-tab-content active">
-                                <div class="bio-form-row">
-                                    <label>Nom d'affichage</label>
-                                    <input type="text" id="bio-input-display-name" class="modern-input" placeholder="Votre pseudo ou nom" maxlength="50" oninput="window.App && window.App.syncBioStudioPreview()">
-                                </div>
-                                <div class="bio-form-row">
-                                    <label>Tagline / Biographie</label>
-                                    <textarea id="bio-input-desc" class="modern-input" rows="3" placeholder="Présentation courte, statut de gamer..." maxlength="300" oninput="window.App && window.App.syncBioStudioPreview()"></textarea>
-                                </div>
-                                <div class="bio-form-row">
-                                    <label>Localisation (facultatif)</label>
-                                    <input type="text" id="bio-input-location" class="modern-input" placeholder="Ex: Paris, France" maxlength="60" oninput="window.App && window.App.syncBioStudioPreview()">
-                                </div>
-                                <div class="bio-form-row" style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div>
-                                        <div style="font-size:13px; font-weight:600; color:#fff;">Compteur de vues</div>
-                                        <div style="font-size:11.5px; color:var(--text-secondary);">Afficher le nombre de visiteurs sur votre page</div>
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="bio-input-show-views" checked onchange="window.App && window.App.syncBioStudioPreview()">
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Tab 2: Themes & Backgrounds -->
-                            <div id="bio-studio-tab-theme" class="bio-studio-tab-content hidden">
-                                <label style="display:block; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px;">Thèmes de style guns.lol</label>
-                                <div class="bio-themes-selector-grid">
-                                    <div class="bio-theme-card active" data-theme="dark_void" onclick="window.App && window.App.selectBioStudioTheme('dark_void')">
-                                        <div class="bio-theme-swatch" style="background: radial-gradient(circle, #1a1a24 0%, #050508 100%);"></div>
-                                        <div class="bio-theme-name">Dark Void</div>
-                                        <div class="bio-theme-badge">Gratuit</div>
-                                    </div>
-                                    <div class="bio-theme-card" data-theme="obsidian" onclick="window.App && window.App.selectBioStudioTheme('obsidian')">
-                                        <div class="bio-theme-swatch" style="background: linear-gradient(135deg, #16161a 0%, #0a0a0c 100%);"></div>
-                                        <div class="bio-theme-name">Obsidian</div>
-                                        <div class="bio-theme-badge">Gratuit</div>
-                                    </div>
-                                    <div class="bio-theme-card" data-theme="minimal" onclick="window.App && window.App.selectBioStudioTheme('minimal')">
-                                        <div class="bio-theme-swatch" style="background: #0d0d0f;"></div>
-                                        <div class="bio-theme-name">Minimal</div>
-                                        <div class="bio-theme-badge">Gratuit</div>
-                                    </div>
-                                    <div class="bio-theme-card vip-locked" data-theme="cyberpunk" onclick="window.App && window.App.selectBioStudioTheme('cyberpunk')">
-                                        <div class="bio-theme-swatch" style="background: linear-gradient(135deg, #ff0055 0%, #00f0ff 100%);"></div>
-                                        <div class="bio-theme-name">Cyberpunk</div>
-                                        <div class="bio-theme-badge vip">🔒 VIP</div>
-                                    </div>
-                                    <div class="bio-theme-card vip-locked" data-theme="matrix" onclick="window.App && window.App.selectBioStudioTheme('matrix')">
-                                        <div class="bio-theme-swatch" style="background: linear-gradient(180deg, #001a00 0%, #00ff66 100%);"></div>
-                                        <div class="bio-theme-name">Matrix</div>
-                                        <div class="bio-theme-badge vip">🔒 VIP</div>
-                                    </div>
-                                    <div class="bio-theme-card vip-locked" data-theme="synthwave" onclick="window.App && window.App.selectBioStudioTheme('synthwave')">
-                                        <div class="bio-theme-swatch" style="background: linear-gradient(135deg, #ff007f 0%, #7928ca 100%);"></div>
-                                        <div class="bio-theme-name">Synthwave</div>
-                                        <div class="bio-theme-badge vip">🔒 VIP</div>
-                                    </div>
-                                </div>
-
-                                <div class="bio-vip-field-box" style="margin-top:16px;">
-                                    <div class="bio-vip-lock-badge">⭐ Option VIP</div>
-                                    <label style="display:block; font-size:12px; font-weight:700; color:#fff; margin-bottom:6px;">Image / Fond personnalisé (URL)</label>
-                                    <input type="url" id="bio-input-custom-bg" class="modern-input" placeholder="https://... (image, GIF ou wallpaper)" oninput="window.App && window.App.syncBioStudioPreview()">
-                                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Prend le pas sur le thème par défaut pour les membres VIP.</div>
-                                </div>
-                            </div>
-
-                            <!-- Tab 3: Background Audio -->
-                            <div id="bio-studio-tab-audio" class="bio-studio-tab-content hidden">
-                                <div class="bio-vip-field-box">
-                                    <div class="bio-vip-lock-badge">⭐ Option VIP</div>
-                                    <div style="margin-bottom:12px;">
-                                        <div style="font-size:14px; font-weight:700; color:#fff;">Lecteur Audio d'ambiance guns.lol</div>
-                                        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Votre musique retentit en fond sonore lorsqu'un visiteur ouvre votre page.</div>
-                                    </div>
-
-                                    <div class="bio-form-row">
-                                        <label>Titre de votre morceau</label>
-                                        <input type="text" id="bio-input-audio-title" class="modern-input" placeholder="Ex: Crystal Castles - Kept" maxlength="80" oninput="window.App && window.App.syncBioStudioPreview()">
-                                    </div>
-
-                                    <div class="bio-form-row">
-                                        <label>URL du flux audio direct (MP3 / CDN)</label>
-                                        <input type="url" id="bio-input-audio-url" class="modern-input" placeholder="https://... fichier audio direct .mp3" oninput="window.App && window.App.syncBioStudioPreview()">
-                                    </div>
-
-                                    <div class="bio-form-row" style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-                                        <div>
-                                            <div style="font-size:13px; font-weight:600; color:#fff;">Autoplay (Lecture automatique)</div>
-                                            <div style="font-size:11.5px; color:var(--text-secondary);">Lance le son dès l'arrivée ou le premier clic</div>
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="bio-input-audio-autoplay" checked onchange="window.App && window.App.syncBioStudioPreview()">
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Tab 4: Effects & Card Style -->
-                            <div id="bio-studio-tab-effects" class="bio-studio-tab-content hidden">
-                                <div class="bio-vip-field-box">
-                                    <div class="bio-vip-lock-badge">⭐ Option VIP</div>
-                                    <label style="display:block; font-size:12px; font-weight:700; color:#fff; margin-bottom:8px;">Particules & Atmosphère</label>
-                                    <div class="bio-effects-pills-row">
-                                        <button type="button" class="bio-effect-pill active" data-effect="none" onclick="window.App && window.App.selectBioStudioEffect('none')">Aucun</button>
-                                        <button type="button" class="bio-effect-pill" data-effect="snow" onclick="window.App && window.App.selectBioStudioEffect('snow')">❄️ Neige</button>
-                                        <button type="button" class="bio-effect-pill" data-effect="stars" onclick="window.App && window.App.selectBioStudioEffect('stars')">✨ Étoiles</button>
-                                        <button type="button" class="bio-effect-pill" data-effect="rain" onclick="window.App && window.App.selectBioStudioEffect('rain')">🌧️ Pluie</button>
-                                    </div>
-
-                                    <div style="margin-top:16px;">
-                                        <label style="display:block; font-size:12px; font-weight:700; color:#fff; margin-bottom:8px;">Décoration d'Avatar</label>
-                                        <div class="bio-avatar-deco-pills">
-                                            <button type="button" class="bio-deco-pill active" data-deco="none" onclick="window.App && window.App.selectBioStudioDeco('none')">Standard</button>
-                                            <button type="button" class="bio-deco-pill" data-deco="crown" onclick="window.App && window.App.selectBioStudioDeco('crown')">👑 Couronne</button>
-                                            <button type="button" class="bio-deco-pill" data-deco="fire" onclick="window.App && window.App.selectBioStudioDeco('fire')">🔥 Flammes</button>
-                                            <button type="button" class="bio-deco-pill" data-deco="star" onclick="window.App && window.App.selectBioStudioDeco('star')">⭐ Étoile</button>
-                                        </div>
-                                    </div>
-
-                                    <div style="margin-top:16px;">
-                                        <label style="display:block; font-size:12px; font-weight:700; color:#fff; margin-bottom:6px;">Couleur de halo lumineux (Hex)</label>
-                                        <div style="display:flex; align-items:center; gap:8px;">
-                                            <input type="color" id="bio-input-glow-picker" value="#ff0033" style="width:36px; height:36px; border:none; border-radius:8px; cursor:pointer; background:transparent;" oninput="document.getElementById('bio-input-glow-hex').value = this.value; window.App && window.App.syncBioStudioPreview();">
-                                            <input type="text" id="bio-input-glow-hex" class="modern-input" value="#ff0033" style="flex:1;" maxlength="7" oninput="window.App && window.App.syncBioStudioPreview();">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Footer Save & Links Actions -->
-                            <div class="bio-studio-actions-footer">
-                                <button type="button" class="btn primary" id="bio-save-config-btn" onclick="window.App && window.App.saveBioStudioConfig()">
-                                    <span>💾 Enregistrer ma page</span>
-                                </button>
-                                <button type="button" class="btn secondary" onclick="window.App && window.App.openMyBioPage()">
-                                    <span>🔗 Voir en direct</span>
-                                </button>
-                                <button type="button" class="btn secondary" onclick="window.App && window.App.copyMyBioLink()">
-                                    <span>📋 Copier le lien</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Right Panel: Live Mockup Preview -->
-                        <div class="bio-studio-preview-pane">
-                            <div class="bio-preview-container-mockup" id="bio-preview-container">
-                                <div class="bio-preview-ambient-bg" id="bio-preview-bg"></div>
-                                <canvas id="bio-preview-particles" class="bio-preview-particles"></canvas>
-                                <div class="bio-preview-card" id="bio-preview-card">
-                                    <div class="bio-avatar-wrapper" style="width:78px; height:78px; margin:0 auto 12px;">
-                                        <div class="bio-avatar-halo" id="bio-prev-avatar-halo"></div>
-                                        <img id="bio-prev-avatar-img" src="/icons/icon.svg" class="bio-avatar-img" alt="">
-                                        <div class="bio-avatar-badge-decoration hidden" id="bio-prev-avatar-deco">👑</div>
-                                    </div>
-                                    <div class="bio-name-row" style="justify-content:center;">
-                                        <div class="bio-display-name" id="bio-prev-name" style="font-size:18px;">Pseudo</div>
-                                        <span class="bio-verified-badge" style="font-size:11px;">✓</span>
-                                    </div>
-                                    <div class="bio-handle" id="bio-prev-handle" style="text-align:center; margin-bottom:8px;">@pseudo</div>
-                                    <div class="bio-badges-row" id="bio-prev-badges" style="justify-content:center;"></div>
-                                    <div class="bio-desc-text" id="bio-prev-desc" style="text-align:center; font-size:12.5px; margin:10px 0;">Description guns.lol</div>
-                                    <div class="bio-meta-row" style="justify-content:center; margin-bottom:12px;">
-                                        <span class="bio-location-tag hidden" id="bio-prev-location">📍 <span id="bio-prev-location-txt">Paris</span></span>
-                                        <span class="bio-views-tag" id="bio-prev-views">👁️ 0 vues</span>
-                                    </div>
-                                    <div class="bio-socials-grid" id="bio-prev-socials" style="margin-bottom:10px;"></div>
-                                    <div class="bio-audio-widget hidden" id="bio-prev-audio" style="margin-top:8px;">
-                                        <div class="bio-audio-disk"><span>🎵</span></div>
-                                        <div class="bio-audio-info">
-                                            <div class="bio-audio-title" id="bio-prev-audio-title">Musique</div>
-                                        </div>
-                                    </div>
-                                    <div class="bio-vip-promo-card hidden" id="bio-prev-vip-promo" style="margin-top:10px; padding:10px;">
-                                        <div style="font-size:11px; font-weight:700; color:#ffd700;">⭐ Personnaliser cette page (VIP)</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Toast Notifications Container -->
         <div id="toast-container" class="toast-container"></div>
