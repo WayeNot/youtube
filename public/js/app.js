@@ -7718,8 +7718,21 @@ const App = {
         setupBioAudio(url, autoplay = true) {
             this.stopBioAudio();
             if (!url) return;
+
+            let cleanUrl = url;
+            if (typeof cleanUrl === 'string') {
+                if (cleanUrl.includes('/api/stream?v=')) {
+                    const match = cleanUrl.match(/[?&]v=([^&]+)/);
+                    if (match && match[1]) {
+                        cleanUrl = `/api/stream/${encodeURIComponent(match[1])}`;
+                    }
+                } else if (/^[\w-]{11}$/.test(cleanUrl.trim())) {
+                    cleanUrl = `/api/stream/${encodeURIComponent(cleanUrl.trim())}`;
+                }
+            }
+
             try {
-                this.bioAudio = new Audio(url);
+                this.bioAudio = new Audio(cleanUrl);
                 this.bioAudio.loop = true;
                 this.bioAudio.volume = 0.65;
                 const playBtn = document.getElementById('bio-audio-play-btn');
@@ -8135,6 +8148,7 @@ const App = {
                         const safeTitle = (t.title || 'Sans titre').replace(/'/g, "\\'");
                         const safeArtist = (t.artist || '').replace(/'/g, "\\'");
                         const safeId = (t.id || '').replace(/'/g, "\\'");
+                        const trackStreamUrl = (window.API && window.API.getStreamUrl) ? window.API.getStreamUrl(t.id) : `/api/stream/${encodeURIComponent(t.id)}`;
                         return `
                         <div class="bio-music-result-item">
                             <img src="${t.thumbnail || '/icons/icon.svg'}" class="bio-music-result-thumb" alt="">
@@ -8143,7 +8157,7 @@ const App = {
                                 <span class="bio-music-result-artist">${this.escapeHtml(t.artist || 'Artiste inconnu')}</span>
                             </div>
                             <div class="bio-music-result-actions">
-                                <button type="button" class="btn secondary small" onclick="window.App && window.App.previewStreamAudio('/api/stream?v=${encodeURIComponent(t.id)}', this)" title="Tester">
+                                <button type="button" class="btn secondary small" onclick="window.App && window.App.previewStreamAudio('${trackStreamUrl}', this)" title="Tester">
                                     ▶ Tester
                                 </button>
                                 <button type="button" class="btn primary small" onclick="window.App && window.App.selectBioMusicTrack('${safeId}', '${safeTitle}', '${safeArtist}')">
@@ -8161,7 +8175,7 @@ const App = {
 
         selectBioMusicTrack(id, title, artist) {
             const fullTitle = artist ? `${title} - ${artist}` : title;
-            const streamUrl = `/api/stream?v=${encodeURIComponent(id)}`;
+            const streamUrl = (window.API && window.API.getStreamUrl) ? window.API.getStreamUrl(id) : `/api/stream/${encodeURIComponent(id)}`;
 
             const titleInput = document.getElementById('bio-input-audio-title');
             const urlInput = document.getElementById('bio-input-audio-url');
@@ -8211,53 +8225,96 @@ const App = {
             this.showToast('Musique d\'ambiance retirée.');
         },
 
-        previewStreamAudio(streamUrl, btnEl) {
-            if (this.bioPreviewAudio) {
-                this.stopBioTrackPreview();
-                if (btnEl && btnEl.getAttribute('data-playing') === 'true') {
-                    return;
+        previewStreamAudio(rawUrl, btnEl) {
+            let streamUrl = rawUrl;
+            if (typeof streamUrl === 'string' && streamUrl.includes('/api/stream?v=')) {
+                const match = streamUrl.match(/[?&]v=([^&]+)/);
+                if (match && match[1]) {
+                    streamUrl = `/api/stream/${encodeURIComponent(match[1])}`;
                 }
+            }
+
+            const isCurrentlyPlaying = (btnEl && btnEl.getAttribute('data-playing') === 'true') ||
+                                      (this.bioPreviewAudio && this.bioPreviewAudioSrc === streamUrl && !this.bioPreviewAudio.paused);
+
+            this.stopBioTrackPreview();
+            if (isCurrentlyPlaying) {
+                return;
             }
 
             try {
                 this.bioPreviewAudio = new Audio(streamUrl);
+                this.bioPreviewAudioSrc = streamUrl;
                 this.bioPreviewAudio.volume = 0.7;
-                this.bioPreviewAudio.play().catch(e => console.warn('Preview blocked:', e));
 
                 if (btnEl) {
                     btnEl.textContent = '⏹ Arrêter';
                     btnEl.setAttribute('data-playing', 'true');
-                    this.bioPreviewAudio.onended = () => {
-                        btnEl.textContent = '▶ Tester';
-                        btnEl.removeAttribute('data-playing');
-                    };
                 }
-            } catch (e) {}
+
+                this.bioPreviewAudio.onended = () => {
+                    this.stopBioTrackPreview();
+                };
+                this.bioPreviewAudio.onerror = (e) => {
+                    console.warn('Preview audio error:', e);
+                    this.stopBioTrackPreview();
+                    this.showToast('Impossible de charger cet extrait audio ❌');
+                };
+
+                const p = this.bioPreviewAudio.play();
+                if (p !== undefined) {
+                    p.catch(e => {
+                        console.warn('Preview blocked:', e);
+                        this.stopBioTrackPreview();
+                    });
+                }
+            } catch (e) {
+                this.stopBioTrackPreview();
+            }
         },
 
         toggleBioTrackPreview() {
             const urlInput = document.getElementById('bio-input-audio-url');
-            const url = urlInput ? urlInput.value : '';
+            let url = urlInput ? urlInput.value.trim() : '';
             if (!url) return;
+
+            if (url.includes('/api/stream?v=')) {
+                const match = url.match(/[?&]v=([^&]+)/);
+                if (match && match[1]) {
+                    url = `/api/stream/${encodeURIComponent(match[1])}`;
+                }
+            }
 
             const labelEl = document.getElementById('bio-preview-track-label');
 
             if (this.bioPreviewAudio && !this.bioPreviewAudio.paused) {
                 this.stopBioTrackPreview();
-                if (labelEl) labelEl.textContent = '▶ Écouter l\'extrait';
             } else {
                 this.stopBioTrackPreview();
                 try {
                     this.bioPreviewAudio = new Audio(url);
+                    this.bioPreviewAudioSrc = url;
                     this.bioPreviewAudio.volume = 0.7;
-                    this.bioPreviewAudio.play().then(() => {
-                        if (labelEl) labelEl.textContent = '⏹ Arrêter';
-                    }).catch(e => console.warn('Play preview blocked:', e));
+                    if (labelEl) labelEl.textContent = '⏹ Arrêter';
 
                     this.bioPreviewAudio.onended = () => {
-                        if (labelEl) labelEl.textContent = '▶ Écouter l\'extrait';
+                        this.stopBioTrackPreview();
                     };
-                } catch (e) {}
+                    this.bioPreviewAudio.onerror = () => {
+                        this.stopBioTrackPreview();
+                        this.showToast('Impossible de charger cet extrait audio ❌');
+                    };
+
+                    const p = this.bioPreviewAudio.play();
+                    if (p !== undefined) {
+                        p.catch(e => {
+                            console.warn('Play preview blocked:', e);
+                            this.stopBioTrackPreview();
+                        });
+                    }
+                } catch (e) {
+                    this.stopBioTrackPreview();
+                }
             }
         },
 
@@ -8269,6 +8326,7 @@ const App = {
                 } catch (e) {}
                 this.bioPreviewAudio = null;
             }
+            this.bioPreviewAudioSrc = null;
             const labelEl = document.getElementById('bio-preview-track-label');
             if (labelEl) labelEl.textContent = '▶ Écouter l\'extrait';
             document.querySelectorAll('[data-playing="true"]').forEach(el => {

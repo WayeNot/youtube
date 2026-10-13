@@ -927,8 +927,14 @@ app.get('/api/debug', async (req, res) => {
 
 
 // 3. Audio Streaming Proxy with HTTP Range Support
-app.get('/api/stream/:id', async (req, res) => {
-    const videoId = req.params.id;
+app.get(['/api/stream/:id', '/api/stream'], async (req, res) => {
+    let videoId = (req.params.id || req.query.v || req.query.id || '').trim();
+    if (videoId.startsWith('/api/stream/')) {
+        videoId = videoId.replace('/api/stream/', '');
+    }
+    if (videoId.includes('?')) {
+        videoId = videoId.split('?')[0];
+    }
     if (!videoId || !/^[\w-]{11}$/.test(videoId)) {
         return res.status(400).send('Invalid video ID');
     }
@@ -1024,8 +1030,17 @@ async function pumpStream(reader, res) {
 }
 
 // 4. Stream URL directly (in case client wants direct link)
-app.get('/api/stream-url/:id', async (req, res) => {
-    const videoId = req.params.id;
+app.get(['/api/stream-url/:id', '/api/stream-url'], async (req, res) => {
+    let videoId = (req.params.id || req.query.v || req.query.id || '').trim();
+    if (videoId.startsWith('/api/stream/')) {
+        videoId = videoId.replace('/api/stream/', '');
+    }
+    if (videoId.includes('?')) {
+        videoId = videoId.split('?')[0];
+    }
+    if (!videoId || !/^[\w-]{11}$/.test(videoId)) {
+        return res.status(400).json({ error: 'Invalid video ID' });
+    }
     try {
         if (req.query.retry === '1') {
             streamCache.delete(videoId);
