@@ -244,43 +244,25 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: VisionOS first (ultra-fast, ~1.8s), then android, and web fallback
+    // 5. Extract stream with yt-dlp: web_embedded first (fastest, immune to bot detection, ~2s), then visionos
     const streamPromise = (async () => {
         let lastErr = null;
-        const audioFormat = 'bestaudio/140/251/18/ba/b';
-        const webFormat = '18/bestaudio/ba/b';
-        const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+        // Pure audio formats only: AAC itag 140 or Opus itag 251 (never video itag 18 which breaks HTML5 <audio>)
+        const audioFormat = '140/ba[ext=m4a]/251/ba/bestaudio';
 
-        // Attempt 1: VisionOS client (fast, clean, direct audio stream, no JS cipher overhead)
+        // Attempt 1: Web Embedded player client (official YouTube embed client, never challenged on datacenter IPs, ~2s)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], audioFormat, 4500);
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], audioFormat, 3800);
         } catch (err) {
-            console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying android...`);
+            console.warn(`yt-dlp web_embedded attempt failed for ${videoId}: ${err.message}. Retrying visionos...`);
             lastErr = err;
         }
 
-        // Attempt 2: Android client (fast mobile extraction)
+        // Attempt 2: VisionOS client (clean Apple WebKit stream, zero bot check)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=android'], audioFormat, 4500);
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], audioFormat, 3800);
         } catch (err) {
-            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying web...`);
-            lastErr = err;
-        }
-
-        // Attempt 3: Authenticated session with desktop cookies (for age-restricted or private tracks)
-        if (hasCookies) {
-            try {
-                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], webFormat, 8000, null, true);
-            } catch (err) {
-                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying default web...`);
-                lastErr = err;
-            }
-        }
-
-        // Attempt 4: Default web fallback
-        try {
-            return await runYtDlp([], webFormat, 5000, null, true);
-        } catch (err) {
+            console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying smart fallback...`);
             lastErr = err;
         }
 
@@ -307,12 +289,7 @@ async function getAudioStreamUrl(videoId) {
                         console.log(`⚡ Titre alternatif testé: ${altId} (${altVideo.title})`);
                         const altTarget = `https://www.youtube.com/watch?v=${altId}`;
                         try {
-                            if (hasCookies) {
-                                try {
-                                    return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 8000, altTarget);
-                                } catch (e) {}
-                            }
-                            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], 'bestaudio/140/251/18/ba/b', 6000, altTarget);
+                            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], audioFormat, 3500, altTarget);
                         } catch (altErr) {
                             console.warn(`Alternative ${altId} extraction failed:`, altErr.message);
                         }
@@ -491,6 +468,7 @@ async function performSearch(query, limit = 20) {
 app.get('/api/search', async (req, res) => {
     const query = (req.query.q || '').trim();
     if (!query) return res.json({ results: [], artist: null });
+    res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
 
     try {
         const [results, artist] = await Promise.all([
@@ -575,6 +553,7 @@ async function findArtistCard(query) {
 app.get('/api/suggestions', async (req, res) => {
     const query = (req.query.q || '').trim();
     if (!query) return res.json({ suggestions: [], artist: null, tracks: [] });
+    res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=86400, stale-while-revalidate=604800');
 
     try {
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(
@@ -1508,6 +1487,7 @@ app.get('/api/related/:id', async (req, res) => {
     const videoId = req.params.id;
     const artist = req.query.artist || '';
     const title = req.query.title || '';
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
     const cacheKey = `${videoId}_${artist}`;
     const cached = getCached(relatedCache, cacheKey);
     if (cached && cached.length >= 10) return res.json({ results: cached });

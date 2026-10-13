@@ -3348,16 +3348,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/api.js?v=4.4"></script>
-    <script src="/js/storage.js?v=4.4"></script>
-    <script src="/js/lyrics.js?v=4.4"></script>
-    <script src="/js/player.js?v=4.4"></script>
-    <script src="/js/app.js?v=4.4"></script>
+    <script src="/js/api.js?v=4.5"></script>
+    <script src="/js/storage.js?v=4.5"></script>
+    <script src="/js/lyrics.js?v=4.5"></script>
+    <script src="/js/player.js?v=4.5"></script>
+    <script src="/js/app.js?v=4.5"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=4.4').then(reg => {
+                navigator.serviceWorker.register('/sw.js?v=4.5').then(reg => {
                     reg.update();
                 }).catch(err => {
                     console.log('SW note:', err);
@@ -3366,7 +3366,7 @@
         }
     </script>
     <!-- Dedicated native HTML5 Audio element for background playback & mobile OS lockscreen/Waze persistence -->
-    <audio id="ytm-main-audio" preload="auto" playsinline webkit-playsinline x-webkit-airplay="allow" style="display:none;"></audio>
+    <audio id="ytm-main-audio" preload="auto" playsinline webkit-playsinline x-webkit-airplay="allow" style="position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;"></audio>
 </body>
 
 </html>

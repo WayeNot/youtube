@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vibestream-v17';
+const CACHE_NAME = 'vibestream-v18';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();

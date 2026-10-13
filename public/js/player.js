@@ -9,27 +9,27 @@ const isMobileDevice = () => {
 class PlayerEngine {
   constructor() {
     // Clean native audio element initialization - guarantees pristine audio pipeline without Web Audio CORS taint
-    const cleanAudio = new Audio();
-    cleanAudio.id = 'ytm-main-audio';
-    cleanAudio.style.display = 'none';
-    cleanAudio.preload = 'auto';
-    cleanAudio.setAttribute('playsinline', 'true');
-    cleanAudio.setAttribute('webkit-playsinline', 'true');
-    cleanAudio.setAttribute('x-webkit-airplay', 'allow');
+    let audioEl = document.getElementById('ytm-main-audio');
+    if (!audioEl) {
+      audioEl = new Audio();
+      audioEl.id = 'ytm-main-audio';
+    }
+    audioEl.style.cssText = 'position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;';
+    audioEl.preload = 'auto';
+    audioEl.setAttribute('playsinline', 'true');
+    audioEl.setAttribute('webkit-playsinline', 'true');
+    audioEl.setAttribute('x-webkit-airplay', 'allow');
 
-    const existingAudio = document.getElementById('ytm-main-audio');
-    if (existingAudio && existingAudio.parentNode) {
-      existingAudio.parentNode.replaceChild(cleanAudio, existingAudio);
-    } else {
+    if (!audioEl.parentNode) {
       const attachAudio = () => {
-        if (document.body && !document.getElementById('ytm-main-audio')) {
-          document.body.appendChild(cleanAudio);
+        if (document.body && !audioEl.parentNode) {
+          document.body.appendChild(audioEl);
         }
       };
       if (document.body) attachAudio();
       else document.addEventListener('DOMContentLoaded', attachAudio);
     }
-    this.audio = cleanAudio;
+    this.audio = audioEl;
 
     this.currentTrack = null;
     this.queue = [];
@@ -210,18 +210,13 @@ class PlayerEngine {
       }
     });
 
-    // Ensure MediaSession & continuous audio streaming when app is backgrounded (e.g. user opens Waze or locks screen)
+    // Ensure MediaSession & continuous audio streaming when app is backgrounded (e.g. user opens Waze, locks screen or switches tabs)
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        if (this.isPlaying && this.audio) {
-          this.updateMediaSessionState();
-          // Keep audio stream active if not paused by the user
-          if (this.audio.paused && !this._userPaused) {
-            this.audio.play().catch(() => {});
-          }
+      this.updateMediaSessionState();
+      if (!document.hidden) {
+        if (this.isPlaying && this.audio && this.audio.paused && !this._userPaused) {
+          this.audio.play().catch(() => {});
         }
-      } else {
-        this.updateMediaSessionState();
       }
     });
 
@@ -484,9 +479,6 @@ class PlayerEngine {
     const unlockAndPlay = () => {
       window.removeEventListener('click', unlockAndPlay);
       window.removeEventListener('touchend', unlockAndPlay);
-      if (!isMobileDevice() && this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch(() => {});
-      }
       this.audio.play().catch(() => {});
     };
     window.addEventListener('click', unlockAndPlay, { once: true });
@@ -517,7 +509,23 @@ class PlayerEngine {
       console.warn('Fallback direct CDN stream error:', e);
     }
 
-    // 2. High-availability audio/embed fallback when direct stream cannot be extracted (e.g. Premium-only tracks)
+    // 2. High-speed server audio proxy fallback (same-origin, persists in background tabs)
+    try {
+      console.log('⚡ Basculement sur le proxy audio haute vitesse:', track.id);
+      this.audio.src = `/api/stream/${track.id}`;
+      this.audio.currentTime = 0;
+      this.audio.load();
+      await this.audio.play();
+      this.isPlaying = true;
+      this.isLoading = false;
+      this.updateMediaSessionState();
+      this.emit('playback_change', { isPlaying: true, isLoading: false });
+      return;
+    } catch (e) {
+      console.warn('Fallback audio proxy stream error:', e);
+    }
+
+    // 3. Last-resort YouTube embed fallback for protected/restricted tracks
     try {
       this.playViaYouTubeEmbed(track);
       return;
