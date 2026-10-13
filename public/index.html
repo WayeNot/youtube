@@ -238,14 +238,6 @@
                     </div>
                     <div id="sidebar-playlists" class="sidebar-playlists-list"></div>
                 </div>
-
-                <!-- VibeTube Switcher Button (Clean & Light) -->
-                <div class="sidebar-vibetube-switch-box">
-                    <button type="button" class="sidebar-universe-toggle-btn tube" onclick="window.App && window.App.setAppMode('vibetube')" title="Basculer sur VibeTube">
-                        <span class="universe-btn-icon">🎬</span>
-                        <span class="universe-btn-name">VibeTube</span>
-                    </button>
-                </div>
             </aside>
 
             <!-- VIBETUBE SIDEBAR (Video Entity - 100% Dedicated) -->
@@ -333,14 +325,6 @@
                             <span>Podcasts Tech</span>
                         </a>
                     </nav>
-                </div>
-
-                <!-- VibeStream Switcher Button (Clean & Light) -->
-                <div class="sidebar-vibetube-switch-box" style="margin-top:auto;">
-                    <button type="button" class="sidebar-universe-toggle-btn stream" onclick="window.App && window.App.setAppMode('vibestream')" title="Basculer sur VibeStream">
-                        <span class="universe-btn-icon">🎵</span>
-                        <span class="universe-btn-name">VibeStream</span>
-                    </button>
                 </div>
             </aside>
 
@@ -714,7 +698,7 @@
                         <div class="admin-header-row">
                             <div>
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <span class="admin-shield-icon">🛡️</span>
+                                    <span class="admin-shield-icon">⚙️</span>
                                     <h1 class="section-title" style="margin:0;">Panneau d'Administration</h1>
                                     <span class="admin-role-pill" id="admin-user-role-badge">ADMIN</span>
                                 </div>
@@ -758,7 +742,6 @@
                         <div class="admin-tabs-nav">
                             <button type="button" class="admin-tab-btn active" data-admin-tab="users" onclick="window.App && window.App.switchAdminTab('users')">👥 Utilisateurs & Rôles</button>
                             <button type="button" class="admin-tab-btn" data-admin-tab="maintenance" onclick="window.App && window.App.switchAdminTab('maintenance')">⚙️ Maintenance & Cache</button>
-                            <button type="button" class="admin-tab-btn" data-admin-tab="live" onclick="window.App && window.App.switchAdminTab('live')">⚡ Live Pulse & Jam</button>
                             <button type="button" class="admin-tab-btn" data-admin-tab="audit" onclick="window.App && window.App.switchAdminTab('audit')">🛡️ Audit Logs & Sécurité</button>
                         </div>
 
@@ -810,22 +793,14 @@
                                         </button>
                                     </div>
                                     <div class="admin-maint-box">
-                                        <h4>🛡️ Politique RBAC Multi-Niveaux</h4>
+                                        <h4>⚙️ Politique RBAC Multi-Niveaux</h4>
                                         <p style="font-size:13px; color:var(--text-secondary); margin:8px 0;">
                                             <b>• Admin :</b> Accès total, modification des rôles, suppression de comptes, purge du cache.<br>
-                                            <b>• Modérateur :</b> Vue d'ensemble, monitoring des Jam Rooms, consultation des logs.<br>
+                                            <b>• Modérateur :</b> Vue d'ensemble, gestion de la communauté, consultation des logs.<br>
                                             <b>• VIP / Utilisateur :</b> Accès refusé au panel d'administration.
                                         </p>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Tab: Live Pulse & Jam Sessions -->
-                        <div id="admin-tab-live" class="admin-tab-content hidden">
-                            <div class="admin-panel-card">
-                                <h3>📻 Salles Jam Session Actives</h3>
-                                <div id="admin-jam-rooms-list" style="margin-top:12px;"></div>
                             </div>
                         </div>
 
@@ -2716,7 +2691,7 @@
 
         <!-- Global App Dialog Modal (Custom Alert / Confirm / Prompt) -->
         <div id="modal-app-dialog" class="modal-overlay hidden" style="z-index: 100001;">
-            <div class="modal-card" style="max-width: 420px; animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
+            <div class="modal-card" style="max-width: 420px;">
                 <div class="modal-header">
                     <h3 id="app-dialog-title" style="display:flex; align-items:center; gap:8px;">
                         <span id="app-dialog-icon">💬</span>
@@ -2727,7 +2702,7 @@
                 <div class="modal-body" style="padding: 20px;">
                     <p id="app-dialog-message" style="color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 16px; white-space: pre-wrap;"></p>
                     <div id="app-dialog-input-container" class="hidden" style="margin-bottom: 16px;">
-                        <input type="text" id="app-dialog-input" class="modern-input" style="width:100%; box-sizing:border-box; padding:10px 14px; background:rgba(255,255,255,0.06); border:1px solid var(--border-active); border-radius:8px; color:var(--text-primary); font-size:14px;" placeholder="" />
+                        <input type="text" id="app-dialog-input" class="modern-input" placeholder="" />
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:10px;">
                         <button type="button" id="app-dialog-cancel-btn" class="btn secondary small" onclick="window.App && window.App.closeAppDialog(null)">

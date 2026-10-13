@@ -44,12 +44,6 @@ class PlayerEngine {
     this.isShuffled = false;
     this.autoplayRadio = true;
 
-    // Sleep Timer
-    this.sleepTimerId = null;
-    this.sleepTimerEndAt = null;
-    this.sleepTimerInterval = null;
-    this.sleepAtTrackEnd = false;
-
     // Predictive Pre-buffering & Background Cache
     this.preloadAudio = new Audio();
     this.preloadAudio.preload = 'auto';
@@ -1057,13 +1051,6 @@ class PlayerEngine {
     }
     this._isCrossfading = false;
 
-    if (this.sleepAtTrackEnd) {
-      this.pause();
-      this.cancelSleepTimer();
-      this.emit('sleep_timer_ended');
-      return;
-    }
-
     if (this.repeatMode === 'one') {
       this.seek(0);
       this.play();
@@ -1315,83 +1302,6 @@ class PlayerEngine {
     this.audio.playbackRate = rate;
     Storage.saveSetting('playbackRate', rate);
     this.emit('rate_change', { rate });
-  }
-
-  // Sleep Timer
-  setSleepTimer(minutes) {
-    this.cancelSleepTimer();
-    if (minutes === 'end_of_track') {
-      this.sleepAtTrackEnd = true;
-      this.emit('sleep_timer_set', { type: 'end_of_track' });
-      return;
-    }
-
-    const ms = minutes * 60 * 1000;
-    this.sleepTimerEndAt = Date.now() + ms;
-    this.sleepTimerId = setTimeout(() => {
-      this.pause();
-      this.cancelSleepTimer();
-      this.emit('sleep_timer_ended');
-    }, ms);
-
-    this.sleepTimerInterval = setInterval(() => {
-      const remainingMs = Math.max(0, this.sleepTimerEndAt - Date.now());
-      this.emit('sleep_timer_tick', { remainingSeconds: Math.ceil(remainingMs / 1000) });
-    }, 1000);
-
-    this.emit('sleep_timer_set', { type: 'minutes', minutes });
-  }
-
-  cancelSleepTimer() {
-    if (this.sleepTimerId) clearTimeout(this.sleepTimerId);
-    if (this.sleepTimerInterval) clearInterval(this.sleepTimerInterval);
-    this.sleepTimerId = null;
-    this.sleepTimerEndAt = null;
-    this.sleepTimerInterval = null;
-    this.sleepAtTrackEnd = false;
-    this.emit('sleep_timer_cancelled');
-  }
-
-  // Audio Visualizer Analyser Node
-  getAudioVisualizerData() {
-    if (!this.analyser && !this.sourceNode && !isMobileDevice()) {
-      try {
-        if (this.audioCtx && this.audioCtx.state === 'running') {
-          this.initEqualizer();
-        }
-      } catch (e) { }
-    }
-
-    if (this.analyser) {
-      try {
-        const bufferLength = this.analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        this.analyser.getByteFrequencyData(dataArray);
-        let bass = 0, mid = 0, treble = 0;
-        const bassCount = Math.floor(bufferLength * 0.2);
-        const midCount = Math.floor(bufferLength * 0.5);
-        for (let i = 0; i < bassCount; i++) bass += dataArray[i];
-        for (let i = bassCount; i < midCount; i++) mid += dataArray[i];
-        for (let i = midCount; i < bufferLength; i++) treble += dataArray[i];
-        bass = bass / (bassCount * 255 || 1);
-        mid = mid / ((midCount - bassCount) * 255 || 1);
-        treble = treble / ((bufferLength - midCount) * 255 || 1);
-        const energy = (bass + mid + treble) / 3;
-
-        // If audio is playing but analyser yields 0 due to cross-origin CDN restriction, fallback to simulation
-        if (energy > 0.005 || !this.isPlaying) {
-          return { bass, mid, treble, energy, raw: dataArray };
-        }
-      } catch (e) { }
-    }
-
-    // Algorithmic beat simulator fallback when Analyser is restricted (CORS) or offline
-    const t = Date.now() / 1000;
-    const isP = this.isPlaying;
-    const simBass = isP ? (Math.sin(t * 4) * 0.5 + 0.5) * 0.7 + (Math.sin(t * 8) > 0.7 ? 0.3 : 0) : 0;
-    const simMid = isP ? (Math.cos(t * 3) * 0.5 + 0.5) * 0.5 : 0;
-    const simTreble = isP ? (Math.sin(t * 6) * 0.5 + 0.5) * 0.5 : 0;
-    return { bass: simBass, mid: simMid, treble: simTreble, energy: (simBass + simMid + simTreble) / 3, raw: null };
   }
 
   // Events dispatcher

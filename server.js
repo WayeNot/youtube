@@ -40,7 +40,6 @@ const searchCache = new Map(); // key -> { data, expiresAt }
 const relatedCache = new Map(); // id -> { data, expiresAt }
 const lyricsCache = new Map(); // key -> { data, expiresAt }
 const translationCache = new Map(); // text_hash -> { frText, expiresAt }
-const jamRooms = new Map(); // roomId -> { id, host, track, currentTime, isPlaying, listeners, reactions, updatedAt }
 const homeCache = { data: null, expiresAt: 0 };
 
 function getCached(cache, key) {
@@ -1710,83 +1709,6 @@ app.post('/api/lyrics/translate', async (req, res) => {
     }
 });
 
-// Jam Session Rooms (Synchronized Social Listening)
-app.post('/api/jam/create', (req, res) => {
-    const { hostName = 'Anonyme', track } = req.body;
-    const roomId = 'JAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-    const room = {
-        id: roomId,
-        host: hostName,
-        track: track || null,
-        currentTime: 0,
-        isPlaying: true,
-        updatedAt: Date.now(),
-        listeners: [{ id: 'host', name: hostName, avatar: '🎧', joinedAt: Date.now() }],
-        reactions: []
-    };
-    jamRooms.set(roomId, room);
-    res.json({ success: true, room });
-});
-
-app.get('/api/jam/:roomId', (req, res) => {
-    const roomId = (req.params.roomId || '').toUpperCase();
-    const room = jamRooms.get(roomId);
-    if (!room) return res.status(404).json({ error: 'Session introuvable' });
-
-    // Clean old reactions (> 10s)
-    const now = Date.now();
-    room.reactions = room.reactions.filter(r => now - r.timestamp < 10000);
-    res.json({ success: true, room });
-});
-
-app.post('/api/jam/sync', (req, res) => {
-    const { roomId, track, currentTime, isPlaying, user, isHost } = req.body;
-    const cleanId = (roomId || '').toUpperCase();
-    let room = jamRooms.get(cleanId);
-    if (!room) {
-        room = {
-            id: cleanId,
-            host: user?.name || 'Hôte',
-            track: track || null,
-            currentTime: currentTime || 0,
-            isPlaying: isPlaying !== undefined ? isPlaying : true,
-            updatedAt: Date.now(),
-            listeners: [],
-            reactions: []
-        };
-        jamRooms.set(cleanId, room);
-    }
-
-    if (user && user.name) {
-        const existing = room.listeners.find(l => l.name === user.name);
-        if (!existing) {
-            room.listeners.push({ id: user.id || 'guest', name: user.name, avatar: user.avatar || '🎵', joinedAt: Date.now() });
-        }
-    }
-
-    if (isHost) {
-        if (track) room.track = track;
-        if (typeof currentTime === 'number') room.currentTime = currentTime;
-        if (typeof isPlaying === 'boolean') room.isPlaying = isPlaying;
-        room.updatedAt = Date.now();
-    }
-
-    const now = Date.now();
-    room.reactions = room.reactions.filter(r => now - r.timestamp < 10000);
-    res.json({ success: true, room });
-});
-
-app.post('/api/jam/react', (req, res) => {
-    const { roomId, emoji = '🔥', user = 'Auditeur' } = req.body;
-    const cleanId = (roomId || '').toUpperCase();
-    const room = jamRooms.get(cleanId);
-    if (!room) return res.status(404).json({ error: 'Session introuvable' });
-
-    const reaction = { id: Math.random().toString(36).substring(7), emoji, user, timestamp: Date.now() };
-    room.reactions.push(reaction);
-    res.json({ success: true, reaction });
-});
-
 // 8. Explore & Home categories
 const HOME_SECTIONS = [
     { id: 'random', title: '🎲 Sons Aléatoires & Découvertes', queries: ['hits 2026', 'daft punk', 'the weeknd', 'jul', 'billie eilish', 'dua lipa', 'travis scott', 'queen'] },
@@ -2496,8 +2418,6 @@ const adminMiddleware = async (req, res, next) => {
 app.get('/api/admin/stats', adminMiddleware, async (req, res) => {
     try {
         const stats = await db.getAdminStats();
-        // Add Jam Session active rooms count
-        stats.activeJamRooms = jamRooms.size;
         stats.memoryUsage = process.memoryUsage ? Math.round(process.memoryUsage().heapUsed / 1024 / 1024) : 0;
         stats.uptimeSeconds = Math.round(process.uptime ? process.uptime() : 0);
         res.json({ success: true, stats });

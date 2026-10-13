@@ -54,13 +54,6 @@ const App = {
         },
 
         handleRoute() {
-            // Auto-join Jam Session via URL query ?jam=XXXX
-            const urlParams = new URLSearchParams(window.location.search);
-            const jamCode = urlParams.get('jam');
-            if (jamCode && window.JamSession) {
-                setTimeout(() => window.JamSession.joinRoom(jamCode), 500);
-            }
-
             const pathname = decodeURIComponent(window.location.pathname);
             const hash = window.location.hash.replace('#', '');
             const path = pathname !== '/' ? pathname : (hash ? '/' + hash : '/');
@@ -5654,7 +5647,7 @@ const App = {
                     ? `Playlist "${this.escapeHtml(item.data.name)}" (${item.data.tracks ? item.data.tracks.length : 0} titres)`
                     : `Morceau "${this.escapeHtml(item.data.title)}" (${this.escapeHtml(item.data.artist || 'Artiste inconnu')})`;
                 return `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); padding:10px 14px; border-radius:8px;">
+                    <div class="trash-item-row">
                         <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden; margin-right:12px;">
                             <span style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                 ${isPl ? '📁' : '🎵'} ${label}
