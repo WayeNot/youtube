@@ -2506,11 +2506,22 @@ app.put('/api/bio/config', authMiddleware, async (req, res) => {
             if (typeof rawConfig.cardBlur === 'number') {
                 sanitized.cardBlur = Math.max(0, Math.min(50, rawConfig.cardBlur));
             }
-            if (typeof rawConfig.accentGlow === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(rawConfig.accentGlow.trim())) {
-                sanitized.accentGlow = rawConfig.accentGlow.trim();
+            const glow = (typeof rawConfig.glowColor === 'string' ? rawConfig.glowColor : (typeof rawConfig.accentGlow === 'string' ? rawConfig.accentGlow : '')).trim();
+            if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(glow)) {
+                sanitized.glowColor = glow;
+                sanitized.accentGlow = glow;
+            } else {
+                sanitized.glowColor = '#ff0033';
+                sanitized.accentGlow = '#ff0033';
             }
-            if (typeof rawConfig.badgeDecoration === 'string') {
-                sanitized.badgeDecoration = ['crown', 'fire', 'star', 'none'].includes(rawConfig.badgeDecoration) ? rawConfig.badgeDecoration : 'none';
+
+            const deco = (typeof rawConfig.avatarDeco === 'string' ? rawConfig.avatarDeco : (typeof rawConfig.badgeDecoration === 'string' ? rawConfig.badgeDecoration : '')).trim();
+            if (['crown', 'fire', 'star', 'none'].includes(deco)) {
+                sanitized.avatarDeco = deco;
+                sanitized.badgeDecoration = deco;
+            } else {
+                sanitized.avatarDeco = 'none';
+                sanitized.badgeDecoration = 'none';
             }
         }
 

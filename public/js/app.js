@@ -1881,7 +1881,7 @@ const App = {
             <span class="card-duration">${track.duration || '3:30'}</span>
           </div>
           <span class="card-title" title="${this.escapeHtml(track.title)}">${this.escapeHtml(track.title)}</span>
-          <span class="card-artist" title="${this.escapeHtml(track.artist)}">${this.escapeHtml(track.artist)}</span>
+          <span class="card-artist" title="${this.escapeHtml(track.artist)}"><span class="artist-name-link" data-artist="${this.escapeHtml(track.artist)}">${this.escapeHtml(track.artist)}</span></span>
         </div>
       `;
         },
@@ -1894,7 +1894,7 @@ const App = {
           <img src="${track.thumbnail}" alt="" class="row-thumb" loading="lazy">
           <div class="row-info">
             <span class="row-title">${this.escapeHtml(track.title)}</span>
-            <span class="row-artist">${this.escapeHtml(track.artist)}</span>
+            <span class="row-artist" title="${this.escapeHtml(track.artist)}"><span class="artist-name-link" data-artist="${this.escapeHtml(track.artist)}">${this.escapeHtml(track.artist)}</span></span>
           </div>
           <div class="row-actions">
             <button class="icon-btn small row-fav-btn ${Storage.isFavorite(track.id) ? 'favorited' : ''}" data-id="${track.id}" title="${Storage.isFavorite(track.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
@@ -1914,12 +1914,12 @@ const App = {
         },
 
         attachTrackClickHandlers(container) {
-            // Artist name direct navigation
-            container.querySelectorAll('.row-artist, .card-artist').forEach((artistEl) => {
+            // Precise artist navigation: only when clicking strictly on the artist name link
+            container.querySelectorAll('.artist-name-link').forEach((artistEl) => {
                 artistEl.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const artistName = artistEl.getAttribute('data-artist') || artistEl.textContent.trim();
-                    if (artistName && artistName !== 'YouTube Music') {
+                    if (artistName && artistName !== 'YouTube Music' && artistName !== 'Artiste') {
                         this.openArtistView(artistName);
                     }
                 });
@@ -1927,7 +1927,7 @@ const App = {
 
             container.querySelectorAll('[data-track-id]').forEach((el) => {
                 el.addEventListener('click', (e) => {
-                    if (e.target.closest('.row-fav-btn') || e.target.closest('.row-add-pl-btn') || e.target.closest('.row-remove-track-btn') || e.target.closest('.row-artist') || e.target.closest('.card-artist')) return;
+                    if (e.target.closest('.row-fav-btn') || e.target.closest('.row-add-pl-btn') || e.target.closest('.row-remove-track-btn') || e.target.closest('.artist-name-link')) return;
                     const id = el.getAttribute('data-track-id');
                     const track = this.findTrackInMemory(id);
                     if (!track) return;
@@ -2158,7 +2158,7 @@ const App = {
             <div class="suggestion-track-meta">
               <span class="suggestion-track-title">${this.escapeHtml(track.title)}</span>
               <span class="suggestion-track-sub">
-                ${this.escapeHtml(track.artist || 'Artiste')} ${track.duration ? '• ' + track.duration : ''}
+                <span class="artist-name-link" data-artist="${this.escapeHtml(track.artist || '')}">${this.escapeHtml(track.artist || 'Artiste')}</span> ${track.duration ? '• ' + track.duration : ''}
               </span>
             </div>
             <div class="suggestion-track-actions">
@@ -2218,10 +2218,22 @@ const App = {
                 });
             });
 
+            // Artist click direct navigation in suggestions
+            dd.querySelectorAll('.artist-name-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const name = link.getAttribute('data-artist');
+                    if (name && name !== 'Artiste') {
+                        dropdowns.forEach(d => d.classList.add('hidden'));
+                        this.openArtistView(name);
+                    }
+                });
+            });
+
             // Entire row click: play track + automatically build dynamic queue of similar songs
             dd.querySelectorAll('.suggestion-track-item').forEach(item => {
                 item.addEventListener('click', (e) => {
-                    if (e.target.closest('.suggestion-action-btn')) return;
+                    if (e.target.closest('.suggestion-action-btn') || e.target.closest('.artist-name-link')) return;
                     const trackId = item.getAttribute('data-track-id');
                     const track = trackList.find(t => t.id === trackId) || this.findTrackInMemory(trackId);
                     if (track) {
@@ -7580,6 +7592,19 @@ const App = {
             }
         },
 
+        socialSvgIcons: {
+            discord: '<svg viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>',
+            twitter: '<svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
+            steam: '<svg viewBox="0 0 24 24"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.029 4.524 4.524s-2.03 4.524-4.524 4.524h-.105l-4.076 2.911c0 .052.005.105.005.158 0 1.875-1.526 3.4-3.4 3.4-1.609 0-2.954-1.123-3.311-2.632L.389 15.34C1.968 20.354 6.643 24 12.164 24c6.627 0 12-5.373 12-12S18.605 0 11.979 0z"/></svg>',
+            twitch: '<svg viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428H13.71l-3 3v-3H6.857V1.714h13.714Z"/></svg>',
+            youtube: '<svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+            instagram: '<svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>',
+            tiktok: '<svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.12V9.4a6.33 6.33 0 0 0-.86-.06A6.34 6.34 0 0 0 3.1 15.68a6.34 6.34 0 0 0 9.1 5.65 6.27 6.27 0 0 0 3.58-5.63V8.84c1.32.94 2.91 1.5 4.62 1.57v-3.45a4.96 4.96 0 0 1-.81-.27z"/></svg>',
+            github: '<svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>',
+            spotify: '<svg viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.498 17.307c-.216.353-.674.464-1.027.248-2.812-1.718-6.353-2.107-10.523-1.155-.403.092-.806-.16-.898-.563-.092-.403.16-.806.563-.898 4.567-1.042 8.478-.598 11.637 1.341.353.216.464.674.248 1.027zm1.467-3.262c-.272.443-.853.582-1.296.31-3.22-1.979-8.129-2.55-11.938-1.393-.497.151-1.025-.133-1.176-.63-.151-.497.133-1.025.63-1.176 4.364-1.324 9.774-.687 13.47 1.583.443.272.582.853.31 1.296zm.127-3.397c-3.86-2.292-10.228-2.504-13.896-1.39-.592.18-1.222-.154-1.402-.746-.18-.592.154-1.222.746-1.402 4.223-1.282 11.26-1.037 15.717 1.609.533.316.707 1.006.391 1.539-.316.533-1.006.707-1.539.391z"/></svg>',
+            telegram: '<svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.562 8.161c-.18.865-1.782 7.49-2.593 11.182-.343 1.562-1.026 1.83-1.728 1.186l-4.524-3.428-2.183 2.102c-.242.242-.446.446-.913.446l.325-4.61 8.39-7.58c.365-.325-.08-.506-.566-.182l-10.37 6.53-4.468-1.396c-.971-.304-.991-.971.203-1.438l17.466-6.73c.809-.304 1.517.182 1.253 1.488z"/></svg>'
+        },
+
         renderProfileSocials(container, socials) {
             if (!container) return;
             if (!socials || typeof socials !== 'object' || Object.keys(socials).length === 0) {
@@ -7588,16 +7613,16 @@ const App = {
                 return;
             }
             const networks = [
-                { id: 'discord', name: 'Discord', icon: '👾' },
-                { id: 'twitter', name: 'X', icon: '𝕏' },
-                { id: 'steam', name: 'Steam', icon: '🕹️' },
-                { id: 'twitch', name: 'Twitch', icon: '🟣' },
-                { id: 'youtube', name: 'YouTube', icon: '📺' },
-                { id: 'instagram', name: 'Instagram', icon: '📸' },
-                { id: 'tiktok', name: 'TikTok', icon: '🎵' },
-                { id: 'github', name: 'GitHub', icon: '🐙' },
-                { id: 'spotify', name: 'Spotify', icon: '🎧' },
-                { id: 'telegram', name: 'Telegram', icon: '✈️' }
+                { id: 'discord', name: 'Discord' },
+                { id: 'twitter', name: 'X (Twitter)' },
+                { id: 'steam', name: 'Steam' },
+                { id: 'twitch', name: 'Twitch' },
+                { id: 'youtube', name: 'YouTube' },
+                { id: 'instagram', name: 'Instagram' },
+                { id: 'tiktok', name: 'TikTok' },
+                { id: 'github', name: 'GitHub' },
+                { id: 'spotify', name: 'Spotify' },
+                { id: 'telegram', name: 'Telegram' }
             ];
             const items = [];
             for (const net of networks) {
@@ -7617,10 +7642,10 @@ const App = {
                 const onclickAttr = !hrefInfo.isUrl
                     ? `onclick="event.preventDefault(); window.App && window.App.copySocialTag('${this.escapeHtml(item.val)}', '${item.name}')"`
                     : '';
+                const svg = this.socialSvgIcons[item.id] || '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>';
                 return `
-                    <a href="${hrefInfo.isUrl ? hrefInfo.url : '#'}" class="profile-social-pill" data-network="${item.id}" target="${hrefInfo.isUrl ? '_blank' : '_self'}" rel="noopener" ${onclickAttr} title="${item.name}: ${this.escapeHtml(item.val)}">
-                        <span class="pill-icon">${item.icon}</span>
-                        <span class="pill-name">${item.name}</span>
+                    <a href="${hrefInfo.isUrl ? hrefInfo.url : '#'}" class="social-icon-btn" data-network="${item.id}" target="${hrefInfo.isUrl ? '_blank' : '_self'}" rel="noopener" ${onclickAttr} title="${item.name}: ${this.escapeHtml(item.val)}" aria-label="${item.name}">
+                        ${svg}
                     </a>
                 `;
             }).join('');
@@ -7636,16 +7661,16 @@ const App = {
             }
 
             const networks = [
-                { id: 'discord', name: 'Discord', icon: '👾' },
-                { id: 'twitter', name: 'X / Twitter', icon: '𝕏' },
-                { id: 'steam', name: 'Steam', icon: '🕹️' },
-                { id: 'twitch', name: 'Twitch', icon: '🟣' },
-                { id: 'youtube', name: 'YouTube', icon: '📺' },
-                { id: 'instagram', name: 'Instagram', icon: '📸' },
-                { id: 'tiktok', name: 'TikTok', icon: '🎵' },
-                { id: 'github', name: 'GitHub', icon: '🐙' },
-                { id: 'spotify', name: 'Spotify', icon: '🎧' },
-                { id: 'telegram', name: 'Telegram', icon: '✈️' }
+                { id: 'discord', name: 'Discord' },
+                { id: 'twitter', name: 'X' },
+                { id: 'steam', name: 'Steam' },
+                { id: 'twitch', name: 'Twitch' },
+                { id: 'youtube', name: 'YouTube' },
+                { id: 'instagram', name: 'Instagram' },
+                { id: 'tiktok', name: 'TikTok' },
+                { id: 'github', name: 'GitHub' },
+                { id: 'spotify', name: 'Spotify' },
+                { id: 'telegram', name: 'Telegram' }
             ];
 
             const items = [];
@@ -7666,10 +7691,10 @@ const App = {
                 const onclickAttr = !hrefInfo.isUrl
                     ? `onclick="event.preventDefault(); window.App && window.App.copySocialTag('${this.escapeHtml(item.val)}', '${item.name}')"`
                     : '';
+                const svg = this.socialSvgIcons[item.id] || '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>';
                 return `
-                    <a href="${hrefInfo.isUrl ? hrefInfo.url : '#'}" class="bio-social-btn" data-network="${item.id}" target="${hrefInfo.isUrl ? '_blank' : '_self'}" rel="noopener" ${onclickAttr} title="${item.name}: ${this.escapeHtml(item.val)}">
-                        <span class="bio-social-icon">${item.icon}</span>
-                        <span class="bio-social-name">${item.name}</span>
+                    <a href="${hrefInfo.isUrl ? hrefInfo.url : '#'}" class="social-icon-btn bio-social-icon-btn" data-network="${item.id}" target="${hrefInfo.isUrl ? '_blank' : '_self'}" rel="noopener" ${onclickAttr} title="${item.name}: ${this.escapeHtml(item.val)}" aria-label="${item.name}">
+                        ${svg}
                     </a>
                 `;
             }).join('');
@@ -7887,17 +7912,8 @@ const App = {
                     verifiedBadge.classList.toggle('hidden', !isVerified);
                 }
 
-                // Badges row
-                const badgesRow = document.getElementById('bio-badges-row');
-                if (badgesRow) {
-                    const badges = profile.badges || [];
-                    badgesRow.innerHTML = badges.map(b => `
-                        <div class="bio-badge-pill" title="${this.escapeHtml(b.desc || '')}">
-                            <span>${b.icon || '⭐'}</span>
-                            <span>${this.escapeHtml(b.title || '')}</span>
-                        </div>
-                    `).join('');
-                }
+                // Badges row (Sleek Guns.lol style icon chips)
+                this.renderBioBadges('bio-badges-row', profile.badges || [], isVip, profile.role);
 
                 // Background / Theme
                 const bgEl = document.getElementById('bio-ambient-bg');
@@ -7984,6 +8000,87 @@ const App = {
         bioPreviewAudio: null,
         bioMusicSearchDebounce: null,
 
+        renderBioBadges(containerId, badges = [], isVip = false, role = '') {
+            const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+            if (!container) return;
+            if (!badges || !Array.isArray(badges) || badges.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = badges.map(b => {
+                const bType = b.type || (b.id === 'owner' ? 'owner' : (b.id === 'vip' ? 'vip' : (b.id === 'admin' ? 'admin' : '')));
+                const titleStr = `${b.title || 'Badge'}${b.desc ? ' • ' + b.desc : ''}`;
+                return `
+                    <div class="bio-badge-chip ${bType ? 'chip-' + bType : ''}" title="${this.escapeHtml(titleStr)}">
+                        <span class="bio-badge-icon">${b.icon || '⭐'}</span>
+                    </div>
+                `;
+            }).join('');
+        },
+
+        populateBioStudioFields(cfg = {}, user = {}) {
+            if (typeof cfg === 'string') {
+                try { cfg = JSON.parse(cfg); } catch (e) { cfg = {}; }
+            }
+
+            const isVip = !!this.studioUserIsVip;
+            const setVal = (id, v) => {
+                const el = document.getElementById(id);
+                if (el) el.value = v !== undefined && v !== null ? v : '';
+            };
+
+            setVal('bio-input-display-name', cfg.displayName || user.username || '');
+            const bioDescVal = cfg.bioDesc || cfg.bioText || user.bio || '';
+            setVal('bio-input-desc', bioDescVal);
+            const descCounter = document.getElementById('bio-desc-char-count');
+            if (descCounter) descCounter.textContent = `${bioDescVal.length} / 200`;
+
+            setVal('bio-input-location', cfg.location || '');
+            const showViewsEl = document.getElementById('bio-input-show-views');
+            if (showViewsEl) showViewsEl.checked = cfg.showViews !== false;
+
+            // Theme
+            this.selectedStudioTheme = cfg.theme || 'dark_void';
+            document.querySelectorAll('.bio-theme-card').forEach(card => {
+                card.classList.toggle('active', card.getAttribute('data-theme') === this.selectedStudioTheme);
+            });
+
+            setVal('bio-input-custom-bg', cfg.customBgUrl || '');
+
+            // Audio track
+            const audioTitle = cfg.customAudioTitle || '';
+            const audioUrl = cfg.customAudioUrl || '';
+            setVal('bio-input-audio-title', audioTitle);
+            setVal('bio-input-audio-url', audioUrl);
+            const trackDisp = document.getElementById('bio-selected-track-display');
+            const previewBtn = document.getElementById('bio-preview-track-btn');
+            const clearTrackBtn = document.getElementById('bio-clear-track-btn');
+            if (trackDisp) trackDisp.textContent = audioTitle || 'Aucun morceau sélectionné';
+            if (previewBtn) previewBtn.disabled = !audioUrl;
+            if (clearTrackBtn) clearTrackBtn.style.display = audioUrl ? 'inline-block' : 'none';
+
+            const autoplayEl = document.getElementById('bio-input-audio-autoplay');
+            if (autoplayEl) autoplayEl.checked = cfg.audioAutoplay !== false;
+
+            // Effects & deco
+            this.selectedStudioEffect = cfg.effect || 'none';
+            document.querySelectorAll('.bio-effect-pill').forEach(pill => {
+                pill.classList.toggle('active', pill.getAttribute('data-effect') === this.selectedStudioEffect);
+            });
+
+            this.selectedStudioDeco = cfg.avatarDeco || cfg.badgeDecoration || 'none';
+            document.querySelectorAll('.bio-deco-pill').forEach(pill => {
+                pill.classList.toggle('active', pill.getAttribute('data-deco') === this.selectedStudioDeco);
+            });
+
+            const glowColor = cfg.glowColor || cfg.accentGlow || '#ff0033';
+            setVal('bio-input-glow-hex', glowColor);
+            const picker = document.getElementById('bio-input-glow-picker');
+            if (picker) picker.value = glowColor.startsWith('#') && glowColor.length === 7 ? glowColor : '#ff0033';
+
+            this.syncBioStudioPreview();
+        },
+
         openBioStudio(updateUrl = true) {
             this.closeUserDropdown();
             if (!Storage.isLoggedIn()) {
@@ -8047,67 +8144,23 @@ const App = {
                 el.classList.toggle('locked-disabled', !isVip);
             });
 
-            // Populate inputs from bio_config
+            // Populate inputs immediately from cached bio_config
             let cfg = user.bio_config || {};
-            if (typeof cfg === 'string') {
-                try { cfg = JSON.parse(cfg); } catch (e) { cfg = {}; }
+            this.populateBioStudioFields(cfg, user);
+
+            // Fetch live saved data from backend so inputs are 100% up-to-date and never reset
+            if (user.username) {
+                API.getBioPage(user.username).then(res => {
+                    const profile = res?.profile || res?.bio;
+                    if (profile && profile.bioConfig) {
+                        const curUser = Storage.getUser() || user;
+                        curUser.bio_config = profile.bioConfig;
+                        if (profile.socialLinks) curUser.social_links = profile.socialLinks;
+                        Storage.setUser(curUser);
+                        this.populateBioStudioFields(profile.bioConfig, curUser);
+                    }
+                }).catch(e => console.warn('Could not refresh bio studio from server:', e));
             }
-
-            const setVal = (id, v) => {
-                const el = document.getElementById(id);
-                if (el) el.value = v !== undefined && v !== null ? v : '';
-            };
-
-            setVal('bio-input-display-name', cfg.displayName || user.username);
-            const bioDescVal = cfg.bioDesc || cfg.bioText || user.bio || '';
-            setVal('bio-input-desc', bioDescVal);
-            const descCounter = document.getElementById('bio-desc-char-count');
-            if (descCounter) descCounter.textContent = `${bioDescVal.length} / 200`;
-
-            setVal('bio-input-location', cfg.location || '');
-            const showViewsEl = document.getElementById('bio-input-show-views');
-            if (showViewsEl) showViewsEl.checked = cfg.showViews !== false;
-
-            // Theme
-            this.selectedStudioTheme = cfg.theme || 'dark_void';
-            document.querySelectorAll('.bio-theme-card').forEach(card => {
-                card.classList.toggle('active', card.getAttribute('data-theme') === this.selectedStudioTheme);
-            });
-
-            setVal('bio-input-custom-bg', cfg.customBgUrl || '');
-
-            // Audio track
-            const audioTitle = cfg.customAudioTitle || '';
-            const audioUrl = cfg.customAudioUrl || '';
-            setVal('bio-input-audio-title', audioTitle);
-            setVal('bio-input-audio-url', audioUrl);
-            const trackDisp = document.getElementById('bio-selected-track-display');
-            const previewBtn = document.getElementById('bio-preview-track-btn');
-            const clearTrackBtn = document.getElementById('bio-clear-track-btn');
-            if (trackDisp) trackDisp.textContent = audioTitle || 'Aucun morceau sélectionné';
-            if (previewBtn) previewBtn.disabled = !audioUrl;
-            if (clearTrackBtn) clearTrackBtn.style.display = audioUrl ? 'inline-block' : 'none';
-
-            const autoplayEl = document.getElementById('bio-input-audio-autoplay');
-            if (autoplayEl) autoplayEl.checked = cfg.audioAutoplay !== false;
-
-            // Effects & deco
-            this.selectedStudioEffect = cfg.effect || 'none';
-            document.querySelectorAll('.bio-effect-pill').forEach(pill => {
-                pill.classList.toggle('active', pill.getAttribute('data-effect') === this.selectedStudioEffect);
-            });
-
-            this.selectedStudioDeco = cfg.avatarDeco || 'none';
-            document.querySelectorAll('.bio-deco-pill').forEach(pill => {
-                pill.classList.toggle('active', pill.getAttribute('data-deco') === this.selectedStudioDeco);
-            });
-
-            const glowColor = cfg.glowColor || '#ff0033';
-            setVal('bio-input-glow-hex', glowColor);
-            const picker = document.getElementById('bio-input-glow-picker');
-            if (picker) picker.value = glowColor.startsWith('#') && glowColor.length === 7 ? glowColor : '#ff0033';
-
-            this.syncBioStudioPreview();
         },
 
         exitBioStudio() {
@@ -8411,6 +8464,24 @@ const App = {
             const prevDesc = document.getElementById('bio-prev-desc');
             if (prevDesc) prevDesc.textContent = desc;
 
+            // Mockup Badges
+            let userBadges = [];
+            if (user.custom_badges) {
+                try {
+                    const parsed = typeof user.custom_badges === 'string' ? JSON.parse(user.custom_badges) : user.custom_badges;
+                    if (Array.isArray(parsed)) {
+                        userBadges = parsed.map(b => typeof b === 'string' ? { id: b, title: b.toUpperCase(), icon: '⭐' } : b);
+                    }
+                } catch (e) {}
+            }
+            if (user.role === 'owner' && !userBadges.some(b => b.id === 'owner')) {
+                userBadges.unshift({ id: 'owner', type: 'owner', title: 'Fondateur', icon: '👑', desc: 'Créateur & Propriétaire de VibeStream' });
+            }
+            if (isVip && !userBadges.some(b => b.id === 'vip')) {
+                userBadges.push({ id: 'vip', type: 'vip', title: 'VIP Privilégié', icon: '⭐', desc: 'Membre VIP' });
+            }
+            this.renderBioBadges('bio-prev-badges', userBadges, isVip, user.role);
+
             const prevAvatar = document.getElementById('bio-prev-avatar-img');
             if (prevAvatar) {
                 prevAvatar.src = user.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(user.username || 'seed')}`;
@@ -8522,6 +8593,7 @@ const App = {
             const config = {
                 displayName: getVal('bio-input-display-name'),
                 bioDesc: getVal('bio-input-desc').slice(0, 200),
+                bioText: getVal('bio-input-desc').slice(0, 200),
                 location: getVal('bio-input-location'),
                 showViews: document.getElementById('bio-input-show-views')?.checked ?? true,
                 theme: this.selectedStudioTheme || 'dark_void',
@@ -8531,7 +8603,9 @@ const App = {
                 audioAutoplay: isVip ? (document.getElementById('bio-input-audio-autoplay')?.checked ?? true) : false,
                 effect: isVip ? (this.selectedStudioEffect || 'none') : 'none',
                 avatarDeco: isVip ? (this.selectedStudioDeco || 'none') : 'none',
-                glowColor: isVip ? (getVal('bio-input-glow-hex') || '#ff0033') : '#ff0033'
+                badgeDecoration: isVip ? (this.selectedStudioDeco || 'none') : 'none',
+                glowColor: isVip ? (getVal('bio-input-glow-hex') || '#ff0033') : '#ff0033',
+                accentGlow: isVip ? (getVal('bio-input-glow-hex') || '#ff0033') : '#ff0033'
             };
 
             try {
@@ -8541,6 +8615,7 @@ const App = {
                     if (user) {
                         user.bio_config = res.bioConfig || config;
                         Storage.setUser(user);
+                        this.populateBioStudioFields(user.bio_config, user);
                     }
                     this.showToast('Page guns.lol sauvegardée avec succès ! ⚡');
                 } else {
