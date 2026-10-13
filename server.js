@@ -2483,8 +2483,8 @@ const adminMiddleware = async (req, res, next) => {
             return res.status(401).json({ error: 'Utilisateur introuvable' });
         }
         const role = user.role || 'user';
-        if (role !== 'admin' && role !== 'mod') {
-            return res.status(403).json({ error: 'Accès refusé. Privilèges Administrateur / Modérateur requis (RBAC).' });
+        if (role !== 'owner' && role !== 'admin' && role !== 'mod') {
+            return res.status(403).json({ error: 'Accès refusé. Privilèges Fondateur / Administrateur / Modérateur requis (RBAC).' });
         }
         req.user = user;
         next();
@@ -2519,14 +2519,14 @@ app.get('/api/admin/users', adminMiddleware, async (req, res) => {
 });
 
 app.put('/api/admin/users/:id/role', adminMiddleware, async (req, res) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Seul un Administrateur peut modifier les rôles (RBAC)' });
+    if (req.user.role !== 'owner' && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Seul un Administrateur ou Fondateur peut modifier les rôles (RBAC)' });
     }
     const targetUserId = req.params.id;
     const { role } = req.body || {};
-    const validRoles = ['user', 'vip', 'mod', 'admin'];
+    const validRoles = ['user', 'mod', 'admin', 'owner'];
     if (!validRoles.includes(role)) {
-        return res.status(400).json({ error: 'Rôle invalide (user, vip, mod, admin)' });
+        return res.status(400).json({ error: 'Rôle invalide (user, mod, admin, owner)' });
     }
 
     try {
@@ -2537,6 +2537,28 @@ app.put('/api/admin/users/:id/role', adminMiddleware, async (req, res) => {
     } catch (err) {
         console.error('Update role error:', err);
         res.status(500).json({ error: 'Erreur lors de la modification du rôle' });
+    }
+});
+
+// Update User Custom Badges (Toggle VIP, custom awards, etc.)
+app.put('/api/admin/users/:id/badges', adminMiddleware, async (req, res) => {
+    if (req.user.role !== 'owner' && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Seul un Administrateur ou Fondateur peut gérer les badges' });
+    }
+    const targetUserId = req.params.id;
+    const { badges } = req.body || {};
+    if (!Array.isArray(badges)) {
+        return res.status(400).json({ error: 'Badges invalides (tableau attendu)' });
+    }
+
+    try {
+        const updatedBadges = await db.updateUserCustomBadges(targetUserId, badges);
+        const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        await db.addAuditLog(req.user.id, 'CHANGE_BADGES', targetUserId, { badges: updatedBadges, updatedBy: req.user.username }, clientIp);
+        res.json({ success: true, userId: targetUserId, badges: updatedBadges });
+    } catch (err) {
+        console.error('Update badges error:', err);
+        res.status(500).json({ error: 'Erreur lors de la modification des badges' });
     }
 });
 

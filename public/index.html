@@ -164,8 +164,8 @@
                         </a>
                         <a href="/admin" class="dropdown-item hidden" id="dropdown-admin-link"
                             onclick="event.preventDefault(); window.App && window.App.openAdminPanel()">
-                            <span style="font-size:16px;">🛡️</span>
-                            <span>Administration RBAC</span>
+                            <span style="font-size:16px;">⚙️</span>
+                            <span>Administration</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <button class="dropdown-item danger" onclick="window.App && window.App.logoutUser()">
@@ -771,6 +771,7 @@
                                 </div>
                                 <div class="admin-users-role-filter">
                                     <button type="button" class="admin-role-filter-btn active" data-role="all" onclick="window.App && window.App.filterAdminUsersByRole('all')">Tous</button>
+                                    <button type="button" class="admin-role-filter-btn" data-role="owner" onclick="window.App && window.App.filterAdminUsersByRole('owner')">👑 Fondateurs</button>
                                     <button type="button" class="admin-role-filter-btn" data-role="admin" onclick="window.App && window.App.filterAdminUsersByRole('admin')">Admins</button>
                                     <button type="button" class="admin-role-filter-btn" data-role="mod" onclick="window.App && window.App.filterAdminUsersByRole('mod')">Modérateurs</button>
                                     <button type="button" class="admin-role-filter-btn" data-role="vip" onclick="window.App && window.App.filterAdminUsersByRole('vip')">VIP</button>

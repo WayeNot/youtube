@@ -3831,6 +3831,39 @@ textarea#import-text-input:focus {
   font-size: 13px;
 }
 
+/* Special Role & Custom Badges */
+.loyalty-badge-pill.badge-type-owner {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 136, 0, 0.3) 100%);
+  border: 1px solid #ffd700;
+  color: #ffd700;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+.loyalty-badge-pill.badge-type-owner:hover {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.65);
+}
+
+.loyalty-badge-pill.badge-type-admin {
+  background: rgba(255, 0, 51, 0.25);
+  border: 1px solid #ff0033;
+  color: #ff4d6d;
+  box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+}
+
+.loyalty-badge-pill.badge-type-mod {
+  background: rgba(255, 170, 0, 0.25);
+  border: 1px solid #ffaa00;
+  color: #ffbb33;
+}
+
+.loyalty-badge-pill.badge-type-vip {
+  background: linear-gradient(135deg, rgba(162, 56, 255, 0.25) 0%, rgba(255, 215, 0, 0.25) 100%);
+  border: 1px solid #ffd700;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+}
+
 .profile-bio-card {
   display: flex;
   align-items: flex-start;
@@ -9117,6 +9150,14 @@ textarea#import-text-input:focus {
   text-transform: uppercase;
 }
 
+.admin-role-tag.role-owner {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 136, 0, 0.3) 100%);
+  color: #ffd700;
+  border: 1px solid #ffd700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.35);
+  font-weight: 800;
+}
+
 .admin-role-tag.role-admin {
   background: rgba(255, 0, 51, 0.25);
   color: #ff4d6d;
@@ -9138,6 +9179,22 @@ textarea#import-text-input:focus {
 .admin-role-tag.role-user {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-secondary);
+}
+
+.admin-badge-pill.vip-pill {
+  font-size: 10px;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.vip-toggle-btn {
+  border-radius: 6px;
+  font-weight: 700;
+  transition: all 0.2s ease;
 }
 
 .admin-role-select {

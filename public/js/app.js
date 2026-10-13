@@ -4034,7 +4034,7 @@ const App = {
 
                 const adminLink = document.getElementById('dropdown-admin-link');
                 const userRole = (u?.role || 'user').toLowerCase();
-                const canAccessAdmin = userRole === 'admin' || userRole === 'mod';
+                const canAccessAdmin = userRole === 'owner' || userRole === 'admin' || userRole === 'mod';
                 if (adminLink) {
                     adminLink.classList.toggle('hidden', !canAccessAdmin);
                 }
@@ -4116,7 +4116,7 @@ const App = {
                 if (this.dom.profileBadgesRow) {
                     const badges = profile.badges || [];
                     this.dom.profileBadgesRow.innerHTML = badges.map(b => `
-                        <div class="loyalty-badge-pill" title="${this.escapeHtml(b.desc)}">
+                        <div class="loyalty-badge-pill ${b.type ? 'badge-type-' + b.type : ''}" title="${this.escapeHtml(b.desc)}">
                             <span class="badge-icon">${b.icon}</span>
                             <span class="badge-title">${this.escapeHtml(b.title)}</span>
                         </div>
@@ -7086,11 +7086,11 @@ const App = {
                 return;
             }
 
-            // 2. High Role Permission Check: Only admin and mod can enter
+            // 2. High Role Permission Check: Only owner, admin and mod can enter
             const user = Storage.getUser ? Storage.getUser() : null;
             const userRole = (user?.role || 'user').toLowerCase();
-            if (userRole !== 'admin' && userRole !== 'mod') {
-                this.showToast('⛔ Accès refusé : Privilèges Administrateur ou Modérateur requis (RBAC).');
+            if (userRole !== 'owner' && userRole !== 'admin' && userRole !== 'mod') {
+                this.showToast('⛔ Accès refusé : Privilèges Fondateur, Administrateur ou Modérateur requis (RBAC).');
                 this.switchView('home');
                 return;
             }
@@ -7100,7 +7100,16 @@ const App = {
             const roleBadge = document.getElementById('admin-user-role-badge');
             if (roleBadge) {
                 roleBadge.textContent = userRole.toUpperCase();
-                roleBadge.style.background = userRole === 'admin' ? '#ff0033' : '#ff9900';
+                if (userRole === 'owner') {
+                    roleBadge.style.background = 'linear-gradient(135deg, #ffd700, #ff8800)';
+                    roleBadge.style.color = '#000';
+                } else if (userRole === 'admin') {
+                    roleBadge.style.background = '#ff0033';
+                    roleBadge.style.color = '#fff';
+                } else {
+                    roleBadge.style.background = '#ff9900';
+                    roleBadge.style.color = '#fff';
+                }
             }
 
             await this.refreshAdminStats();
@@ -7171,18 +7180,32 @@ const App = {
             }
 
             const currentUser = Storage.getUser ? Storage.getUser() : null;
-            const isAdmin = (currentUser?.role || 'user').toLowerCase() === 'admin';
+            const myRole = (currentUser?.role || 'user').toLowerCase();
+            const canManage = myRole === 'owner' || myRole === 'admin';
 
             tbody.innerHTML = users.map(u => {
                 const dateStr = u.createdAt ? new Date(Number(u.createdAt)).toLocaleDateString('fr-FR') : 'Inconnue';
-                const role = u.role || 'user';
+                const role = (u.role || 'user').toLowerCase();
+                
+                // Parse custom badges
+                let customBadges = [];
+                try {
+                    customBadges = typeof u.customBadges === 'string' ? JSON.parse(u.customBadges) : (Array.isArray(u.customBadges) ? u.customBadges : []);
+                } catch (e) {
+                    customBadges = [];
+                }
+                const isVip = customBadges.some(b => (typeof b === 'string' ? b : b.id) === 'vip') || role === 'vip';
+
                 return `
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:10px;">
                                 <img src="${u.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(u.username)}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="">
                                 <div>
-                                    <div style="font-weight:700; color:#fff;">${this.escapeHtml(u.username)}</div>
+                                    <div style="font-weight:700; color:#fff; display:flex; align-items:center; gap:6px;">
+                                        <span>${this.escapeHtml(u.username)}</span>
+                                        ${isVip ? '<span class="admin-badge-pill vip-pill" title="Badge VIP actif">⭐ VIP</span>' : ''}
+                                    </div>
                                     <div style="font-size:11px; color:var(--text-muted);">ID: ${u.id.substring(0, 8)}...</div>
                                 </div>
                             </div>
@@ -7194,13 +7217,23 @@ const App = {
                         <td><span style="color:#00ff88; font-size:12px;">● Actif</span></td>
                         <td>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <select class="admin-role-select" ${!isAdmin ? 'disabled' : ''} onchange="window.App && window.App.updateUserRole('${u.id}', this.value)">
+                                <select class="admin-role-select" ${!canManage ? 'disabled' : ''} onchange="window.App && window.App.updateUserRole('${u.id}', this.value)">
                                     <option value="user" ${role === 'user' ? 'selected' : ''}>Utilisateur (user)</option>
-                                    <option value="vip" ${role === 'vip' ? 'selected' : ''}>VIP (vip)</option>
                                     <option value="mod" ${role === 'mod' ? 'selected' : ''}>Modérateur (mod)</option>
                                     <option value="admin" ${role === 'admin' ? 'selected' : ''}>Administrateur (admin)</option>
+                                    <option value="owner" ${role === 'owner' ? 'selected' : ''}>👑 Fondateur (owner)</option>
                                 </select>
-                                ${isAdmin && String(u.id) !== String(currentUser?.id) ? `
+
+                                <!-- Toggle Badge VIP -->
+                                <button type="button" class="btn secondary small vip-toggle-btn ${isVip ? 'active' : ''}"
+                                    ${!canManage ? 'disabled' : ''}
+                                    style="${isVip ? 'background:rgba(255,215,0,0.18); border-color:#ffd700; color:#ffd700;' : 'color:var(--text-muted);'} padding:4px 8px; font-size:11px;"
+                                    onclick="window.App && window.App.toggleUserVipBadge('${u.id}', ${!isVip})"
+                                    title="${isVip ? 'Retirer le badge VIP' : 'Attribuer le badge VIP'}">
+                                    ${isVip ? '⭐ VIP' : '+ VIP'}
+                                </button>
+
+                                ${canManage && String(u.id) !== String(currentUser?.id) ? `
                                     <button type="button" class="btn secondary small" style="color:#ff4444; border-color:rgba(255,68,68,0.3); padding:4px 8px; font-size:12px;" onclick="window.App && window.App.confirmDeleteUser('${u.id}', '${this.escapeHtml(u.username)}')" title="Supprimer le compte">
                                         🗑️
                                     </button>
@@ -7230,6 +7263,18 @@ const App = {
             const all = this._adminUsersCache || [];
             if (role === 'all') {
                 this.renderAdminUsersTable(all);
+            } else if (role === 'vip') {
+                const filtered = all.filter(u => {
+                    const r = (u.role || 'user').toLowerCase();
+                    if (r === 'vip') return true;
+                    try {
+                        const badges = typeof u.customBadges === 'string' ? JSON.parse(u.customBadges) : (Array.isArray(u.customBadges) ? u.customBadges : []);
+                        return badges.some(b => (typeof b === 'string' ? b : b.id) === 'vip');
+                    } catch (e) {
+                        return false;
+                    }
+                });
+                this.renderAdminUsersTable(filtered);
             } else {
                 const filtered = all.filter(u => (u.role || 'user').toLowerCase() === role);
                 this.renderAdminUsersTable(filtered);
@@ -7275,8 +7320,38 @@ const App = {
                 await API.updateAdminUserRole(userId, newRole);
                 this.showToast(`Rôle mis à jour: ${newRole.toUpperCase()} 🛡️`);
                 await this.refreshAdminStats();
+                await this.loadAdminUsers();
             } catch (e) {
                 this.showToast(e.message || 'Erreur lors de la mise à jour du rôle RBAC');
+                await this.loadAdminUsers();
+            }
+        },
+
+        async toggleUserVipBadge(userId, grantVip) {
+            try {
+                const all = this._adminUsersCache || [];
+                const target = all.find(u => String(u.id) === String(userId));
+                let badges = [];
+                if (target && target.customBadges) {
+                    try {
+                        badges = typeof target.customBadges === 'string' ? JSON.parse(target.customBadges) : (Array.isArray(target.customBadges) ? target.customBadges : []);
+                    } catch (e) {
+                        badges = [];
+                    }
+                }
+                if (grantVip) {
+                    if (!badges.some(b => (typeof b === 'string' ? b : b.id) === 'vip')) {
+                        badges.push({ id: 'vip', icon: '⭐', title: 'VIP Privilégié', desc: 'Membre VIP d\'honneur avec accès prioritaire' });
+                    }
+                } else {
+                    badges = badges.filter(b => (typeof b === 'string' ? b : b.id) !== 'vip');
+                }
+
+                await API.updateAdminUserBadges(userId, badges);
+                this.showToast(grantVip ? 'Badge VIP attribué avec succès ! ⭐' : 'Badge VIP retiré.');
+                await this.loadAdminUsers();
+            } catch (e) {
+                this.showToast(e.message || 'Erreur lors de la gestion du badge VIP');
                 await this.loadAdminUsers();
             }
         },

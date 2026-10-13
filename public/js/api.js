@@ -301,6 +301,28 @@ const API = {
     }
   },
 
+  async updateAdminUserBadges(userId, badges) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch(`/api/admin/users/${userId}/badges`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ badges })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('Update user badges error:', e);
+      throw e;
+    }
+  },
+
   async getAdminAuditLogs(limit = 50) {
     try {
       const token = Storage.getToken ? Storage.getToken() : null;

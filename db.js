@@ -180,6 +180,9 @@ const db = {
       try {
         await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
       } catch (e) {}
+      try {
+        await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_badges JSONB DEFAULT '[]'::jsonb`;
+      } catch (e) {}
 
       // --- DEDICATED VIBETUBE TABLES (100% Separated from VibeStream) ---
       await neonSql`
@@ -463,6 +466,10 @@ const db = {
       } catch (e) {}
 
       try {
+        sqliteDb.exec("ALTER TABLE users ADD COLUMN custom_badges TEXT DEFAULT '[]'");
+      } catch (e) {}
+
+      try {
         sqliteDb.exec('ALTER TABLE users ADD COLUMN is_public INTEGER DEFAULT 1');
       } catch (e) {}
 
@@ -481,19 +488,19 @@ const db = {
   // Users
   async findUserByUsername(username) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, role, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, role, created_at FROM users WHERE username = ?').get(username.trim()) || null;
+      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE username = ?').get(username.trim()) || null;
     }
   },
 
   async findUserById(id) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, avatar, bio, is_public, role, created_at FROM users WHERE id = ${id} LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE id = ${id} LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, avatar, bio, is_public, role, created_at FROM users WHERE id = ?').get(id) || null;
+      return sqliteDb.prepare('SELECT id, username, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE id = ?').get(id) || null;
     }
   },
 
@@ -620,6 +627,50 @@ const db = {
     const badges = [];
     const createdAtMs = Number(user.created_at) || Date.now();
     const ageDays = Math.floor((Date.now() - createdAtMs) / (1000 * 60 * 60 * 24));
+
+    // 1. Role Badges (Owner, Admin, Mod)
+    const userRole = (user.role || 'user').toLowerCase();
+    if (userRole === 'owner') {
+      badges.push({ id: 'owner', icon: '👑', title: 'Fondateur', desc: 'Fondateur & Créateur officiel de la plateforme', isSpecial: true, type: 'owner' });
+    } else if (userRole === 'admin') {
+      badges.push({ id: 'admin', icon: '🛡️', title: 'Administrateur', desc: 'Administrateur certifié de la plateforme', isSpecial: true, type: 'admin' });
+    } else if (userRole === 'mod') {
+      badges.push({ id: 'mod', icon: '⚔️', title: 'Modérateur', desc: 'Modérateur officiel de la communauté', isSpecial: true, type: 'mod' });
+    }
+
+    // 2. Custom JSON Badges (VIP, Special awards, etc.)
+    let customBadgesList = [];
+    try {
+      if (typeof user.custom_badges === 'string') {
+        customBadgesList = JSON.parse(user.custom_badges);
+      } else if (Array.isArray(user.custom_badges)) {
+        customBadgesList = user.custom_badges;
+      }
+    } catch (e) {
+      customBadgesList = [];
+    }
+
+    // Check if user has VIP badge or role
+    const hasVip = customBadgesList.some(b => (typeof b === 'string' ? b : b.id) === 'vip') || userRole === 'vip';
+    if (hasVip) {
+      badges.push({ id: 'vip', icon: '⭐', title: 'VIP Privilégié', desc: 'Membre VIP d\'honneur avec accès prioritaire', isSpecial: true, type: 'vip' });
+    }
+
+    // Add other custom badges from JSON column
+    for (const cb of customBadgesList) {
+      const bId = typeof cb === 'string' ? cb : cb.id;
+      if (bId === 'vip') continue; // already added above
+      if (typeof cb === 'object' && cb !== null) {
+        badges.push({
+          id: cb.id || 'custom',
+          icon: cb.icon || '🎖️',
+          title: cb.title || 'Insigne Spécial',
+          desc: cb.desc || 'Badge honorifique de la communauté',
+          isSpecial: true,
+          type: 'custom'
+        });
+      }
+    }
 
     if (ageDays >= 1) {
       badges.push({ id: 'pioneer', icon: '🏆', title: 'Pionnier', desc: 'Membre actif de la communauté' });
@@ -1271,7 +1322,7 @@ const db = {
   async getAdminUsers(limit = 100) {
     if (isNeon) {
       const rows = await neonSql`
-        SELECT id, username, avatar, role, created_at as "createdAt"
+        SELECT id, username, avatar, role, custom_badges as "customBadges", created_at as "createdAt"
         FROM users
         ORDER BY created_at DESC
         LIMIT ${limit}
@@ -1279,7 +1330,7 @@ const db = {
       return rows;
     } else {
       const rows = sqliteDb.prepare(`
-        SELECT id, username, avatar, role, created_at as createdAt
+        SELECT id, username, avatar, role, custom_badges as customBadges, created_at as createdAt
         FROM users
         ORDER BY created_at DESC
         LIMIT ?
@@ -1289,7 +1340,7 @@ const db = {
   },
 
   async updateAdminUserRole(userId, newRole) {
-    const validRoles = ['user', 'vip', 'mod', 'admin'];
+    const validRoles = ['user', 'mod', 'admin', 'owner'];
     const roleToSet = validRoles.includes(newRole) ? newRole : 'user';
     if (isNeon) {
       await neonSql`UPDATE users SET role = ${roleToSet} WHERE id = ${userId}`;
@@ -1297,6 +1348,16 @@ const db = {
       sqliteDb.prepare('UPDATE users SET role = ? WHERE id = ?').run(roleToSet, userId);
     }
     return roleToSet;
+  },
+
+  async updateUserCustomBadges(userId, badges) {
+    const badgesArray = Array.isArray(badges) ? badges : [];
+    if (isNeon) {
+      await neonSql`UPDATE users SET custom_badges = ${JSON.stringify(badgesArray)}::jsonb WHERE id = ${userId}`;
+    } else {
+      sqliteDb.prepare('UPDATE users SET custom_badges = ? WHERE id = ?').run(JSON.stringify(badgesArray), userId);
+    }
+    return badgesArray;
   },
 
   async addAuditLog(userId, action, target, details = {}, ip = '') {
