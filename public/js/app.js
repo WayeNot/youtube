@@ -4127,7 +4127,8 @@ const App = {
                 this.switchView('profile', false);
 
                 this.dom.profileDisplayUsername.textContent = profile.username;
-                const isOwner = Boolean(profile.isOwner);
+                const currentUser = Storage.getUser();
+                const isOwner = Boolean(profile.isOwner) || (currentUser && currentUser.username && currentUser.username.toLowerCase() === profile.username.toLowerCase());
                 const rawBio = (profile.bio && profile.bio.trim()) || (profile.bioConfig && profile.bioConfig.bioDesc && profile.bioConfig.bioDesc.trim()) || '';
                 if (this.dom.profileBioText) {
                     if (rawBio) {
@@ -4210,8 +4211,6 @@ const App = {
                 }
 
                 // Toggle edit profile button depending on whether viewer is owner
-                const currentUser = Storage.getUser();
-                const isOwner = currentUser && currentUser.username.toLowerCase() === profile.username.toLowerCase();
                 const editBtn = document.querySelector('#profile-actions-block .profile-edit-btn') || document.querySelector('#profile-actions-block button[onclick*="openSettings"]');
                 if (editBtn) editBtn.classList.toggle('hidden', !isOwner);
 
