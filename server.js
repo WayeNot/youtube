@@ -2390,6 +2390,144 @@ app.put('/api/user/profile', authMiddleware, async (req, res) => {
 });
 
 // =============================================================
+// GUNS.LOL BIO PAGE & SOCIAL GAMING LINKS API
+// =============================================================
+
+// 1. Get public guns.lol bio data (/api/bio/:username)
+app.get('/api/bio/:username', async (req, res) => {
+    const username = (req.params.username || '').trim();
+    if (!username) return res.status(400).json({ error: 'Nom d\'utilisateur requis' });
+
+    let viewerUserId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        try {
+            const decoded = jwt.verify(token, config.jwtSecret);
+            if (decoded) viewerUserId = decoded.id;
+        } catch (e) {}
+    }
+
+    try {
+        const bioData = await db.getBioPageData(username, viewerUserId);
+        if (!bioData) {
+            return res.status(404).json({ error: 'Page bio introuvable pour cet utilisateur' });
+        }
+        res.json({ success: true, bio: bioData });
+    } catch (err) {
+        console.error('Bio page fetch error:', err);
+        res.status(500).json({ error: 'Erreur lors de la récupération de la page bio' });
+    }
+});
+
+// 2. Update guns.lol bio config (/api/bio/config)
+app.put('/api/bio/config', authMiddleware, async (req, res) => {
+    try {
+        const user = await db.findUserById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+        // Check if user is VIP or staff (Admin/Owner)
+        let customBadges = [];
+        try {
+            customBadges = typeof user.custom_badges === 'string' ? JSON.parse(user.custom_badges) : (Array.isArray(user.custom_badges) ? user.custom_badges : []);
+        } catch (e) {
+            customBadges = [];
+        }
+        const userRole = (user.role || 'user').toLowerCase();
+        const isVip = customBadges.some(b => (typeof b === 'string' ? b : b.id) === 'vip') || userRole === 'vip' || userRole === 'admin' || userRole === 'owner';
+
+        const rawConfig = req.body || {};
+
+        // Base config (allowed for everyone)
+        const sanitized = {
+            displayName: typeof rawConfig.displayName === 'string' ? rawConfig.displayName.trim().slice(0, 50) : user.username,
+            bioText: typeof rawConfig.bioText === 'string' ? rawConfig.bioText.trim().slice(0, 300) : '',
+            location: typeof rawConfig.location === 'string' ? rawConfig.location.trim().slice(0, 60) : '',
+            theme: ['dark_void', 'obsidian', 'minimal'].includes(rawConfig.theme) ? rawConfig.theme : 'dark_void',
+            showViews: Boolean(rawConfig.showViews !== false)
+        };
+
+        // VIP-exclusive features: wallpapers, custom audio, particles, card blur/opacity, neon glow
+        if (isVip) {
+            // Advanced themes allowed for VIP
+            if (['matrix', 'synthwave', 'cyberpunk', 'midnight_neon', 'anime_sunset', 'custom'].includes(rawConfig.theme)) {
+                sanitized.theme = rawConfig.theme;
+            }
+
+            // Custom Background URL (image, gif, animated)
+            if (typeof rawConfig.customBgUrl === 'string') {
+                const bg = rawConfig.customBgUrl.trim();
+                if (!bg || /^https?:\/\//i.test(bg) || bg.startsWith('data:image/')) {
+                    sanitized.customBgUrl = bg.slice(0, 500);
+                }
+            }
+            sanitized.customBgType = ['image', 'animated', 'video'].includes(rawConfig.customBgType) ? rawConfig.customBgType : 'image';
+
+            // Background Song / Audio
+            if (typeof rawConfig.customAudioUrl === 'string') {
+                const aud = rawConfig.customAudioUrl.trim();
+                if (!aud || /^https?:\/\//i.test(aud) || aud.startsWith('/api/stream/')) {
+                    sanitized.customAudioUrl = aud.slice(0, 500);
+                }
+            }
+            if (typeof rawConfig.customAudioTitle === 'string') {
+                sanitized.customAudioTitle = rawConfig.customAudioTitle.trim().slice(0, 80);
+            }
+            sanitized.audioAutoplay = Boolean(rawConfig.audioAutoplay);
+
+            // Visual Effects (particles: snow, stars, rain, glow, none)
+            if (['snow', 'stars', 'rain', 'glow', 'none'].includes(rawConfig.effect)) {
+                sanitized.effect = rawConfig.effect;
+            } else {
+                sanitized.effect = 'none';
+            }
+
+            // Card customizer
+            if (typeof rawConfig.cardOpacity === 'number') {
+                sanitized.cardOpacity = Math.max(0.2, Math.min(1.0, rawConfig.cardOpacity));
+            }
+            if (typeof rawConfig.cardBlur === 'number') {
+                sanitized.cardBlur = Math.max(0, Math.min(50, rawConfig.cardBlur));
+            }
+            if (typeof rawConfig.accentGlow === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(rawConfig.accentGlow.trim())) {
+                sanitized.accentGlow = rawConfig.accentGlow.trim();
+            }
+            if (typeof rawConfig.badgeDecoration === 'string') {
+                sanitized.badgeDecoration = ['crown', 'fire', 'star', 'none'].includes(rawConfig.badgeDecoration) ? rawConfig.badgeDecoration : 'none';
+            }
+        }
+
+        await db.updateUserBioConfig(req.user.id, sanitized);
+        res.json({ success: true, bioConfig: sanitized, isVip });
+    } catch (err) {
+        console.error('Bio config save error:', err);
+        res.status(500).json({ error: 'Erreur lors de la sauvegarde de la configuration bio' });
+    }
+});
+
+// 3. Update Gamer & Social Links (/api/user/socials)
+app.put('/api/user/socials', authMiddleware, async (req, res) => {
+    try {
+        const raw = req.body || {};
+        const allowedPlatforms = ['discord', 'twitter', 'steam', 'twitch', 'youtube', 'instagram', 'tiktok', 'github', 'spotify', 'telegram'];
+        const sanitized = {};
+
+        for (const p of allowedPlatforms) {
+            if (raw[p] && typeof raw[p] === 'string') {
+                const val = raw[p].trim().slice(0, 150);
+                if (val) sanitized[p] = val;
+            }
+        }
+
+        await db.updateUserSocialLinks(req.user.id, sanitized);
+        res.json({ success: true, socialLinks: sanitized });
+    } catch (err) {
+        console.error('Social links update error:', err);
+        res.status(500).json({ error: 'Erreur lors de la sauvegarde des réseaux sociaux' });
+    }
+});
+
+// =============================================================
 // ADMIN & RBAC API ENDPOINTS
 // =============================================================
 const adminMiddleware = async (req, res, next) => {

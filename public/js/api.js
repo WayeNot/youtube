@@ -382,6 +382,67 @@ const API = {
       console.warn('Purge cache error:', e);
       throw e;
     }
+  },
+
+  // Guns.lol Bio Page & Gamer Socials
+  async getBioPage(username) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`/api/bio/${encodeURIComponent(username)}`, { headers });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Page bio introuvable');
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('Bio page error:', e);
+      throw e;
+    }
+  },
+
+  async updateBioConfig(config) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch('/api/bio/config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(config)
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erreur lors de la sauvegarde de la bio');
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('Update bio config error:', e);
+      throw e;
+    }
+  },
+
+  async updateUserSocials(socials) {
+    try {
+      const token = Storage.getToken ? Storage.getToken() : null;
+      const res = await fetch('/api/user/socials', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(socials)
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erreur lors de la sauvegarde des réseaux');
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('Update socials error:', e);
+      throw e;
+    }
   }
 };
 

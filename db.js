@@ -183,6 +183,15 @@ const db = {
       try {
         await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_badges JSONB DEFAULT '[]'::jsonb`;
       } catch (e) {}
+      try {
+        await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'::jsonb`;
+      } catch (e) {}
+      try {
+        await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio_config JSONB DEFAULT '{}'::jsonb`;
+      } catch (e) {}
+      try {
+        await neonSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio_views BIGINT DEFAULT 0`;
+      } catch (e) {}
 
       // --- DEDICATED VIBETUBE TABLES (100% Separated from VibeStream) ---
       await neonSql`
@@ -472,6 +481,15 @@ const db = {
       try {
         sqliteDb.exec('ALTER TABLE users ADD COLUMN is_public INTEGER DEFAULT 1');
       } catch (e) {}
+      try {
+        sqliteDb.exec("ALTER TABLE users ADD COLUMN social_links TEXT DEFAULT '{}'");
+      } catch (e) {}
+      try {
+        sqliteDb.exec("ALTER TABLE users ADD COLUMN bio_config TEXT DEFAULT '{}'");
+      } catch (e) {}
+      try {
+        sqliteDb.exec("ALTER TABLE users ADD COLUMN bio_views INTEGER DEFAULT 0");
+      } catch (e) {}
 
       // Safe migration from legacy user_data in SQLite
       try {
@@ -488,19 +506,19 @@ const db = {
   // Users
   async findUserByUsername(username) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE LOWER(username) = LOWER(${username.trim()}) LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE username = ?').get(username.trim()) || null;
+      return sqliteDb.prepare('SELECT id, username, password_hash, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE username = ?').get(username.trim()) || null;
     }
   },
 
   async findUserById(id) {
     if (isNeon) {
-      const rows = await neonSql`SELECT id, username, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE id = ${id} LIMIT 1`;
+      const rows = await neonSql`SELECT id, username, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE id = ${id} LIMIT 1`;
       return rows[0] || null;
     } else {
-      return sqliteDb.prepare('SELECT id, username, avatar, bio, is_public, role, custom_badges, created_at FROM users WHERE id = ?').get(id) || null;
+      return sqliteDb.prepare('SELECT id, username, avatar, bio, is_public, role, custom_badges, social_links, bio_config, bio_views, created_at FROM users WHERE id = ?').get(id) || null;
     }
   },
 
@@ -520,6 +538,36 @@ const db = {
         userId
       );
     }
+  },
+
+  async updateUserSocialLinks(userId, socialLinks) {
+    const jsonStr = JSON.stringify(socialLinks || {});
+    if (isNeon) {
+      await neonSql`UPDATE users SET social_links = ${jsonStr}::jsonb WHERE id = ${userId}`;
+    } else {
+      sqliteDb.prepare('UPDATE users SET social_links = ? WHERE id = ?').run(jsonStr, userId);
+    }
+    return socialLinks;
+  },
+
+  async updateUserBioConfig(userId, bioConfig) {
+    const jsonStr = JSON.stringify(bioConfig || {});
+    if (isNeon) {
+      await neonSql`UPDATE users SET bio_config = ${jsonStr}::jsonb WHERE id = ${userId}`;
+    } else {
+      sqliteDb.prepare('UPDATE users SET bio_config = ? WHERE id = ?').run(jsonStr, userId);
+    }
+    return bioConfig;
+  },
+
+  async incrementBioViews(userId) {
+    try {
+      if (isNeon) {
+        await neonSql`UPDATE users SET bio_views = COALESCE(bio_views, 0) + 1 WHERE id = ${userId}`;
+      } else {
+        sqliteDb.prepare('UPDATE users SET bio_views = COALESCE(bio_views, 0) + 1 WHERE id = ?').run(userId);
+      }
+    } catch (e) {}
   },
 
   // Follow / Subscription System
@@ -700,6 +748,11 @@ const db = {
       isPublic,
       isOwner: Boolean(isOwner),
       isFollowing: Boolean(isFollowing),
+      role: userRole,
+      isVip: Boolean(hasVip),
+      socialLinks: user.social_links ? (typeof user.social_links === 'string' ? JSON.parse(user.social_links) : user.social_links) : {},
+      bioConfig: user.bio_config ? (typeof user.bio_config === 'string' ? JSON.parse(user.bio_config) : user.bio_config) : {},
+      bioViews: Number(user.bio_views) || 0,
       createdAt: createdAtMs,
       stats: {
         likesCount: favorites.length,
@@ -717,6 +770,35 @@ const db = {
         trackCount: p.tracks ? p.tracks.length : 0,
         cover: p.tracks && p.tracks[0] ? p.tracks[0].thumbnail : null
       }))
+    };
+  },
+
+  async getBioPageData(username, viewerUserId = null) {
+    const user = await this.findUserByUsername(username);
+    if (!user) return null;
+
+    const isOwner = viewerUserId && String(viewerUserId) === String(user.id);
+    if (!isOwner) {
+      // Async increment bio view count
+      this.incrementBioViews(user.id).catch(() => {});
+    }
+
+    const publicProfile = await this.getPublicProfile(username, viewerUserId);
+    if (!publicProfile) return null;
+
+    return {
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar || '',
+      bio: user.bio || '',
+      role: publicProfile.role || 'user',
+      isVip: publicProfile.isVip || false,
+      badges: publicProfile.badges || [],
+      socialLinks: publicProfile.socialLinks || {},
+      bioConfig: publicProfile.bioConfig || {},
+      bioViews: (publicProfile.bioViews || 0) + (!isOwner ? 1 : 0),
+      createdAt: publicProfile.createdAt,
+      isOwner: Boolean(isOwner)
     };
   },
 

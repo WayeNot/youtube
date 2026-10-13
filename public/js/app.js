@@ -75,6 +75,14 @@ const App = {
                 return;
             }
 
+            // 2b. /bio/:username (Page bio de profil guns.lol)
+            const bioMatch = path.match(/^\/bio\/([^/]+)/);
+            if (bioMatch) {
+                const username = decodeURIComponent(bioMatch[1]);
+                this.openBioPage(username);
+                return;
+            }
+
             // 3. /artist/:name
             const artistMatch = path.match(/^\/artist\/([^/]+)/);
             if (artistMatch) {
@@ -1472,6 +1480,12 @@ const App = {
                 if (watchIframe && watchIframe.src) watchIframe.src = '';
             }
 
+            // If switching away from bio page, stop bio audio & particles
+            if (viewName !== 'bio-page') {
+                if (this.stopBioAudio) this.stopBioAudio();
+                if (this.bioParticlesEngine) this.bioParticlesEngine.stop('bio-particles-canvas');
+            }
+
             if (updatePath) {
                 const pathMap = {
                     home: '/vibestream',
@@ -1481,6 +1495,7 @@ const App = {
                     search: '/search',
                     album: '/album',
                     admin: '/admin',
+                    'bio-page': this.currentBioUsername ? `/bio/${encodeURIComponent(this.currentBioUsername)}` : '/bio',
                     vibetube: '/vibetube',
                     'vibetube-shorts': '/vibetube/shorts',
                     'vibetube-subscriptions': '/vibetube/subscriptions',
@@ -4031,6 +4046,8 @@ const App = {
                 if (adminLink) {
                     adminLink.classList.toggle('hidden', !canAccessAdmin);
                 }
+                const bioLink = document.getElementById('dropdown-bio-link');
+                if (bioLink) bioLink.classList.remove('hidden');
             } else if (Storage.isGuest()) {
                 this.dom.authBtnLabel.textContent = 'Invité';
                 this.dom.authBtn.classList.remove('logged-in');
@@ -4040,6 +4057,8 @@ const App = {
                 if (this.dom.dropdownUsernameDisplay) this.dom.dropdownUsernameDisplay.textContent = 'Invité';
                 const adminLink = document.getElementById('dropdown-admin-link');
                 if (adminLink) adminLink.classList.add('hidden');
+                const bioLink = document.getElementById('dropdown-bio-link');
+                if (bioLink) bioLink.classList.add('hidden');
             } else {
                 this.dom.authBtnLabel.textContent = 'Connexion';
                 this.dom.authBtn.classList.remove('logged-in');
@@ -4049,6 +4068,8 @@ const App = {
                 if (this.dom.dropdownUsernameDisplay) this.dom.dropdownUsernameDisplay.textContent = 'Connexion';
                 const adminLink = document.getElementById('dropdown-admin-link');
                 if (adminLink) adminLink.classList.add('hidden');
+                const bioLink = document.getElementById('dropdown-bio-link');
+                if (bioLink) bioLink.classList.add('hidden');
             }
         },
 
@@ -4114,6 +4135,18 @@ const App = {
                             <span class="badge-title">${this.escapeHtml(b.title)}</span>
                         </div>
                     `).join('');
+                }
+
+                // Render Gamer Socials Bar
+                const socialsBar = document.getElementById('profile-social-links-bar');
+                if (socialsBar) {
+                    this.renderProfileSocials(socialsBar, profile.socialLinks);
+                }
+
+                // Setup quick access to guns.lol Bio page
+                const bioBtn = document.getElementById('profile-bio-link-btn');
+                if (bioBtn) {
+                    bioBtn.onclick = () => this.openBioPage(profile.username);
                 }
 
                 // Render Top Artists of the user
@@ -4533,6 +4566,26 @@ const App = {
                 if (pubCheckbox) {
                     pubCheckbox.checked = u.isPublic !== false;
                 }
+
+                // Populate Gamer Socials inputs
+                let s = u.social_links || {};
+                if (typeof s === 'string') {
+                    try { s = JSON.parse(s); } catch (e) { s = {}; }
+                }
+                const setSocial = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val || '';
+                };
+                setSocial('social-input-discord', s.discord);
+                setSocial('social-input-twitter', s.twitter);
+                setSocial('social-input-steam', s.steam);
+                setSocial('social-input-twitch', s.twitch);
+                setSocial('social-input-youtube', s.youtube);
+                setSocial('social-input-instagram', s.instagram);
+                setSocial('social-input-tiktok', s.tiktok);
+                setSocial('social-input-github', s.github);
+                setSocial('social-input-spotify', s.spotify);
+                setSocial('social-input-telegram', s.telegram);
             }
 
             // Sync settings UI with current settings
@@ -7377,6 +7430,915 @@ const App = {
             } catch (e) {
                 listEl.innerHTML = '<div style="padding:15px; text-align:center; color:#ff4444;">Erreur de chargement du journal d\'audit.</div>';
             }
+        },
+
+        // =====================================================================
+        // GUNS.LOL BIO PAGES, GAMER SOCIALS & LIVE STUDIO CUSTOMIZER
+        // =====================================================================
+        bioAudio: null,
+        bioParticlesEngine: {
+            running: {},
+            start(canvasId, effect) {
+                this.stop(canvasId);
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                const resize = () => {
+                    const parent = canvas.parentElement;
+                    canvas.width = parent ? parent.clientWidth : window.innerWidth;
+                    canvas.height = parent ? parent.clientHeight : window.innerHeight;
+                };
+                resize();
+
+                const count = effect === 'rain' ? 55 : (effect === 'stars' ? 50 : 45);
+                const particles = [];
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: Math.random() * (canvas.width || 400),
+                        y: Math.random() * (canvas.height || 600),
+                        radius: effect === 'snow' ? Math.random() * 2.2 + 0.8 : (effect === 'stars' ? Math.random() * 1.6 + 0.6 : 1),
+                        speedY: effect === 'snow' ? Math.random() * 0.9 + 0.4 : (effect === 'rain' ? Math.random() * 7 + 5 : 0),
+                        speedX: effect === 'snow' ? (Math.random() - 0.5) * 0.6 : (effect === 'rain' ? -1.2 : (Math.random() - 0.5) * 0.2),
+                        alpha: Math.random() * 0.65 + 0.35,
+                        pulse: Math.random() * 0.03 + 0.01,
+                        pulseDir: 1
+                    });
+                }
+
+                let animId;
+                const loop = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    for (const p of particles) {
+                        if (effect === 'snow') {
+                            p.y += p.speedY;
+                            p.x += p.speedX;
+                            if (p.y > canvas.height) { p.y = -6; p.x = Math.random() * canvas.width; }
+                            if (p.x > canvas.width) p.x = 0;
+                            if (p.x < 0) p.x = canvas.width;
+
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+                            ctx.fill();
+                        } else if (effect === 'stars') {
+                            p.alpha += p.pulse * p.pulseDir;
+                            if (p.alpha > 0.95) p.pulseDir = -1;
+                            if (p.alpha < 0.15) p.pulseDir = 1;
+                            p.x += p.speedX;
+                            if (p.x < 0) p.x = canvas.width;
+                            if (p.x > canvas.width) p.x = 0;
+
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+                            ctx.shadowBlur = 4;
+                            ctx.shadowColor = '#ffffff';
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                        } else if (effect === 'rain') {
+                            p.y += p.speedY;
+                            p.x += p.speedX;
+                            if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+
+                            ctx.beginPath();
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(p.x + p.speedX * 2.2, p.y + p.speedY * 2.2);
+                            ctx.strokeStyle = `rgba(180, 215, 255, ${p.alpha * 0.55})`;
+                            ctx.lineWidth = 1.2;
+                            ctx.stroke();
+                        }
+                    }
+                    animId = requestAnimationFrame(loop);
+                };
+                animId = requestAnimationFrame(loop);
+                this.running[canvasId] = { animId, resizeHandler: resize };
+                window.addEventListener('resize', resize);
+            },
+            stop(canvasId) {
+                if (this.running[canvasId]) {
+                    cancelAnimationFrame(this.running[canvasId].animId);
+                    window.removeEventListener('resize', this.running[canvasId].resizeHandler);
+                    delete this.running[canvasId];
+                }
+                const canvas = document.getElementById(canvasId);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+        },
+
+        formatSocialHref(network, val) {
+            if (!val) return { isUrl: false, url: '' };
+            val = val.trim();
+            if (network === 'discord') {
+                if (val.startsWith('http://') || val.startsWith('https://') || val.includes('discord.gg/')) {
+                    const url = val.startsWith('http') ? val : `https://${val}`;
+                    return { isUrl: true, url };
+                }
+                return { isUrl: false, url: '' };
+            }
+            if (val.startsWith('http://') || val.startsWith('https://')) {
+                return { isUrl: true, url: val };
+            }
+            const clean = val.replace(/^@/, '');
+            switch (network) {
+                case 'twitter': return { isUrl: true, url: `https://x.com/${clean}` };
+                case 'steam':
+                    return { isUrl: true, url: val.includes('/') ? `https://${val}` : `https://steamcommunity.com/id/${clean}` };
+                case 'twitch': return { isUrl: true, url: `https://twitch.tv/${clean}` };
+                case 'youtube': return { isUrl: true, url: `https://youtube.com/@${clean}` };
+                case 'instagram': return { isUrl: true, url: `https://instagram.com/${clean}` };
+                case 'tiktok': return { isUrl: true, url: `https://tiktok.com/@${clean}` };
+                case 'github': return { isUrl: true, url: `https://github.com/${clean}` };
+                case 'spotify': return { isUrl: true, url: `https://open.spotify.com/user/${clean}` };
+                case 'telegram': return { isUrl: true, url: `https://t.me/${clean}` };
+                default: return { isUrl: true, url: `https://${val}` };
+            }
+        },
+
+        copySocialTag(tag, networkName = 'Discord') {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(tag).then(() => {
+                    this.showToast(`Identifiant ${networkName} copié (${tag}) ! 👾`);
+                }).catch(() => {
+                    this.showToast(`${networkName}: ${tag}`);
+                });
+            } else {
+                this.showToast(`${networkName}: ${tag}`);
+            }
+        },
+
+        renderProfileSocials(container, socials) {
+            if (!container) return;
+            if (!socials || typeof socials !== 'object' || Object.keys(socials).length === 0) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                return;
+            }
+            const networks = [
+                { id: 'discord', name: 'Discord', icon: '👾' },
+                { id: 'twitter', name: 'X', icon: '𝕏' },
+                { id: 'steam', name: 'Steam', icon: '🕹️' },
+                { id: 'twitch', name: 'Twitch', icon: '🟣' },
+                { id: 'youtube', name: 'YouTube', icon: '📺' },
+                { id: 'instagram', name: 'Instagram', icon: '📸' },
+                { id: 'tiktok', name: 'TikTok', icon: '🎵' },
+                { id: 'github', name: 'GitHub', icon: '🐙' },
+                { id: 'spotify', name: 'Spotify', icon: '🎧' },
+                { id: 'telegram', name: 'Telegram', icon: '✈️' }
+            ];
+            const items = [];
+            for (const net of networks) {
+                const val = socials[net.id];
+                if (val && typeof val === 'string' && val.trim()) {
+                    items.push({ ...net, val: val.trim() });
+                }
+            }
+            if (items.length === 0) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+            container.innerHTML = items.map(item => {
+                const hrefInfo = this.formatSocialHref(item.id, item.val);
+                const onclickAttr = !hrefInfo.isUrl
+                    ? `onclick="event.preventDefault(); window.App && window.App.copySocialTag('${this.escapeHtml(item.val)}', '${item.name}')"`
+                    : '';
+                return `
+                    <a href="${hrefInfo.isUrl ? hrefInfo.url : '#'}" class="profile-social-pill" data-network="${item.id}" target="${hrefInfo.isUrl ? '_blank' : '_self'}" rel="noopener" ${onclickAttr} title="${item.name}: ${this.escapeHtml(item.val)}">
+                        <span class="pill-icon">${item.icon}</span>
+                        <span class="pill-name">${item.name}</span>
+                    </a>
+                `;
+            }).join('');
+        },
+
+        renderBioSocials(containerId, socials, isPreview = false) {
+            const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+            if (!container) return;
+
+            if (!socials || typeof socials !== 'object' || Object.keys(socials).length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const networks = [
+                { id: 'discord', name: 'Discord', icon: '👾' },
+                { id: 'twitter', name: 'X / Twitter', icon: '𝕏' },
+                { id: 'steam', name: 'Steam', icon: '🕹️' },
+                { id: 'twitch', name: 'Twitch', icon: '🟣' },
+                { id: 'youtube', name: 'YouTube', icon: '📺' },
+                { id: 'instagram', name: 'Instagram', icon: '📸' },
+                { id: 'tiktok', name: 'TikTok', icon: '🎵' },
+                { id: 'github', name: 'GitHub', icon: '🐙' },
+                { id: 'spotify', name: 'Spotify', icon: '🎧' },
+                { id: 'telegram', name: 'Telegram', icon: '✈️' }
+            ];
+
+            const items = [];
+            for (const net of networks) {
+                const val = socials[net.id];
+                if (val && typeof val === 'string' && val.trim()) {
+                    items.push({ ...net, val: val.trim() });
+                }
+            }
+
+            if (items.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const hrefInfo = this.formatSocialHref(item.id, item.val);
+                const onclickAttr = !hrefInfo.isUrl
+                    ? `onclick="event.preventDefault(); window.App && window.App.copySocialTag('${this.escapeHtml(item.val)}', '${item.name}')"`
+                    : '';
+                return `
+                    <a href="${hrefInfo.isUrl ? hrefInfo.url : '#'}" class="bio-social-btn" data-network="${item.id}" target="${hrefInfo.isUrl ? '_blank' : '_self'}" rel="noopener" ${onclickAttr} title="${item.name}: ${this.escapeHtml(item.val)}">
+                        <span class="bio-social-icon">${item.icon}</span>
+                        <span class="bio-social-name">${item.name}</span>
+                    </a>
+                `;
+            }).join('');
+        },
+
+        async saveSocialsSettings() {
+            const token = Storage.getToken();
+            if (!token) {
+                this.openAuthModal();
+                return;
+            }
+            const getVal = id => {
+                const el = document.getElementById(id);
+                return el ? el.value.trim() : '';
+            };
+            const socials = {
+                discord: getVal('social-input-discord'),
+                twitter: getVal('social-input-twitter'),
+                steam: getVal('social-input-steam'),
+                twitch: getVal('social-input-twitch'),
+                youtube: getVal('social-input-youtube'),
+                instagram: getVal('social-input-instagram'),
+                tiktok: getVal('social-input-tiktok'),
+                github: getVal('social-input-github'),
+                spotify: getVal('social-input-spotify'),
+                telegram: getVal('social-input-telegram')
+            };
+
+            try {
+                const res = await API.updateUserSocials(socials);
+                if (res && res.success) {
+                    const user = Storage.getUser();
+                    if (user) {
+                        user.social_links = socials;
+                        Storage.setUser(user);
+                    }
+                    this.showToast('Réseaux gamer enregistrés avec succès ! 🎮');
+                } else {
+                    this.showToast('Erreur lors de la sauvegarde des réseaux');
+                }
+            } catch (e) {
+                this.showToast(e.message || 'Erreur de sauvegarde des réseaux');
+            }
+        },
+
+        setupBioAudio(url, autoplay = true) {
+            this.stopBioAudio();
+            if (!url) return;
+            try {
+                this.bioAudio = new Audio(url);
+                this.bioAudio.loop = true;
+                this.bioAudio.volume = 0.65;
+                const playBtn = document.getElementById('bio-audio-play-btn');
+                const disk = document.getElementById('bio-audio-disk');
+
+                const updatePlayingState = (isPlaying) => {
+                    if (disk) disk.classList.toggle('playing', isPlaying);
+                    if (playBtn) {
+                        playBtn.innerHTML = isPlaying
+                            ? '<svg viewBox="0 0 24 24" style="fill:currentColor; width:18px; height:18px;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'
+                            : '<svg viewBox="0 0 24 24" style="fill:currentColor; width:18px; height:18px;"><path d="M8 5v14l11-7z"/></svg>';
+                    }
+                };
+
+                this.bioAudio.onplay = () => updatePlayingState(true);
+                this.bioAudio.onpause = () => updatePlayingState(false);
+                this.bioAudio.onerror = () => {
+                    updatePlayingState(false);
+                    console.warn('Flux audio de la page bio inaccessible.');
+                };
+
+                if (autoplay) {
+                    const playPromise = this.bioAudio.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {
+                            // Autoplay blocked by browser until user gesture
+                            updatePlayingState(false);
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Bio audio init error:', e);
+            }
+        },
+
+        toggleBioBackgroundMusic() {
+            if (!this.bioAudio) return;
+            if (this.bioAudio.paused) {
+                this.bioAudio.play().catch(e => console.warn('Audio play error:', e));
+            } else {
+                this.bioAudio.pause();
+            }
+        },
+
+        stopBioAudio() {
+            if (this.bioAudio) {
+                try {
+                    this.bioAudio.pause();
+                    this.bioAudio.src = '';
+                } catch (e) {}
+                this.bioAudio = null;
+            }
+            const disk = document.getElementById('bio-audio-disk');
+            if (disk) disk.classList.remove('playing');
+            const playBtn = document.getElementById('bio-audio-play-btn');
+            if (playBtn) {
+                playBtn.innerHTML = '<svg viewBox="0 0 24 24" style="fill:currentColor; width:18px; height:18px;"><path d="M8 5v14l11-7z"/></svg>';
+            }
+        },
+
+        async openBioPage(username) {
+            if (!username) return;
+            this.currentBioUsername = username;
+            this.updateURL(`/bio/${encodeURIComponent(username)}`);
+
+            try {
+                const res = await API.getBioPage(username);
+                if (!res || !res.profile) {
+                    this.showErrorView('Page introuvable', `La page guns.lol pour @${this.escapeHtml(username)} n'existe pas.`);
+                    return;
+                }
+
+                const { profile, isOwner } = res;
+                this.currentBioData = profile;
+
+                this.switchView('bio-page', false);
+                this.stopBioAudio();
+                this.bioParticlesEngine.stop('bio-particles-canvas');
+
+                const cfg = profile.bioConfig || {};
+                const isVip = !!profile.isVip;
+
+                // Identity
+                const dispNameEl = document.getElementById('bio-display-name');
+                if (dispNameEl) dispNameEl.textContent = cfg.displayName || profile.username;
+
+                const handleEl = document.getElementById('bio-handle');
+                if (handleEl) handleEl.textContent = `@${profile.username}`;
+
+                const descEl = document.getElementById('bio-desc-text');
+                if (descEl) descEl.textContent = cfg.bioDesc || profile.bio || 'Bienvenue sur mon espace personnel guns.lol.';
+
+                // Location
+                const locTag = document.getElementById('bio-location-tag');
+                const locTxt = document.getElementById('bio-location-text');
+                if (locTag && locTxt) {
+                    if (cfg.location && cfg.location.trim()) {
+                        locTxt.textContent = cfg.location.trim();
+                        locTag.classList.remove('hidden');
+                    } else {
+                        locTag.classList.add('hidden');
+                    }
+                }
+
+                // Views
+                const viewsTag = document.getElementById('bio-views-tag');
+                const viewsCount = document.getElementById('bio-views-count');
+                if (viewsTag && viewsCount) {
+                    if (cfg.showViews !== false) {
+                        viewsCount.textContent = profile.bioViews || profile.bio_views || 1;
+                        viewsTag.classList.remove('hidden');
+                    } else {
+                        viewsTag.classList.add('hidden');
+                    }
+                }
+
+                // Avatar
+                const avatarImg = document.getElementById('bio-avatar-img');
+                const fallback = `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(profile.username)}`;
+                if (avatarImg) avatarImg.src = profile.avatar || fallback;
+
+                // Avatar Deco
+                const decoEl = document.getElementById('bio-avatar-decoration');
+                if (decoEl) {
+                    const decos = { crown: '👑', fire: '🔥', star: '⭐' };
+                    if (isVip && cfg.avatarDeco && decos[cfg.avatarDeco]) {
+                        decoEl.textContent = decos[cfg.avatarDeco];
+                        decoEl.classList.remove('hidden');
+                    } else {
+                        decoEl.classList.add('hidden');
+                    }
+                }
+
+                // Glow Color
+                const glowOverlay = document.getElementById('bio-card-glow-overlay');
+                const avatarHalo = document.getElementById('bio-avatar-halo');
+                const glowColor = (isVip && cfg.glowColor) ? cfg.glowColor : '#ff0033';
+                if (avatarHalo) {
+                    avatarHalo.style.background = glowColor;
+                    avatarHalo.style.opacity = isVip && cfg.glowColor ? '0.45' : '0.2';
+                }
+                if (glowOverlay) {
+                    glowOverlay.style.background = `radial-gradient(circle at 50% 0%, ${glowColor}25, transparent 70%)`;
+                }
+
+                // Verified Badge
+                const verifiedBadge = document.getElementById('bio-verified-badge');
+                if (verifiedBadge) {
+                    const isVerified = isVip || profile.role === 'admin' || profile.role === 'owner';
+                    verifiedBadge.classList.toggle('hidden', !isVerified);
+                }
+
+                // Badges row
+                const badgesRow = document.getElementById('bio-badges-row');
+                if (badgesRow) {
+                    const badges = profile.badges || [];
+                    badgesRow.innerHTML = badges.map(b => `
+                        <div class="bio-badge-pill" title="${this.escapeHtml(b.desc || '')}">
+                            <span>${b.icon || '⭐'}</span>
+                            <span>${this.escapeHtml(b.title || '')}</span>
+                        </div>
+                    `).join('');
+                }
+
+                // Background / Theme
+                const bgEl = document.getElementById('bio-ambient-bg');
+                if (bgEl) {
+                    if (isVip && cfg.customBgUrl && cfg.customBgUrl.trim()) {
+                        bgEl.style.backgroundImage = `url("${cfg.customBgUrl.trim()}")`;
+                        bgEl.style.background = '';
+                    } else {
+                        bgEl.style.backgroundImage = '';
+                        const themeGradients = {
+                            dark_void: 'radial-gradient(circle at 50% 30%, #1a1a24 0%, #050508 100%)',
+                            obsidian: 'linear-gradient(135deg, #16161a 0%, #0a0a0c 100%)',
+                            minimal: '#0d0d0f',
+                            cyberpunk: 'linear-gradient(135deg, #1f0525 0%, #061528 100%)',
+                            matrix: 'linear-gradient(180deg, #001205 0%, #020703 100%)',
+                            synthwave: 'linear-gradient(135deg, #220626 0%, #0a0d24 100%)'
+                        };
+                        const theme = cfg.theme || 'dark_void';
+                        bgEl.style.background = themeGradients[theme] || themeGradients.dark_void;
+                    }
+                }
+
+                // Particles
+                if (isVip && cfg.effect && cfg.effect !== 'none') {
+                    this.bioParticlesEngine.start('bio-particles-canvas', cfg.effect);
+                }
+
+                // Socials Grid
+                this.renderBioSocials('bio-socials-grid', profile.socialLinks);
+
+                // Audio Widget
+                const audioWidget = document.getElementById('bio-audio-widget');
+                const audioTitle = document.getElementById('bio-audio-title');
+                if (audioWidget) {
+                    if (isVip && cfg.customAudioUrl && cfg.customAudioUrl.trim()) {
+                        audioWidget.classList.remove('hidden');
+                        if (audioTitle) audioTitle.textContent = cfg.customAudioTitle || 'Ambiance sonore';
+                        this.setupBioAudio(cfg.customAudioUrl.trim(), cfg.audioAutoplay !== false);
+                    } else {
+                        audioWidget.classList.add('hidden');
+                    }
+                }
+
+                // VIP promo banner
+                const promoCard = document.getElementById('bio-vip-promo-card');
+                if (promoCard) {
+                    promoCard.classList.toggle('hidden', isVip);
+                }
+
+                // Edit button
+                const editBtn = document.getElementById('bio-top-edit-btn');
+                if (editBtn) {
+                    editBtn.classList.toggle('hidden', !isOwner);
+                }
+            } catch (e) {
+                console.error('Bio page load error:', e);
+                this.showErrorView('Page introuvable', `Impossible d'ouvrir la page bio pour @${this.escapeHtml(username)}.`);
+            }
+        },
+
+        exitBioPage() {
+            this.stopBioAudio();
+            this.bioParticlesEngine.stop('bio-particles-canvas');
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                this.switchView('home');
+            }
+        },
+
+        shareCurrentBioPage() {
+            const url = window.location.href;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    this.showToast('Lien de la page bio copié ! 📋');
+                }).catch(() => {
+                    this.showToast(url);
+                });
+            } else {
+                this.showToast(url);
+            }
+        },
+
+        openBioStudio() {
+            this.closeUserDropdown();
+            if (!Storage.isLoggedIn()) {
+                this.openAuthModal();
+                this.showToast('Connectez-vous pour configurer votre page bio guns.lol');
+                return;
+            }
+
+            const user = Storage.getUser();
+            if (!user) return;
+
+            const modal = document.getElementById('modal-bio-studio');
+            if (!modal) return;
+
+            // Determine VIP status
+            const role = (user.role || '').toLowerCase();
+            let badges = [];
+            if (user.custom_badges) {
+                try {
+                    badges = typeof user.custom_badges === 'string' ? JSON.parse(user.custom_badges) : user.custom_badges;
+                } catch (e) { badges = []; }
+            }
+            const isVip = role === 'vip' || role === 'admin' || role === 'owner' || badges.some(b => (typeof b === 'string' ? b : b.id) === 'vip');
+            this.studioUserIsVip = isVip;
+
+            const vipPill = document.getElementById('bio-studio-vip-pill');
+            if (vipPill) vipPill.classList.toggle('hidden', !isVip);
+
+            const vipBanner = document.getElementById('bio-studio-vip-banner');
+            if (vipBanner) {
+                if (isVip) {
+                    vipBanner.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:24px;">⭐</span>
+                            <div>
+                                <div style="font-weight:700; font-size:13px; color:#ffd700;">Statut VIP Actif ✨</div>
+                                <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">Toutes les options guns.lol (fond animé, musique d'ambiance, particules, décorations) sont débloquées !</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    vipBanner.innerHTML = `
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="font-size:24px;">⭐</span>
+                                <div>
+                                    <div style="font-weight:700; font-size:13px; color:#ffd700;">Statut Standard</div>
+                                    <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">Débloquez le VIP pour vos fonds animés, musiques et particules.</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn primary small" onclick="window.App && window.App.openVipUpgradeInfo()" style="padding:4px 10px; font-size:11px;">
+                                <span>En savoir +</span>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+
+            // Toggle locked classes on VIP theme cards
+            document.querySelectorAll('.bio-theme-card.vip-locked').forEach(el => {
+                el.classList.toggle('locked-disabled', !isVip);
+            });
+
+            // Populate inputs from bio_config
+            let cfg = user.bio_config || {};
+            if (typeof cfg === 'string') {
+                try { cfg = JSON.parse(cfg); } catch (e) { cfg = {}; }
+            }
+
+            const setVal = (id, v) => {
+                const el = document.getElementById(id);
+                if (el) el.value = v !== undefined && v !== null ? v : '';
+            };
+
+            setVal('bio-input-display-name', cfg.displayName || user.username);
+            setVal('bio-input-desc', cfg.bioDesc || user.bio || '');
+            setVal('bio-input-location', cfg.location || '');
+            const showViewsEl = document.getElementById('bio-input-show-views');
+            if (showViewsEl) showViewsEl.checked = cfg.showViews !== false;
+
+            // Theme
+            this.selectedStudioTheme = cfg.theme || 'dark_void';
+            document.querySelectorAll('.bio-theme-card').forEach(card => {
+                card.classList.toggle('active', card.getAttribute('data-theme') === this.selectedStudioTheme);
+            });
+
+            setVal('bio-input-custom-bg', cfg.customBgUrl || '');
+            setVal('bio-input-audio-title', cfg.customAudioTitle || '');
+            setVal('bio-input-audio-url', cfg.customAudioUrl || '');
+            const autoplayEl = document.getElementById('bio-input-audio-autoplay');
+            if (autoplayEl) autoplayEl.checked = cfg.audioAutoplay !== false;
+
+            // Effects & deco
+            this.selectedStudioEffect = cfg.effect || 'none';
+            document.querySelectorAll('.bio-effect-pill').forEach(pill => {
+                pill.classList.toggle('active', pill.getAttribute('data-effect') === this.selectedStudioEffect);
+            });
+
+            this.selectedStudioDeco = cfg.avatarDeco || 'none';
+            document.querySelectorAll('.bio-deco-pill').forEach(pill => {
+                pill.classList.toggle('active', pill.getAttribute('data-deco') === this.selectedStudioDeco);
+            });
+
+            const glowColor = cfg.glowColor || '#ff0033';
+            setVal('bio-input-glow-hex', glowColor);
+            const picker = document.getElementById('bio-input-glow-picker');
+            if (picker) picker.value = glowColor.startsWith('#') && glowColor.length === 7 ? glowColor : '#ff0033';
+
+            // Switch to first tab
+            this.switchBioStudioTab('identity');
+
+            modal.classList.remove('hidden');
+            this.syncBioStudioPreview();
+        },
+
+        closeBioStudio() {
+            const modal = document.getElementById('modal-bio-studio');
+            if (modal) modal.classList.add('hidden');
+            this.bioParticlesEngine.stop('bio-preview-particles');
+        },
+
+        switchBioStudioTab(tab) {
+            document.querySelectorAll('.bio-studio-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+            });
+            document.querySelectorAll('.bio-studio-tab-content').forEach(c => {
+                c.classList.add('hidden');
+                c.classList.remove('active');
+            });
+            const target = document.getElementById(`bio-studio-tab-${tab}`);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('active');
+            }
+        },
+
+        selectBioStudioTheme(theme) {
+            const isVipTheme = ['cyberpunk', 'matrix', 'synthwave'].includes(theme);
+            if (isVipTheme && !this.studioUserIsVip) {
+                this.showToast('⭐ Ce thème de style guns.lol nécessite le statut VIP !');
+                this.openVipUpgradeInfo();
+                return;
+            }
+            this.selectedStudioTheme = theme;
+            document.querySelectorAll('.bio-theme-card').forEach(card => {
+                card.classList.toggle('active', card.getAttribute('data-theme') === theme);
+            });
+            this.syncBioStudioPreview();
+        },
+
+        selectBioStudioEffect(effect) {
+            if (effect !== 'none' && !this.studioUserIsVip) {
+                this.showToast('⭐ Les effets météo de particules nécessitent le statut VIP !');
+                this.openVipUpgradeInfo();
+                return;
+            }
+            this.selectedStudioEffect = effect;
+            document.querySelectorAll('.bio-effect-pill').forEach(pill => {
+                pill.classList.toggle('active', pill.getAttribute('data-effect') === effect);
+            });
+            this.syncBioStudioPreview();
+        },
+
+        selectBioStudioDeco(deco) {
+            if (deco !== 'none' && !this.studioUserIsVip) {
+                this.showToast('⭐ Les décorations d\'avatar nécessitent le statut VIP !');
+                this.openVipUpgradeInfo();
+                return;
+            }
+            this.selectedStudioDeco = deco;
+            document.querySelectorAll('.bio-deco-pill').forEach(pill => {
+                pill.classList.toggle('active', pill.getAttribute('data-deco') === deco);
+            });
+            this.syncBioStudioPreview();
+        },
+
+        syncBioStudioPreview() {
+            const user = Storage.getUser() || {};
+            const isVip = !!this.studioUserIsVip;
+
+            const getVal = id => {
+                const el = document.getElementById(id);
+                return el ? el.value.trim() : '';
+            };
+
+            const dispName = getVal('bio-input-display-name') || user.username || 'Pseudo';
+            const desc = getVal('bio-input-desc') || 'Bienvenue sur ma page guns.lol.';
+            const location = getVal('bio-input-location');
+            const showViews = document.getElementById('bio-input-show-views')?.checked ?? true;
+            const customBg = isVip ? getVal('bio-input-custom-bg') : '';
+            const audioTitle = isVip ? getVal('bio-input-audio-title') : '';
+            const audioUrl = isVip ? getVal('bio-input-audio-url') : '';
+            const glowColor = (isVip && getVal('bio-input-glow-hex')) ? getVal('bio-input-glow-hex') : '#ff0033';
+
+            // Mockup Card elements
+            const prevName = document.getElementById('bio-prev-name');
+            if (prevName) prevName.textContent = dispName;
+
+            const prevHandle = document.getElementById('bio-prev-handle');
+            if (prevHandle) prevHandle.textContent = `@${user.username || 'pseudo'}`;
+
+            const prevDesc = document.getElementById('bio-prev-desc');
+            if (prevDesc) prevDesc.textContent = desc;
+
+            const prevAvatar = document.getElementById('bio-prev-avatar-img');
+            if (prevAvatar) {
+                prevAvatar.src = user.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(user.username || 'seed')}`;
+            }
+
+            const prevDeco = document.getElementById('bio-prev-avatar-deco');
+            if (prevDeco) {
+                const decos = { crown: '👑', fire: '🔥', star: '⭐' };
+                if (isVip && this.selectedStudioDeco && decos[this.selectedStudioDeco]) {
+                    prevDeco.textContent = decos[this.selectedStudioDeco];
+                    prevDeco.classList.remove('hidden');
+                } else {
+                    prevDeco.classList.add('hidden');
+                }
+            }
+
+            const prevHalo = document.getElementById('bio-prev-avatar-halo');
+            if (prevHalo) {
+                prevHalo.style.background = glowColor;
+                prevHalo.style.opacity = isVip ? '0.5' : '0.2';
+            }
+
+            const prevLoc = document.getElementById('bio-prev-location');
+            const prevLocTxt = document.getElementById('bio-prev-location-txt');
+            if (prevLoc && prevLocTxt) {
+                if (location) {
+                    prevLocTxt.textContent = location;
+                    prevLoc.classList.remove('hidden');
+                } else {
+                    prevLoc.classList.add('hidden');
+                }
+            }
+
+            const prevViews = document.getElementById('bio-prev-views');
+            if (prevViews) {
+                prevViews.classList.toggle('hidden', !showViews);
+            }
+
+            // Mockup Background
+            const prevBg = document.getElementById('bio-preview-bg');
+            if (prevBg) {
+                if (customBg) {
+                    prevBg.style.backgroundImage = `url("${customBg}")`;
+                    prevBg.style.background = '';
+                } else {
+                    prevBg.style.backgroundImage = '';
+                    const themeGradients = {
+                        dark_void: 'radial-gradient(circle at 50% 30%, #1a1a24 0%, #050508 100%)',
+                        obsidian: 'linear-gradient(135deg, #16161a 0%, #0a0a0c 100%)',
+                        minimal: '#0d0d0f',
+                        cyberpunk: 'linear-gradient(135deg, #1f0525 0%, #061528 100%)',
+                        matrix: 'linear-gradient(180deg, #001205 0%, #020703 100%)',
+                        synthwave: 'linear-gradient(135deg, #220626 0%, #0a0d24 100%)'
+                    };
+                    const theme = this.selectedStudioTheme || 'dark_void';
+                    prevBg.style.background = themeGradients[theme] || themeGradients.dark_void;
+                }
+            }
+
+            // Mockup Particles
+            if (isVip && this.selectedStudioEffect && this.selectedStudioEffect !== 'none') {
+                this.bioParticlesEngine.start('bio-preview-particles', this.selectedStudioEffect);
+            } else {
+                this.bioParticlesEngine.stop('bio-preview-particles');
+            }
+
+            // Mockup Socials
+            const prevSocials = document.getElementById('bio-prev-socials');
+            if (prevSocials) {
+                let socials = user.social_links;
+                if (typeof socials === 'string') {
+                    try { socials = JSON.parse(socials); } catch (e) { socials = {}; }
+                }
+                this.renderBioSocials(prevSocials, socials, true);
+            }
+
+            // Mockup Audio
+            const prevAudio = document.getElementById('bio-prev-audio');
+            const prevAudioTitle = document.getElementById('bio-prev-audio-title');
+            if (prevAudio) {
+                if (isVip && audioUrl) {
+                    prevAudio.classList.remove('hidden');
+                    if (prevAudioTitle) prevAudioTitle.textContent = audioTitle || 'Ambiance audio';
+                } else {
+                    prevAudio.classList.add('hidden');
+                }
+            }
+
+            // Mockup Non-VIP promo
+            const prevPromo = document.getElementById('bio-prev-vip-promo');
+            if (prevPromo) {
+                prevPromo.classList.toggle('hidden', isVip);
+            }
+        },
+
+        async saveBioStudioConfig() {
+            const token = Storage.getToken();
+            if (!token) {
+                this.openAuthModal();
+                return;
+            }
+            const isVip = !!this.studioUserIsVip;
+            const getVal = id => {
+                const el = document.getElementById(id);
+                return el ? el.value.trim() : '';
+            };
+
+            const config = {
+                displayName: getVal('bio-input-display-name'),
+                bioDesc: getVal('bio-input-desc'),
+                location: getVal('bio-input-location'),
+                showViews: document.getElementById('bio-input-show-views')?.checked ?? true,
+                theme: this.selectedStudioTheme || 'dark_void',
+                customBgUrl: isVip ? getVal('bio-input-custom-bg') : '',
+                customAudioTitle: isVip ? getVal('bio-input-audio-title') : '',
+                customAudioUrl: isVip ? getVal('bio-input-audio-url') : '',
+                audioAutoplay: isVip ? (document.getElementById('bio-input-audio-autoplay')?.checked ?? true) : false,
+                effect: isVip ? (this.selectedStudioEffect || 'none') : 'none',
+                avatarDeco: isVip ? (this.selectedStudioDeco || 'none') : 'none',
+                glowColor: isVip ? (getVal('bio-input-glow-hex') || '#ff0033') : '#ff0033'
+            };
+
+            try {
+                const res = await API.updateBioConfig(config);
+                if (res && res.success) {
+                    const user = Storage.getUser();
+                    if (user) {
+                        user.bio_config = res.bioConfig || config;
+                        Storage.setUser(user);
+                    }
+                    this.showToast('Page guns.lol sauvegardée avec succès ! ⚡');
+                } else {
+                    this.showToast('Erreur lors de la sauvegarde de la page bio');
+                }
+            } catch (e) {
+                this.showToast(e.message || 'Erreur lors de la sauvegarde');
+            }
+        },
+
+        openMyBioPage() {
+            const u = Storage.getUser();
+            if (!u || !u.username) {
+                this.openAuthModal();
+                return;
+            }
+            this.closeBioStudio();
+            this.openBioPage(u.username);
+        },
+
+        copyMyBioLink() {
+            const u = Storage.getUser();
+            if (!u || !u.username) {
+                this.openAuthModal();
+                return;
+            }
+            const url = `${window.location.origin}/bio/${encodeURIComponent(u.username)}`;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    this.showToast('Lien de votre page guns.lol copié ! 📋');
+                }).catch(() => {
+                    this.showToast(url);
+                });
+            } else {
+                this.showToast(url);
+            }
+        },
+
+        openCurrentProfileBio() {
+            if (this.currentProfileUser && this.currentProfileUser.username) {
+                this.openBioPage(this.currentProfileUser.username);
+            }
+        },
+
+        openVipUpgradeInfo() {
+            this.showToast(`⭐ Avantages du Statut VIP :
+- Personnalisation 100% de la page guns.lol (Fonds custom & GIF, Musique, Particules)
+- Décorations exclusives d'avatar (👑, 🔥, ⭐)
+- Badge VIP sur votre profil et suppression des publicités !`);
         }
     };
 
