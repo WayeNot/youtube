@@ -49,6 +49,8 @@ class PlayerEngine {
     this.preloadAudio.preload = 'auto';
     this.preloadedTrackId = null;
     this.preloadedNextAudio = false;
+    this.streamUrlCache = new Map();
+    this._playRequestId = 0;
 
     // Web Audio Equalizer (used on Desktop for audio processing)
     this.audioCtx = null;
@@ -541,72 +543,97 @@ class PlayerEngine {
     this._currentDuration = initialDuration;
     this.emit('time_update', { currentTime: 0, duration: initialDuration });
 
-    // Set audio source synchronously (from memory cache if offline, else stream URL)
+    // 1. Offline item check (local storage audio blob)
     const offlineItem = Storage.getTrackOfflineSync ? Storage.getTrackOfflineSync(track.id) : null;
     if (offlineItem && offlineItem.audioBlob) {
       this.audio.src = URL.createObjectURL(offlineItem.audioBlob);
-    } else {
-      this.audio.preload = 'auto';
-      this.audio.src = API.getStreamUrl(track.id);
-    }
-    try {
-      this.audio.currentTime = 0;
-    } catch (e) {}
-
-    // Unlock Web Audio only if equalizer was already initialized on desktop
-    if (!isMobileDevice() && this.isEqInitialized && this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
-    }
-
-    this._userPaused = false;
-    this.audio.muted = false;
-    if (this.audio.volume <= 0.05) this.audio.volume = this._lastVolume || 0.9;
-
-    // Play immediately in the synchronous user gesture tick (vital for Mobile Safari & Android Chrome)
-    const playPromise = this.audio.play();
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
+      try { this.audio.currentTime = 0; } catch (e) {}
+      const playPromise = this.audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
           this.isPlaying = true;
           this.isLoading = false;
           this.updateMediaSessionState();
           this.emit('playback_change', { isPlaying: true, isLoading: false });
-        })
-        .catch((err) => {
-          if (err.name !== 'AbortError') {
-            console.warn('Audio play request failed, arming gesture retry:', err);
-            const unlockAndPlay = () => {
-              window.removeEventListener('click', unlockAndPlay);
-              window.removeEventListener('touchend', unlockAndPlay);
-              if (!isMobileDevice() && this.audioCtx && this.audioCtx.state === 'suspended') {
-                this.audioCtx.resume().catch(() => {});
-              }
-              this.audio.play().catch(() => {});
-            };
-            window.addEventListener('click', unlockAndPlay, { once: true });
-            window.addEventListener('touchend', unlockAndPlay, { once: true });
-          }
+        }).catch(err => {
+          if (err.name !== 'AbortError') this.armGestureRetry();
         });
+      }
+      return;
     }
 
-    // Background check in case offline cache needs async fetch
-    if (!offlineItem && Storage.getTrackOffline) {
-      Storage.getTrackOffline(track.id).then(item => {
-        if (item && item.audioBlob && this.currentTrack?.id === track.id) {
-          const currentCur = this.audio.currentTime;
-          const wasPlaying = !this.audio.paused;
-          this.audio.src = URL.createObjectURL(item.audioBlob);
-          this.audio.currentTime = currentCur;
-          if (wasPlaying) this.audio.play().catch(() => {});
-        }
-      }).catch(() => {});
-    }
+    // 2. Direct High-Speed CDN Streaming (Primary mechanism - 0ms start if cached, bypasses serverless 403 proxy)
+    const playSessionId = ++this._playRequestId;
+    const cachedCdnUrl = this.streamUrlCache ? this.streamUrlCache.get(track.id) : null;
 
-    // Proactive background pre-warming of next upcoming tracks in queue
-    if (this._prefetchTimer) clearTimeout(this._prefetchTimer);
-    this._prefetchTimer = setTimeout(() => {
+    if (cachedCdnUrl) {
+      console.log('⚡ Lecture immédiate via cache client CDN (0ms):', track.id);
+      this.audio.preload = 'auto';
+      this.audio.src = cachedCdnUrl;
+      try { this.audio.currentTime = 0; } catch (e) {}
+      const playPromise = this.audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          this.isPlaying = true;
+          this.isLoading = false;
+          this.updateMediaSessionState();
+          this.emit('playback_change', { isPlaying: true, isLoading: false });
+        }).catch(err => {
+          if (err.name !== 'AbortError') this.armGestureRetry();
+        });
+      }
       this.prefetchNextTrack();
-    }, 1500);
+      return;
+    }
+
+    // 3. Fetch direct CDN URL from edge-cached endpoint /api/stream-url/:id
+    this.isLoading = true;
+    this.emit('playback_change', { isPlaying: false, isLoading: true });
+
+    fetch(`/api/stream-url/${track.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (playSessionId !== this._playRequestId) return;
+        if (data && data.url) {
+          if (this.streamUrlCache) this.streamUrlCache.set(track.id, data.url);
+          console.log('⚡ Flux direct CDN audio haute vitesse connecté:', track.id);
+          this.audio.preload = 'auto';
+          this.audio.src = data.url;
+          try { this.audio.currentTime = 0; } catch (e) {}
+          const playPromise = this.audio.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              this.isPlaying = true;
+              this.isLoading = false;
+              this.updateMediaSessionState();
+              this.emit('playback_change', { isPlaying: true, isLoading: false });
+            }).catch(err => {
+              if (err.name !== 'AbortError') this.armGestureRetry();
+            });
+          }
+          this.prefetchNextTrack();
+        } else {
+          throw new Error('No direct stream URL returned');
+        }
+      })
+      .catch(err => {
+        if (playSessionId !== this._playRequestId) return;
+        console.warn('Direct stream fetch failed, falling back:', err);
+        this.fallbackDirectStream(track);
+      });
+  }
+
+  armGestureRetry() {
+    const unlockAndPlay = () => {
+      window.removeEventListener('click', unlockAndPlay);
+      window.removeEventListener('touchend', unlockAndPlay);
+      if (!isMobileDevice() && this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+      this.audio.play().catch(() => {});
+    };
+    window.addEventListener('click', unlockAndPlay, { once: true });
+    window.addEventListener('touchend', unlockAndPlay, { once: true });
   }
 
   async fallbackDirectStream(track) {

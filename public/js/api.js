@@ -124,7 +124,14 @@ const API = {
     if (!id || this._prefetched.has(id)) return;
     this._prefetched.add(id);
     // Silent background pre-warm of stream cache
-    fetch(`/api/stream-url/${id}`).catch(() => {});
+    fetch(`/api/stream-url/${id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.url && window.Player && window.Player.streamUrlCache) {
+          window.Player.streamUrlCache.set(id, data.url);
+        }
+      })
+      .catch(() => {});
   },
 
   prefetchBatch(ids) {

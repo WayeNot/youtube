@@ -11,7 +11,18 @@
     <meta name="author" content="VibeStream">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta name="googlebot" content="index, follow">
-    <link rel="canonical" href="https://youtube-wayenots-projects.vercel.app/">
+    <link rel="canonical" id="canonical-meta" href="https://youtube-wayenots-projects.vercel.app/">
+    <script>
+        (function () {
+            try {
+                var c = document.getElementById('canonical-meta') || document.querySelector('link[rel="canonical"]');
+                if (c && window.location) {
+                    var p = window.location.pathname || '/';
+                    c.href = 'https://youtube-wayenots-projects.vercel.app' + (p === '/' ? '' : p);
+                }
+            } catch (_) {}
+        })();
+    </script>
 
     <!-- Open Graph (Facebook, Discord, LinkedIn) -->
     <meta property="og:type" content="website">
@@ -41,7 +52,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/vibestream-logo.png">
     <link rel="manifest" href="/manifest.json?v=3.8">
     <link rel="icon" type="image/png" href="/icons/vibestream-logo.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.2">
+    <link rel="stylesheet" href="/css/style.css?v=4.3">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,8 +165,8 @@
                         <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
                     </svg>
                 </button>
-                <a href="#" class="brand-logo" id="brand-home-btn" title="Accueil" onclick="event.preventDefault(); window.App && window.App.handleBrandLogoClick()">
-                    <img id="brand-logo-img" src="/icons/vibestream-logo.png" alt="Logo" style="width:32px; height:32px; object-fit:contain; border-radius:8px; filter:drop-shadow(0 0 10px rgba(255, 30, 80, 0.45));">
+                <a href="/" class="brand-logo" id="brand-home-btn" title="Accueil" aria-label="Accueil VibeStream" onclick="event.preventDefault(); window.App && window.App.handleBrandLogoClick()">
+                    <img id="brand-logo-img" src="/icons/vibestream-logo.png" alt="Logo VibeStream" style="width:32px; height:32px; object-fit:contain; border-radius:8px; filter:drop-shadow(0 0 10px rgba(255, 30, 80, 0.45));">
                     <span id="brand-logo-name" class="brand-name">VibeStream</span>
                     <span id="brand-logo-badge" class="brand-badge">PRO</span>
                 </a>
@@ -220,7 +231,7 @@
                             </svg>
                             <span>Mon Profil</span>
                         </a>
-                        <a href="#" class="dropdown-item" id="dropdown-bio-link"
+                        <a href="/bio" class="dropdown-item" id="dropdown-bio-link"
                             onclick="event.preventDefault(); window.App && window.App.openBioStudio()">
                             <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:var(--accent-red);">
                                 <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
@@ -320,15 +331,15 @@
                         <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
                         <span>Accueil Vidéo</span>
                     </a>
-                    <a href="javascript:void(0)" class="vibetube-nav-item" data-vibetube-nav="trending" onclick="window.App && window.App.filterVibeTube('trending')">
+                    <a href="/vibetube?tab=trending" class="vibetube-nav-item" data-vibetube-nav="trending" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('trending')">
                         <span style="font-size:18px;">🔥</span>
                         <span>Tendances</span>
                     </a>
-                    <a href="javascript:void(0)" class="vibetube-nav-item" data-vibetube-nav="shorts" onclick="window.App && window.App.filterVibeTube('shorts')">
+                    <a href="/vibetube/shorts" class="vibetube-nav-item" data-vibetube-nav="shorts" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('shorts')">
                         <span style="font-size:18px;">⚡</span>
                         <span>Shorts</span>
                     </a>
-                    <a href="javascript:void(0)" class="vibetube-nav-item" data-vibetube-nav="subscriptions" onclick="window.App && window.App.openVibeTubeSubscriptions()">
+                    <a href="/vibetube/subscriptions" class="vibetube-nav-item" data-vibetube-nav="subscriptions" onclick="event.preventDefault(); window.App && window.App.openVibeTubeSubscriptions()">
                         <svg viewBox="0 0 24 24"><path d="M20 8H4V6h16v2zm-2-6H6v2h12V2zm4 10v8c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-8c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2zm-6 4l-6-3.27v6.53L16 16z" fill="currentColor"/></svg>
                         <span>Abonnements</span>
                     </a>
@@ -369,31 +380,31 @@
                         <span>Thématiques Master</span>
                     </div>
                     <nav class="sidebar-nav">
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('cyber')">
+                        <a href="/vibetube?category=cyber" class="vibetube-nav-item" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('cyber')">
                             <span style="font-size:18px;">🛡️</span>
                             <span>Cyber & Hacking</span>
                         </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('dev')">
+                        <a href="/vibetube?category=dev" class="vibetube-nav-item" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('dev')">
                             <span style="font-size:18px;">💻</span>
                             <span>Dév & Code</span>
                         </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('gaming')">
+                        <a href="/vibetube?category=gaming" class="vibetube-nav-item" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('gaming')">
                             <span style="font-size:18px;">🎮</span>
                             <span>Gaming</span>
                         </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('ai')">
+                        <a href="/vibetube?category=ai" class="vibetube-nav-item" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('ai')">
                             <span style="font-size:18px;">🧠</span>
                             <span>IA & SecOps</span>
                         </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('networks')">
+                        <a href="/vibetube?category=networks" class="vibetube-nav-item" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('networks')">
                             <span style="font-size:18px;">🌐</span>
                             <span>Réseaux & Cloud</span>
                         </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('hardware')">
+                        <a href="/vibetube?category=hardware" class="vibetube-nav-item" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('hardware')">
                             <span style="font-size:18px;">⚡</span>
                             <span>Hardware Lab</span>
                         </a>
-                        <a href="javascript:void(0)" class="vibetube-nav-item" onclick="window.App && window.App.filterVibeTube('podcasts')">
+                        <a href="/vibetube?category=podcasts" class="vibetube-nav-item" onclick="event.preventDefault(); window.App && window.App.filterVibeTube('podcasts')">
                             <span style="font-size:18px;">🎙️</span>
                             <span>Podcasts Tech</span>
                         </a>
@@ -2150,7 +2161,7 @@
                 </svg>
                 <span>Bibliothèque</span>
             </a>
-            <a href="javascript:void(0)" class="mobile-nav-item mobile-nav-switch" onclick="window.App && window.App.setAppMode('vibetube')">
+            <a href="/vibetube" class="mobile-nav-item mobile-nav-switch" aria-label="Passer sur VibeTube" onclick="event.preventDefault(); window.App && window.App.setAppMode('vibetube')">
                 <span style="font-size:18px;">🎬</span>
                 <span style="color:#ff0033; font-weight:700;">VibeTube</span>
             </a>
@@ -2174,7 +2185,7 @@
                 <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg>
                 <span>Vous</span>
             </a>
-            <a href="javascript:void(0)" class="mobile-nav-item mobile-nav-switch" onclick="window.App && window.App.setAppMode('vibestream')">
+            <a href="/vibestream" class="mobile-nav-item mobile-nav-switch" aria-label="Passer sur VibeStream" onclick="event.preventDefault(); window.App && window.App.setAppMode('vibestream')">
                 <span style="font-size:18px;">🎵</span>
                 <span style="color:#ff1e50; font-weight:700;">VibeStream</span>
             </a>
@@ -3337,16 +3348,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/api.js?v=3.9"></script>
-    <script src="/js/storage.js?v=4.2"></script>
-    <script src="/js/lyrics.js?v=4.2"></script>
-    <script src="/js/player.js?v=4.2"></script>
-    <script src="/js/app.js?v=4.2"></script>
+    <script src="/js/api.js?v=4.3"></script>
+    <script src="/js/storage.js?v=4.3"></script>
+    <script src="/js/lyrics.js?v=4.3"></script>
+    <script src="/js/player.js?v=4.3"></script>
+    <script src="/js/app.js?v=4.3"></script>
     <script>
         // Register PWA service worker with auto-update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=4.2').then(reg => {
+                navigator.serviceWorker.register('/sw.js?v=4.3').then(reg => {
                     reg.update();
                 }).catch(err => {
                     console.log('SW note:', err);
