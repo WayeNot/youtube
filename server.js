@@ -864,7 +864,8 @@ app.get('/api/debug', async (req, res) => {
         try { size = fs.statSync(YTDLP_PATH).size; } catch (e) { }
     }
     const cookiesPath = getCookiesPath();
-    const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
+    const cookiesSize = fs.existsSync(cookiesPath) ? fs.statSync(cookiesPath).size : 0;
+    const hasCookies = cookiesSize > 10;
     const { execFile } = require('child_process');
     if (req.query.test_id) {
         const testId = req.query.test_id;
