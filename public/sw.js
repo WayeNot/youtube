@@ -1,5 +1,4 @@
-// Service Worker - Network First Strategy with Robust Cache Guards
-const CACHE_NAME = 'vibestream-v16';
+const CACHE_NAME = 'vibestream-v17';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();

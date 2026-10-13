@@ -184,15 +184,17 @@ async function getAudioStreamUrl(videoId) {
         return mem.url;
     }
 
-    // 2. Check persistent DB cache (SQLite / Postgres)
-    try {
-        const dbCached = await db.getStreamCache(videoId);
-        const cachedUrl = dbCached?.streamUrl || dbCached?.url;
-        if (cachedUrl && dbCached.expiresAt > now) {
-            streamCache.set(videoId, { url: cachedUrl, expiresAt: dbCached.expiresAt });
-            return cachedUrl;
-        }
-    } catch (e) { }
+    // 2. Check persistent DB cache (only for local SQLite where server IP is static)
+    if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+        try {
+            const dbCached = await db.getStreamCache(videoId);
+            const cachedUrl = dbCached?.streamUrl || dbCached?.url;
+            if (cachedUrl && dbCached.expiresAt > now) {
+                streamCache.set(videoId, { url: cachedUrl, expiresAt: dbCached.expiresAt });
+                return cachedUrl;
+            }
+        } catch (e) { }
+    }
 
     // 3. Return active in-flight extraction if already solving
     if (inFlightStreams.has(videoId)) {
@@ -330,10 +332,12 @@ async function getAudioStreamUrl(videoId) {
         const expiresAt = Date.now() + ttl;
         // Save to instance in-memory cache
         streamCache.set(videoId, { url: streamUrl, expiresAt });
-        // Persist to database cache
-        try {
-            await db.setStreamCache(videoId, streamUrl, expiresAt);
-        } catch (e) { }
+        // Persist to database cache (local SQLite only)
+        if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+            try {
+                await db.setStreamCache(videoId, streamUrl, expiresAt);
+            } catch (e) { }
+        }
         return streamUrl;
     }).catch((err) => {
         inFlightStreams.delete(videoId);
@@ -946,14 +950,12 @@ app.get(['/api/stream/:id', '/api/stream'], async (req, res) => {
         }
         const streamUrl = await getAudioStreamUrl(videoId);
 
-        // Standard headers to prevent Google Video 403 Forbidden
+        // Clean headers to fetch Google Video stream without origin conflicts
         const fetchHeaders = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
             'Accept': '*/*',
             'Accept-Encoding': 'identity;q=1, *;q=0',
-            'Connection': 'keep-alive',
-            'Referer': 'https://www.youtube.com/',
-            'Origin': 'https://www.youtube.com'
+            'Connection': 'keep-alive'
         };
         if (req.headers.range) {
             fetchHeaders['Range'] = req.headers.range;
