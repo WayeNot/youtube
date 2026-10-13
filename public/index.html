@@ -2036,6 +2036,10 @@
                     </button>
                 </div>
                 <div class="modal-body create-playlist-modal-body">
+                    <div class="create-pl-form-group" style="margin-top: 14px;">
+                        <label for="new-playlist-modal-name" style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;">Titre de la playlist</label>
+                        <input type="text" id="new-playlist-modal-name" class="modern-input" placeholder="Ex : Soirée chill, Workout, Électro 2026..." maxlength="80" autocomplete="off">
+                    </div>
                     <!-- Live Cover Preview & Upload -->
                     <div class="create-pl-cover-section">
                         <div class="create-pl-cover-preview-box" id="new-playlist-cover-preview-box">
@@ -2058,11 +2062,6 @@
                                 <input type="url" id="new-playlist-cover-url-input" class="modern-input small" placeholder="Ou collez l'URL d'une image (https://...)" autocomplete="off" oninput="window.App && window.App.handleNewPlaylistUrlInput(this.value)">
                             </div>
                         </div>
-                    </div>
-
-                    <div class="create-pl-form-group" style="margin-top: 14px;">
-                        <label for="new-playlist-modal-name" style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;">Titre de la playlist</label>
-                        <input type="text" id="new-playlist-modal-name" class="modern-input" placeholder="Ex : Soirée chill, Workout, Électro 2026..." maxlength="80" autocomplete="off">
                     </div>
                 </div>
                 <div class="modal-footer create-playlist-modal-footer">
