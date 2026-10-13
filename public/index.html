@@ -3,23 +3,89 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VibeStream</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>VibeStream — Streaming Musical Haute Fidélité, Paroles & Vidéos</title>
     <meta name="description"
-        content="VibeStream - Lecteur musical haute fidélité, streaming ultra-rapide, visualiseur 3D, mode DJ et sessions partagées">
+        content="VibeStream est votre lecteur de musique et streaming vidéo gratuit en ligne. Profitez d'une qualité audio haute fidélité, de millions de titres, paroles synchronisées, mode DJ et playlists sans publicité.">
+    <meta name="keywords" content="musique, streaming musical, vibestream, lecteur musique gratuit, paroles synchronisées, mode dj, playlists, vibetube">
+    <meta name="author" content="VibeStream">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+    <link rel="canonical" href="https://youtube-wayenots-projects.vercel.app/">
+
+    <!-- Open Graph (Facebook, Discord, LinkedIn) -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:site_name" content="VibeStream">
+    <meta property="og:title" content="VibeStream — Streaming Musical Haute Fidélité & Vidéos">
+    <meta property="og:description" content="Lecteur de musique en ligne gratuit : des millions de titres en haute fidélité, paroles synchronisées, visualiseur 3D et mode DJ.">
+    <meta property="og:url" content="https://youtube-wayenots-projects.vercel.app/">
+    <meta property="og:image" content="https://youtube-wayenots-projects.vercel.app/icons/vibestream-logo.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:image:alt" content="Logo VibeStream">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="VibeStream — Streaming Musical Haute Fidélité & Vidéos">
+    <meta name="twitter:description" content="Écoutez vos morceaux favoris en haute fidélité gratuitement avec VibeStream.">
+    <meta name="twitter:image" content="https://youtube-wayenots-projects.vercel.app/icons/vibestream-logo.png">
+
+    <!-- Mobile & PWA -->
     <meta name="theme-color" content="#030303">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VibeStream">
+    <link rel="apple-touch-icon" href="/icons/vibestream-logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/vibestream-logo.png">
     <link rel="manifest" href="/manifest.json?v=3.8">
     <link rel="icon" type="image/png" href="/icons/vibestream-logo.png">
     <link rel="stylesheet" href="/css/style.css?v=4.2">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <!-- Structured Data (Schema.org JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://youtube-wayenots-projects.vercel.app/#webapp",
+          "name": "VibeStream",
+          "url": "https://youtube-wayenots-projects.vercel.app/",
+          "description": "Lecteur de musique et streaming vidéo haute fidélité gratuit.",
+          "applicationCategory": "MultimediaApplication",
+          "operatingSystem": "All",
+          "browserRequirements": "Requires JavaScript. Requires HTML5.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR"
+          },
+          "image": "https://youtube-wayenots-projects.vercel.app/icons/vibestream-logo.png"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://youtube-wayenots-projects.vercel.app/#website",
+          "url": "https://youtube-wayenots-projects.vercel.app/",
+          "name": "VibeStream",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://youtube-wayenots-projects.vercel.app/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
     <script>
         (function () {
             try {
@@ -351,6 +417,7 @@
 
                 <!-- VIEW 1: HOME -->
                 <section id="view-home" class="view-section active">
+                    <h1 class="sr-only">VibeStream — Lecteur de Musique Gratuit en Ligne et Vidéos Haute Fidélité</h1>
                     <div id="home-sections-container"></div>
                 </section>
 
@@ -558,7 +625,7 @@
                                 <!-- Channel & Action Buttons Row -->
                                 <div class="vibetube-watch-creator-row">
                                     <div class="vibetube-watch-creator-left" onclick="window.App && window.App.openCurrentWatchChannel()">
-                                        <img id="vibetube-watch-avatar" src="/icons/icon.svg" alt="" class="vibetube-watch-avatar">
+                                        <img id="vibetube-watch-avatar" src="/icons/icon.svg" alt="Avatar de la chaîne" class="vibetube-watch-avatar">
                                         <div class="vibetube-watch-creator-meta">
                                             <div style="display:flex; align-items:center; gap:6px;">
                                                 <span id="vibetube-watch-channel" class="vibetube-watch-channel-name">Créateur</span>
@@ -609,7 +676,7 @@
 
                                     <!-- Comment Input Box -->
                                     <div class="vibetube-comment-add-box">
-                                        <img id="vibetube-user-comment-avatar" src="/icons/icon.svg" alt="" class="vibetube-comment-user-avatar">
+                                        <img id="vibetube-user-comment-avatar" src="/icons/icon.svg" alt="Votre avatar utilisateur" class="vibetube-comment-user-avatar">
                                         <div class="vibetube-comment-input-wrap">
                                             <textarea id="vibetube-comment-input" placeholder="Ajouter un commentaire..." rows="1" onfocus="document.getElementById('vibetube-comment-input-actions')?.classList.add('visible')"></textarea>
                                             <div class="vibetube-comment-input-actions" id="vibetube-comment-input-actions">
@@ -1279,20 +1346,20 @@
                                     <div class="avatar-presets-row">
                                         <span style="font-size: 12px; color: var(--text-muted);">Presets rapides :</span>
                                         <img src="https://api.dicebear.com/7.x/identicon/svg?seed=Felix"
-                                            class="avatar-preset-dot" alt=""
+                                            class="avatar-preset-dot" alt="Avatar prédéfini Felix"
                                             onclick="window.App && window.App.selectAvatarPreset(this.src)"
                                             title="Identicon Felix">
                                         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Robot1"
-                                            class="avatar-preset-dot" alt=""
+                                            class="avatar-preset-dot" alt="Avatar prédéfini Robot"
                                             onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Robot">
                                         <img src="https://api.dicebear.com/7.x/micah/svg?seed=MusicGuy"
-                                            class="avatar-preset-dot" alt=""
+                                            class="avatar-preset-dot" alt="Avatar prédéfini Micah"
                                             onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Micah">
                                         <img src="https://api.dicebear.com/7.x/lorelei/svg?seed=MusicGirl"
-                                            class="avatar-preset-dot" alt=""
+                                            class="avatar-preset-dot" alt="Avatar prédéfini Lorelei"
                                             onclick="window.App && window.App.selectAvatarPreset(this.src)" title="Lorelei">
                                         <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NnA5MzZua24xNHhzamR4ZGoybjFkaGx6a2g1MnVsOWZ6Z2cxMDRqYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/1is4K4y0oWyyGnWTSh/giphy.gif"
-                                            class="avatar-preset-dot" alt=""
+                                            class="avatar-preset-dot" alt="Avatar animé vinyle"
                                             onclick="window.App && window.App.selectAvatarPreset(this.src)"
                                             title="Vinyle DJ">
                                     </div>

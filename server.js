@@ -205,7 +205,7 @@ async function getAudioStreamUrl(videoId) {
     const cookiesPath = getCookiesPath();
 
     // Concurrency queue for yt-dlp to avoid CPU starvation
-    const runYtDlp = (extraArgs = [], format = '18/bestaudio/ba/b', timeoutMs = 4500, targetUrl = null) => {
+    const runYtDlp = (extraArgs = [], format = 'bestaudio/140/251/18/ba/b', timeoutMs = 4500, targetUrl = null, useJsEngine = false) => {
         return ytDlpQueue.run(() => {
             return new Promise((resolve, reject) => {
                 const target = targetUrl || `https://www.youtube.com/watch?v=${videoId}`;
@@ -214,14 +214,13 @@ async function getAudioStreamUrl(videoId) {
                     '-f', format,
                     '--no-playlist',
                     '--no-warnings',
-                    '--no-cache-dir',
                     '--no-check-certificates',
-                    '--js-runtimes', `node:${process.execPath}`,
-                    '--remote-components', 'ejs:github',
-                    ...extraArgs,
-                    '--',
-                    target
+                    '--socket-timeout', '5'
                 ];
+                if (useJsEngine) {
+                    args.push('--js-runtimes', `node:${process.execPath}`, '--remote-components', 'ejs:github');
+                }
+                args.push(...extraArgs, '--', target);
                 execFile(
                     YTDLP_PATH,
                     args,
@@ -243,41 +242,42 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: Web session with cookies first, then visionos, android, and web
+    // 5. Extract stream with yt-dlp: VisionOS first (ultra-fast, ~1.8s), then android, and web fallback
     const streamPromise = (async () => {
         let lastErr = null;
-        const format = '18/bestaudio/ba/b';
+        const audioFormat = 'bestaudio/140/251/18/ba/b';
+        const webFormat = '18/bestaudio/ba/b';
         const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Authenticated session with desktop cookies
-        if (hasCookies) {
-            try {
-                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 12000);
-            } catch (err) {
-                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying visionos...`);
-                lastErr = err;
-            }
-        }
-
-        // Attempt 2: VisionOS client (fast, reliable, uncluttered audio stream extraction)
+        // Attempt 1: VisionOS client (fast, clean, direct audio stream, no JS cipher overhead)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], 'bestaudio/140/251/18/ba/b', 6000);
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], audioFormat, 4500);
         } catch (err) {
             console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying android...`);
             lastErr = err;
         }
 
-        // Attempt 3: Android client
+        // Attempt 2: Android client (fast mobile extraction)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=android'], format, 6000);
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs;player_client=android'], audioFormat, 4500);
         } catch (err) {
-            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying default web...`);
+            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying web...`);
             lastErr = err;
         }
 
-        // Attempt 4: Default fallback
+        // Attempt 3: Authenticated session with desktop cookies (for age-restricted or private tracks)
+        if (hasCookies) {
+            try {
+                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], webFormat, 8000, null, true);
+            } catch (err) {
+                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying default web...`);
+                lastErr = err;
+            }
+        }
+
+        // Attempt 4: Default web fallback
         try {
-            return await runYtDlp([], format, 6000);
+            return await runYtDlp([], webFormat, 5000, null, true);
         } catch (err) {
             lastErr = err;
         }
@@ -1047,6 +1047,8 @@ app.get(['/api/stream-url/:id', '/api/stream-url'], async (req, res) => {
             try { await db.deleteStreamCache(videoId); } catch (e) { }
         }
         const url = await getAudioStreamUrl(videoId);
+        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=18000, stale-while-revalidate=86400');
+        res.setHeader('CDN-Cache-Control', 'public, s-maxage=18000, stale-while-revalidate=86400');
         res.json({ url });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -2702,6 +2704,17 @@ app.post('/api/admin/purge-cache', adminMiddleware, async (req, res) => {
         console.error('Admin purge cache error:', err);
         res.status(500).json({ error: 'Erreur lors de la purge du cache' });
     }
+});
+
+// SEO crawler endpoints
+app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml');
+    res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
 });
 
 // Single Page Application Fallback
