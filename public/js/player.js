@@ -207,10 +207,11 @@ class PlayerEngine {
     this.audio.addEventListener('error', (e) => {
       console.warn('Audio element error, attempting recovery:', e);
       this.isLoading = false;
-      // Guarantee only ONE fallback attempt per track to prevent infinite loops
       if (this.currentTrack && !this._recoveryAttempted) {
         this._recoveryAttempted = true;
         this.fallbackDirectStream(this.currentTrack);
+      } else if (this.currentTrack && !this._usingYtEmbed) {
+        this.playViaYouTubeEmbed(this.currentTrack);
       } else {
         this.emit('error', { message: 'Impossible de lire ce titre' });
       }
@@ -1037,6 +1038,14 @@ class PlayerEngine {
       this.emit('playback_change', { isPlaying: true, isLoading: false });
     } catch (e) {
       console.warn('Audio play error:', e);
+      if (this.currentTrack) {
+        if (!this._recoveryAttempted) {
+          this._recoveryAttempted = true;
+          this.fallbackDirectStream(this.currentTrack);
+        } else if (!this._usingYtEmbed) {
+          this.playViaYouTubeEmbed(this.currentTrack);
+        }
+      }
     }
   }
 

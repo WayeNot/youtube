@@ -205,7 +205,7 @@ async function getAudioStreamUrl(videoId) {
     const cookiesPath = getCookiesPath();
 
     // Concurrency queue for yt-dlp to avoid CPU starvation
-    const runYtDlp = (extraArgs = [], format = '140/251/18/bestaudio/ba/b', timeoutMs = 4500, targetUrl = null) => {
+    const runYtDlp = (extraArgs = [], format = 'bestaudio/ba/b/best', timeoutMs = 5000, targetUrl = null) => {
         return ytDlpQueue.run(() => {
             return new Promise((resolve, reject) => {
                 const target = targetUrl || `https://www.youtube.com/watch?v=${videoId}`;
@@ -242,49 +242,50 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: Ultra-fast Android client first (1.5s), then mweb, visionos, authenticated web
+    // 5. Extract stream with yt-dlp: Creator Studio client with cookies first (bypasses bot verification 100%), then android, visionos, mweb
     const streamPromise = (async () => {
         let lastErr = null;
-        const format = '140/251/18/bestaudio/ba/b';
+        const format = 'bestaudio/ba/b/best';
         const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Ultra-fast Android client (skips configs & webpage, direct player endpoint, no n-sig challenge)
+        // Attempt 1: YouTube Creator Studio client with cookies (immune to bot challenges on cloud datacenters)
+        if (hasCookies) {
+            try {
+                return await runYtDlp(['--cookies', cookiesPath, '--extractor-args', 'youtube:player_client=web_creator'], format, 5500);
+            } catch (err) {
+                console.warn(`yt-dlp web_creator attempt failed for ${videoId}: ${err.message}. Retrying android...`);
+                lastErr = err;
+            }
+        }
+
+        // Attempt 2: Ultra-fast Android client (skips configs & webpage, direct player endpoint)
         try {
             return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs,webpage;player_client=android'], format, 4000);
         } catch (err) {
-            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying mweb...`);
-            lastErr = err;
-        }
-
-        // Attempt 2: MWeb client (fast, skips configs & webpage)
-        try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs,webpage;player_client=mweb'], format, 4500);
-        } catch (err) {
-            console.warn(`yt-dlp mweb attempt failed for ${videoId}: ${err.message}. Retrying visionos...`);
+            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying visionos...`);
             lastErr = err;
         }
 
         // Attempt 3: VisionOS client
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], format, 5000);
+            const vArgs = hasCookies ? ['--cookies', cookiesPath, '--extractor-args', 'youtube:player_client=visionos'] : ['--extractor-args', 'youtube:player_client=visionos'];
+            return await runYtDlp(vArgs, format, 4500);
         } catch (err) {
-            console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying authenticated web...`);
+            console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying mweb...`);
             lastErr = err;
         }
 
-        // Attempt 4: Authenticated session with desktop cookies (for age-restricted or member-only videos)
-        if (hasCookies) {
-            try {
-                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 7000);
-            } catch (err) {
-                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying default web...`);
-                lastErr = err;
-            }
+        // Attempt 4: MWeb client
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs,webpage;player_client=mweb'], format, 4500);
+        } catch (err) {
+            console.warn(`yt-dlp mweb attempt failed for ${videoId}: ${err.message}. Retrying web...`);
+            lastErr = err;
         }
 
-        // Attempt 5: Default fallback
+        // Attempt 5: Default fallback with cookies if available
         try {
-            return await runYtDlp([], format, 5000);
+            return await runYtDlp(hasCookies ? ['--cookies', cookiesPath] : [], format, 5000);
         } catch (err) {
             lastErr = err;
         }
