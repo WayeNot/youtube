@@ -3059,11 +3059,7 @@ const App = {
             this.currentActivePlaylistId = pl.id;
             updateNavHighlights();
             const ownerName = pl.ownerUsername || (currentUser ? currentUser.username : 'user');
-            const plUrl = `/user/${encodeURIComponent(ownerName)}/playlist/${encodeURIComponent(pl.name)}`;
-            this.updateURL(plUrl);
-            document.title = `${pl.name} — Playlist de ${ownerName} | VibeStream`;
-            const canonicalEl = document.getElementById('canonical-meta') || document.querySelector('link[rel="canonical"]');
-            if (canonicalEl) canonicalEl.href = `${window.location.origin}${plUrl}`;
+            this.updateURL(`/user/${encodeURIComponent(ownerName)}/playlist/${encodeURIComponent(pl.name)}`);
         },
 
         toggleCurrentPlaylistPrivacy() {
@@ -4134,9 +4130,6 @@ const App = {
 
                 this.currentProfileUser = profile;
                 this.switchView('profile', false);
-                document.title = `${profile.username} — Profil & Musique | VibeStream`;
-                const canonicalEl = document.getElementById('canonical-meta') || document.querySelector('link[rel="canonical"]');
-                if (canonicalEl) canonicalEl.href = `${window.location.origin}/user/${encodeURIComponent(profile.username)}`;
 
                 this.dom.profileDisplayUsername.textContent = profile.username;
                 const currentUser = Storage.getUser();
@@ -4395,8 +4388,6 @@ const App = {
                     this.dom.artistHeroGlow.style.backgroundImage = `radial-gradient(circle at 30% 30%, var(--accent-red) 0%, transparent 65%), url('${artist.avatar}')`;
                 }
                 document.title = `${artist.name || artistName} — Artiste | VibeStream`;
-                const canonicalEl = document.getElementById('canonical-meta') || document.querySelector('link[rel="canonical"]');
-                if (canonicalEl) canonicalEl.href = `${window.location.origin}/artist/${encodeURIComponent(artist.name || artistName)}`;
 
                 const topTracks = data.topTracks || [];
                 const albums = data.albums || [];
@@ -4536,8 +4527,6 @@ const App = {
                     this.dom.albumHeroGlow.style.backgroundImage = `radial-gradient(circle at 25% 30%, var(--accent-red) 0%, transparent 65%), url('${album.thumbnail}')`;
                 }
                 document.title = `${album.title} • ${album.artist || ''} | VibeStream`;
-                const canonicalEl = document.getElementById('canonical-meta') || document.querySelector('link[rel="canonical"]');
-                if (canonicalEl) canonicalEl.href = `${window.location.origin}/album/${encodeURIComponent(album.id || albumId)}`;
 
                 // Back to artist button
                 if (this.dom.albumBackArtistBtn) {

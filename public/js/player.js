@@ -8,28 +8,30 @@ const isMobileDevice = () => {
 
 class PlayerEngine {
   constructor() {
-    // Clean native audio element initialization - guarantees pristine audio pipeline without Web Audio CORS taint
-    let audioEl = document.getElementById('ytm-main-audio');
-    if (!audioEl) {
-      audioEl = new Audio();
-      audioEl.id = 'ytm-main-audio';
-    }
-    audioEl.style.cssText = 'position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;';
-    audioEl.preload = 'auto';
-    audioEl.setAttribute('playsinline', 'true');
-    audioEl.setAttribute('webkit-playsinline', 'true');
-    audioEl.setAttribute('x-webkit-airplay', 'allow');
-
-    if (!audioEl.parentNode) {
+    // Attach to existing DOM audio element or create and attach for rock-solid mobile background & lockscreen persistence
+    this.audio = document.getElementById('ytm-main-audio');
+    if (!this.audio) {
+      this.audio = new Audio();
+      this.audio.id = 'ytm-main-audio';
+      this.audio.style.position = 'fixed';
+      this.audio.style.top = '-9999px';
+      this.audio.style.left = '-9999px';
+      this.audio.style.width = '1px';
+      this.audio.style.height = '1px';
+      this.audio.style.opacity = '0';
+      this.audio.style.pointerEvents = 'none';
       const attachAudio = () => {
-        if (document.body && !audioEl.parentNode) {
-          document.body.appendChild(audioEl);
+        if (document.body && !document.getElementById('ytm-main-audio')) {
+          document.body.appendChild(this.audio);
         }
       };
       if (document.body) attachAudio();
       else document.addEventListener('DOMContentLoaded', attachAudio);
     }
-    this.audio = audioEl;
+    this.audio.preload = 'auto';
+    this.audio.setAttribute('playsinline', 'true');
+    this.audio.setAttribute('webkit-playsinline', 'true');
+    this.audio.setAttribute('x-webkit-airplay', 'allow');
 
     this.currentTrack = null;
     this.queue = [];
@@ -47,10 +49,11 @@ class PlayerEngine {
     this.preloadAudio.preload = 'auto';
     this.preloadedTrackId = null;
     this.preloadedNextAudio = false;
-    this.streamUrlCache = new Map();
-    this._playRequestId = 0;
 
-    // Equalizer state
+    // Web Audio Equalizer (used on Desktop for audio processing)
+    this.audioCtx = null;
+    this.sourceNode = null;
+    this.eqFilters = [];
     this.isEqInitialized = false;
 
     this.initAudioListeners();
@@ -83,6 +86,9 @@ class PlayerEngine {
         const s = Storage.getSettings();
         if (s.eqPreset && s.eqPreset !== 'flat') {
           this.initEqualizer();
+          if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(() => {});
+          }
         }
       }
     };
@@ -210,13 +216,18 @@ class PlayerEngine {
       }
     });
 
-    // Ensure MediaSession & continuous audio streaming when app is backgrounded (e.g. user opens Waze, locks screen or switches tabs)
+    // Ensure MediaSession & continuous audio streaming when app is backgrounded (e.g. user opens Waze or locks screen)
     document.addEventListener('visibilitychange', () => {
-      this.updateMediaSessionState();
-      if (!document.hidden) {
-        if (this.isPlaying && this.audio && this.audio.paused && !this._userPaused) {
-          this.audio.play().catch(() => {});
+      if (document.hidden) {
+        if (this.isPlaying && this.audio) {
+          this.updateMediaSessionState();
+          // Keep audio stream active if not paused by the user
+          if (this.audio.paused && !this._userPaused) {
+            this.audio.play().catch(() => {});
+          }
         }
+      } else {
+        this.updateMediaSessionState();
       }
     });
 
@@ -287,27 +298,162 @@ class PlayerEngine {
     }
   }
 
-  // Web Audio Equalizer & Presets (Safe Native Pipeline)
+  // Web Audio Equalizer (5-Band), 3D Convolver Reverb & Analyser (Desktop only)
   initEqualizer() {
-    this.isEqInitialized = true;
-    // createMediaElementSource is omitted deliberately: attaching it to an audio element playing
-    // cross-origin Google Video CDN streams triggers the browser's CORS protection policy,
-    // which silences all audio to zeroes. Audio is played directly through the browser's native engine.
+    if (this.isEqInitialized || this.sourceNode || isMobileDevice()) return;
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      this.audioCtx = new AudioContext();
+      this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
+
+      // Attach visualizer analyser directly to source node
+      try {
+        this.analyser = this.audioCtx.createAnalyser();
+        this.analyser.fftSize = 128;
+        this.analyser.smoothingTimeConstant = 0.8;
+        this.sourceNode.connect(this.analyser);
+      } catch (ae) {}
+
+      const freqs = [60, 230, 910, 3600, 14000];
+      const types = ['lowshelf', 'peaking', 'peaking', 'peaking', 'highshelf'];
+
+      let prevNode = this.sourceNode;
+      this.eqFilters = freqs.map((freq, idx) => {
+        const filter = this.audioCtx.createBiquadFilter();
+        filter.type = types[idx];
+        filter.frequency.value = freq;
+        filter.gain.value = 0;
+        prevNode.connect(filter);
+        prevNode = filter;
+        return filter;
+      });
+
+      // DynamicsCompressorNode for Smart Volume Normalization / ReplayGain
+      this.compressor = this.audioCtx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-24, this.audioCtx.currentTime);
+      this.compressor.knee.setValueAtTime(30, this.audioCtx.currentTime);
+      this.compressor.ratio.setValueAtTime(12, this.audioCtx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.audioCtx.currentTime);
+      this.compressor.release.setValueAtTime(0.25, this.audioCtx.currentTime);
+
+      // ConvolverNode for 3D Spatial Reverb & Acoustics
+      this.convolver = this.audioCtx.createConvolver();
+      this.convolverGain = this.audioCtx.createGain();
+      this.convolverGain.gain.setValueAtTime(0, this.audioCtx.currentTime); // Wet level (0 = dry)
+
+      this.dryGain = this.audioCtx.createGain();
+      this.dryGain.gain.setValueAtTime(1.0, this.audioCtx.currentTime); // Dry level
+
+      // GainNode for universal volume & mute control (required on iOS/Mobile & Web Audio graph)
+      this.gainNode = this.audioCtx.createGain();
+      const currentVol = this.audio.muted ? 0 : (this.audio.volume ?? 1);
+      this.gainNode.gain.setValueAtTime(currentVol, this.audioCtx.currentTime);
+
+      // Connect filters through compressor
+      prevNode.connect(this.compressor);
+
+      // Split into Dry and Wet (Convolver) paths
+      this.compressor.connect(this.dryGain);
+      this.compressor.connect(this.convolver);
+      this.convolver.connect(this.convolverGain);
+
+      // Sum Dry and Wet into Master GainNode
+      this.dryGain.connect(this.gainNode);
+      this.convolverGain.connect(this.gainNode);
+      this.gainNode.connect(this.audioCtx.destination);
+
+      const unlockAudioCtx = () => {
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume().catch(() => {});
+        }
+      };
+      document.addEventListener('touchstart', unlockAudioCtx, { passive: true });
+      document.addEventListener('touchend', unlockAudioCtx, { passive: true });
+      document.addEventListener('click', unlockAudioCtx, { passive: true });
+
+      this.isEqInitialized = true;
+    } catch (e) {
+      console.warn('Equalizer/Normalizer initialization error:', e);
+    }
   }
 
   generateReverbImpulse(durationSec = 2.0, decay = 2.0) {
-    return null;
+    if (!this.audioCtx) return null;
+    try {
+      const rate = this.audioCtx.sampleRate;
+      const length = Math.floor(rate * durationSec);
+      const impulse = this.audioCtx.createBuffer(2, length, rate);
+      for (let channel = 0; channel < 2; channel++) {
+        const data = impulse.getChannelData(channel);
+        for (let i = 0; i < length; i++) {
+          const t = i / length;
+          const env = Math.pow(1 - t, decay);
+          data[i] = ((Math.random() * 2) - 1) * env;
+        }
+      }
+      return impulse;
+    } catch (e) {
+      console.warn('Impulse generation error:', e);
+      return null;
+    }
   }
 
   setSpatialReverb(durationSec = 0, decay = 2.0, dryLevel = 1.0, wetLevel = 0) {
-    // Spatial acoustic reverb state handled gracefully
+    if (isMobileDevice()) return;
+    this.initEqualizer();
+    if (!this.convolver || !this.convolverGain || !this.dryGain || !this.audioCtx) return;
+    try {
+      if (wetLevel > 0 && durationSec > 0) {
+        const buf = this.generateReverbImpulse(durationSec, decay);
+        if (buf) this.convolver.buffer = buf;
+        this.convolverGain.gain.setValueAtTime(wetLevel, this.audioCtx.currentTime);
+        this.dryGain.gain.setValueAtTime(dryLevel, this.audioCtx.currentTime);
+      } else {
+        this.convolverGain.gain.setValueAtTime(0, this.audioCtx.currentTime);
+        this.dryGain.gain.setValueAtTime(1.0, this.audioCtx.currentTime);
+      }
+    } catch (e) {
+      console.warn('Spatial reverb setup error:', e);
+    }
   }
 
   setEqBand(bandIndex, gainValue) {
-    // 5-band EQ state handled gracefully
+    if (isMobileDevice()) return;
+    this.initEqualizer();
+    if (this.eqFilters && this.eqFilters[bandIndex]) {
+      this.eqFilters[bandIndex].gain.value = gainValue;
+    }
   }
 
   applyEqPreset(presetName) {
+    if (isMobileDevice()) {
+      Storage.saveSetting('eqPreset', presetName);
+      return;
+    }
+    this.initEqualizer();
+    const presets = {
+      flat: [0, 0, 0, 0, 0],
+      bass_boost: [6, 4, 1, 0, 0],
+      mega_bass: [12, 7, 2, -1, 0], // Ultra Bass Boost with deep low-end sub
+      treble_boost: [0, 0, 1, 4, 6],
+      vocal: [-2, 1, 4, 3, -1],
+      rock: [4, 2, -1, 2, 4],
+      electronic: [5, 3, 0, 2, 4],
+      club_3d: [6, 3, 1, 3, 5], // Club 3D with immersive spatial acoustic reverb
+      acoustic_salon: [2, 1, 4, 3, 2] // Warm acoustique salon ambience
+    };
+    const gains = presets[presetName] || presets.flat;
+    gains.forEach((g, i) => this.setEqBand(i, g));
+
+    if (presetName === 'club_3d') {
+      this.setSpatialReverb(2.0, 1.8, 0.82, 0.38);
+    } else if (presetName === 'acoustic_salon') {
+      this.setSpatialReverb(2.6, 2.5, 0.8, 0.42);
+    } else {
+      this.setSpatialReverb(0, 0, 1.0, 0);
+    }
+
     Storage.saveSetting('eqPreset', presetName);
   }
 
@@ -383,6 +529,14 @@ class PlayerEngine {
 
     this.preloadedNextAudio = false;
 
+    if (this._usingDirectAudio && this.directAudio) {
+      this._usingDirectAudio = false;
+      try {
+        this.directAudio.pause();
+        this.directAudio.removeAttribute('src');
+      } catch (e) {}
+    }
+
     if (this._usingYtEmbed) {
       this._usingYtEmbed = false;
       if (this._ytEmbedTimer) clearInterval(this._ytEmbedTimer);
@@ -395,94 +549,72 @@ class PlayerEngine {
     this._currentDuration = initialDuration;
     this.emit('time_update', { currentTime: 0, duration: initialDuration });
 
-    // 1. Offline item check (local storage audio blob)
+    // Set audio source synchronously (from memory cache if offline, else stream URL)
     const offlineItem = Storage.getTrackOfflineSync ? Storage.getTrackOfflineSync(track.id) : null;
     if (offlineItem && offlineItem.audioBlob) {
       this.audio.src = URL.createObjectURL(offlineItem.audioBlob);
-      try { this.audio.currentTime = 0; } catch (e) {}
-      const playPromise = this.audio.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
-          this.isPlaying = true;
-          this.isLoading = false;
-          this.updateMediaSessionState();
-          this.emit('playback_change', { isPlaying: true, isLoading: false });
-        }).catch(err => {
-          if (err.name !== 'AbortError') this.armGestureRetry();
-        });
-      }
-      return;
-    }
-
-    // 2. Direct High-Speed CDN Streaming (Primary mechanism - 0ms start if cached, bypasses serverless 403 proxy)
-    const playSessionId = ++this._playRequestId;
-    const cachedCdnUrl = this.streamUrlCache ? this.streamUrlCache.get(track.id) : null;
-
-    if (cachedCdnUrl) {
-      console.log('⚡ Lecture immédiate via cache client CDN (0ms):', track.id);
+    } else {
       this.audio.preload = 'auto';
-      this.audio.src = cachedCdnUrl;
-      try { this.audio.currentTime = 0; } catch (e) {}
-      const playPromise = this.audio.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
+      this.audio.src = API.getStreamUrl(track.id);
+    }
+    try {
+      this.audio.currentTime = 0;
+    } catch (e) {}
+
+    // Unlock Web Audio only if equalizer was already initialized on desktop
+    if (!isMobileDevice() && this.isEqInitialized && this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
+    }
+
+    this._userPaused = false;
+    this.audio.muted = false;
+    if (this.audio.volume <= 0.05) this.audio.volume = this._lastVolume || 0.9;
+
+    // Play immediately in the synchronous user gesture tick (vital for Mobile Safari & Android Chrome)
+    const playPromise = this.audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
           this.isPlaying = true;
           this.isLoading = false;
           this.updateMediaSessionState();
           this.emit('playback_change', { isPlaying: true, isLoading: false });
-        }).catch(err => {
-          if (err.name !== 'AbortError') this.armGestureRetry();
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.warn('Audio play request failed, arming gesture retry:', err);
+            const unlockAndPlay = () => {
+              window.removeEventListener('click', unlockAndPlay);
+              window.removeEventListener('touchend', unlockAndPlay);
+              if (!isMobileDevice() && this.audioCtx && this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume().catch(() => {});
+              }
+              this.audio.play().catch(() => {});
+            };
+            window.addEventListener('click', unlockAndPlay, { once: true });
+            window.addEventListener('touchend', unlockAndPlay, { once: true });
+          }
         });
-      }
-      this.prefetchNextTrack();
-      return;
     }
 
-    // 3. Fetch direct CDN URL from edge-cached endpoint /api/stream-url/:id
-    this.isLoading = true;
-    this.emit('playback_change', { isPlaying: false, isLoading: true });
-
-    fetch(`/api/stream-url/${track.id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (playSessionId !== this._playRequestId) return;
-        if (data && data.url) {
-          if (this.streamUrlCache) this.streamUrlCache.set(track.id, data.url);
-          console.log('⚡ Flux direct CDN audio haute vitesse connecté:', track.id);
-          this.audio.preload = 'auto';
-          this.audio.src = data.url;
-          try { this.audio.currentTime = 0; } catch (e) {}
-          const playPromise = this.audio.play();
-          if (playPromise !== undefined) {
-            playPromise.then(() => {
-              this.isPlaying = true;
-              this.isLoading = false;
-              this.updateMediaSessionState();
-              this.emit('playback_change', { isPlaying: true, isLoading: false });
-            }).catch(err => {
-              if (err.name !== 'AbortError') this.armGestureRetry();
-            });
-          }
-          this.prefetchNextTrack();
-        } else {
-          throw new Error('No direct stream URL returned');
+    // Background check in case offline cache needs async fetch
+    if (!offlineItem && Storage.getTrackOffline) {
+      Storage.getTrackOffline(track.id).then(item => {
+        if (item && item.audioBlob && this.currentTrack?.id === track.id) {
+          const currentCur = this.audio.currentTime;
+          const wasPlaying = !this.audio.paused;
+          this.audio.src = URL.createObjectURL(item.audioBlob);
+          this.audio.currentTime = currentCur;
+          if (wasPlaying) this.audio.play().catch(() => {});
         }
-      })
-      .catch(err => {
-        if (playSessionId !== this._playRequestId) return;
-        console.warn('Direct stream fetch failed, falling back:', err);
-        this.fallbackDirectStream(track);
-      });
-  }
+      }).catch(() => {});
+    }
 
-  armGestureRetry() {
-    const unlockAndPlay = () => {
-      window.removeEventListener('click', unlockAndPlay);
-      window.removeEventListener('touchend', unlockAndPlay);
-      this.audio.play().catch(() => {});
-    };
-    window.addEventListener('click', unlockAndPlay, { once: true });
-    window.addEventListener('touchend', unlockAndPlay, { once: true });
+    // Proactive background pre-warming of next upcoming tracks in queue
+    if (this._prefetchTimer) clearTimeout(this._prefetchTimer);
+    this._prefetchTimer = setTimeout(() => {
+      this.prefetchNextTrack();
+    }, 1500);
   }
 
   async fallbackDirectStream(track) {
@@ -494,6 +626,12 @@ class PlayerEngine {
         const data = await res.json();
         if (data && data.url) {
           console.log('⚡ Basculement sur le flux direct CDN audio haute vitesse:', track.id);
+          // If Web Audio Equalizer is active, direct googlevideo.com on this.audio will be muted by CORS.
+          // Use directAudio (unattached to createMediaElementSource) to guarantee sound!
+          if (this.isEqInitialized || this.sourceNode) {
+            this.playViaDirectAudio(data.url, track);
+            return;
+          }
           this.audio.src = data.url;
           this.audio.currentTime = 0;
           this.audio.load();
@@ -509,23 +647,7 @@ class PlayerEngine {
       console.warn('Fallback direct CDN stream error:', e);
     }
 
-    // 2. High-speed server audio proxy fallback (same-origin, persists in background tabs)
-    try {
-      console.log('⚡ Basculement sur le proxy audio haute vitesse:', track.id);
-      this.audio.src = `/api/stream/${track.id}`;
-      this.audio.currentTime = 0;
-      this.audio.load();
-      await this.audio.play();
-      this.isPlaying = true;
-      this.isLoading = false;
-      this.updateMediaSessionState();
-      this.emit('playback_change', { isPlaying: true, isLoading: false });
-      return;
-    } catch (e) {
-      console.warn('Fallback audio proxy stream error:', e);
-    }
-
-    // 3. Last-resort YouTube embed fallback for protected/restricted tracks
+    // 2. High-availability audio/embed fallback when direct stream cannot be extracted (e.g. Premium-only tracks)
     try {
       this.playViaYouTubeEmbed(track);
       return;
@@ -534,6 +656,78 @@ class PlayerEngine {
     }
 
     this.emit('error', { message: 'Impossible de lire ce titre' });
+  }
+
+  playViaDirectAudio(url, track) {
+    try {
+      this.audio.pause();
+      this.audio.removeAttribute('src');
+    } catch (e) {}
+
+    if (!this.directAudio) {
+      this.directAudio = new Audio();
+      this.directAudio.id = 'ytm-direct-audio';
+      this.directAudio.preload = 'auto';
+      this.directAudio.setAttribute('playsinline', 'true');
+      this.directAudio.setAttribute('webkit-playsinline', 'true');
+      this.directAudio.setAttribute('x-webkit-airplay', 'allow');
+      document.body.appendChild(this.directAudio);
+
+      this.directAudio.addEventListener('timeupdate', () => {
+        if (this._usingDirectAudio) {
+          const cur = this.directAudio.currentTime || 0;
+          const dur = this.directAudio.duration || this.currentTrack?.durationSec || 0;
+          this.emit('time_update', { currentTime: cur, duration: dur });
+          if (window.LyricsManager) window.LyricsManager.updateTime(cur);
+        }
+      });
+      this.directAudio.addEventListener('ended', () => {
+        if (this._usingDirectAudio) this.handleTrackEnded();
+      });
+      this.directAudio.addEventListener('play', () => {
+        if (this._usingDirectAudio) {
+          this.isPlaying = true;
+          this.isLoading = false;
+          this.updateMediaSessionState();
+          this.emit('playback_change', { isPlaying: true, isLoading: false });
+          this.emit('play', { track: this.currentTrack });
+        }
+      });
+      this.directAudio.addEventListener('pause', () => {
+        if (this._usingDirectAudio && this._userPaused) {
+          this.isPlaying = false;
+          this.isLoading = false;
+          this.emit('playback_change', { isPlaying: false, isLoading: false });
+          this.emit('pause', { track: this.currentTrack });
+        }
+      });
+      this.directAudio.addEventListener('error', () => {
+        if (this._usingDirectAudio) {
+          console.warn('Direct audio fallback failed, falling back to YouTube Embed');
+          this._usingDirectAudio = false;
+          this.playViaYouTubeEmbed(this.currentTrack);
+        }
+      });
+    }
+
+    this._usingDirectAudio = true;
+    this.directAudio.volume = this.volume !== undefined ? this.volume : (this.audio.volume || 0.9);
+    this.directAudio.src = url;
+    this.directAudio.currentTime = 0;
+    this.directAudio.load();
+    const p = this.directAudio.play();
+    if (p !== undefined) {
+      p.then(() => {
+        this.isPlaying = true;
+        this.isLoading = false;
+        this.updateMediaSessionState();
+        this.emit('playback_change', { isPlaying: true, isLoading: false });
+        this.emit('play', { track: this.currentTrack });
+      }).catch(err => {
+        console.warn('Direct audio play failed:', err);
+        this.playViaYouTubeEmbed(track);
+      });
+    }
   }
 
   playViaYouTubeEmbed(track) {
@@ -639,17 +833,10 @@ class PlayerEngine {
     if (!nextTrack || !nextTrack.id) return;
     if (this.preloadedTrackId === nextTrack.id) return;
     this.preloadedTrackId = nextTrack.id;
-    if (this.streamUrlCache && this.streamUrlCache.has(nextTrack.id)) return;
-    fetch(`/api/stream-url/${nextTrack.id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.url && this.streamUrlCache) {
-          this.streamUrlCache.set(nextTrack.id, data.url);
-          this.preloadAudio.src = data.url;
-          this.preloadAudio.load();
-        }
-      })
-      .catch(() => {});
+    try {
+      this.preloadAudio.src = API.getStreamUrl(nextTrack.id);
+      this.preloadAudio.load();
+    } catch (e) {}
   }
 
   // Chromecast & AirPlay
@@ -816,6 +1003,20 @@ class PlayerEngine {
       return;
     }
 
+    if (this._usingDirectAudio && this.directAudio) {
+      try {
+        await this.directAudio.play();
+        this.isPlaying = true;
+        this.isLoading = false;
+        this.updateMediaSessionState();
+        this.emit('playback_change', { isPlaying: true, isLoading: false });
+        this.emit('play', { track: this.currentTrack });
+      } catch (e) {
+        console.warn('Direct audio play error:', e);
+      }
+      return;
+    }
+
     if (!this.currentTrack) {
       if (this.queue.length > 0) {
         return this.playTrack(this.queue[0]);
@@ -825,6 +1026,9 @@ class PlayerEngine {
       }
     }
     try {
+      if (!isMobileDevice() && this.audioCtx && this.audioCtx.state === 'suspended') {
+        await this.audioCtx.resume();
+      }
       this.audio.muted = false;
       await this.audio.play();
       this.isPlaying = true;
@@ -843,6 +1047,14 @@ class PlayerEngine {
       if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
       }
+      this.isPlaying = false;
+      this.isLoading = false;
+      this.emit('playback_change', { isPlaying: false, isLoading: false });
+      this.emit('pause', { track: this.currentTrack });
+      return;
+    }
+    if (this._usingDirectAudio && this.directAudio) {
+      this.directAudio.pause();
       this.isPlaying = false;
       this.isLoading = false;
       this.emit('playback_change', { isPlaying: false, isLoading: false });
@@ -874,6 +1086,11 @@ class PlayerEngine {
         }), '*');
       }
       this.emit('time_update', { currentTime: targetSec, duration: this._currentDuration || 200 });
+      return;
+    }
+    if (this._usingDirectAudio && this.directAudio) {
+      this.directAudio.currentTime = Math.max(0, Math.min(seconds, this.directAudio.duration || 99999));
+      this.updateMediaSessionState();
       return;
     }
     this.audio.currentTime = Math.max(0, Math.min(seconds, this.audio.duration || 99999));
@@ -1092,10 +1309,25 @@ class PlayerEngine {
     const val = Math.max(0, Math.min(1, vol));
     this.audio.volume = val;
     this.audio.muted = val === 0;
+    if (this.directAudio) {
+      this.directAudio.volume = val;
+      this.directAudio.muted = val === 0;
+    }
     if (val > 0.05) {
       this._lastVolume = val;
     }
 
+    // Sync Web Audio GainNode
+    if (this.gainNode && this.audioCtx) {
+      try {
+        if (this.audioCtx.state === 'suspended' && val > 0) {
+          this.audioCtx.resume();
+        }
+        this.gainNode.gain.cancelScheduledValues(this.audioCtx.currentTime);
+        this.gainNode.gain.setValueAtTime(val, this.audioCtx.currentTime);
+        this.gainNode.gain.value = val;
+      } catch (e) {}
+    }
 
     // Sync YouTube Embed if active
     if (this._usingYtEmbed) {
@@ -1138,6 +1370,17 @@ class PlayerEngine {
     const isMuted = this.audio.muted;
     const currentVol = isMuted ? 0 : (this.audio.volume || 0.9);
 
+    // Sync Web Audio GainNode
+    if (this.gainNode && this.audioCtx) {
+      try {
+        if (this.audioCtx.state === 'suspended' && !isMuted) {
+          this.audioCtx.resume();
+        }
+        this.gainNode.gain.cancelScheduledValues(this.audioCtx.currentTime);
+        this.gainNode.gain.setValueAtTime(currentVol, this.audioCtx.currentTime);
+        this.gainNode.gain.value = currentVol;
+      } catch (e) {}
+    }
 
     // Sync YouTube Embed if active
     if (this._usingYtEmbed) {

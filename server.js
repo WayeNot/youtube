@@ -184,17 +184,15 @@ async function getAudioStreamUrl(videoId) {
         return mem.url;
     }
 
-    // 2. Check persistent DB cache (only for local SQLite where server IP is static)
-    if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
-        try {
-            const dbCached = await db.getStreamCache(videoId);
-            const cachedUrl = dbCached?.streamUrl || dbCached?.url;
-            if (cachedUrl && dbCached.expiresAt > now) {
-                streamCache.set(videoId, { url: cachedUrl, expiresAt: dbCached.expiresAt });
-                return cachedUrl;
-            }
-        } catch (e) { }
-    }
+    // 2. Check persistent DB cache (SQLite / Postgres)
+    try {
+        const dbCached = await db.getStreamCache(videoId);
+        const cachedUrl = dbCached?.streamUrl || dbCached?.url;
+        if (cachedUrl && dbCached.expiresAt > now) {
+            streamCache.set(videoId, { url: cachedUrl, expiresAt: dbCached.expiresAt });
+            return cachedUrl;
+        }
+    } catch (e) { }
 
     // 3. Return active in-flight extraction if already solving
     if (inFlightStreams.has(videoId)) {
@@ -207,7 +205,7 @@ async function getAudioStreamUrl(videoId) {
     const cookiesPath = getCookiesPath();
 
     // Concurrency queue for yt-dlp to avoid CPU starvation
-    const runYtDlp = (extraArgs = [], format = 'bestaudio/140/251/18/ba/b', timeoutMs = 4500, targetUrl = null, useJsEngine = false) => {
+    const runYtDlp = (extraArgs = [], format = '140/251/18/bestaudio/ba/b', timeoutMs = 4500, targetUrl = null) => {
         return ytDlpQueue.run(() => {
             return new Promise((resolve, reject) => {
                 const target = targetUrl || `https://www.youtube.com/watch?v=${videoId}`;
@@ -216,13 +214,13 @@ async function getAudioStreamUrl(videoId) {
                     '-f', format,
                     '--no-playlist',
                     '--no-warnings',
+                    '--no-cache-dir',
                     '--no-check-certificates',
-                    '--socket-timeout', '5'
+                    '--no-check-formats',
+                    ...extraArgs,
+                    '--',
+                    target
                 ];
-                if (useJsEngine) {
-                    args.push('--js-runtimes', `node:${process.execPath}`, '--remote-components', 'ejs:github');
-                }
-                args.push(...extraArgs, '--', target);
                 execFile(
                     YTDLP_PATH,
                     args,
@@ -244,25 +242,50 @@ async function getAudioStreamUrl(videoId) {
         });
     };
 
-    // 5. Extract stream with yt-dlp: web_embedded first (fastest, immune to bot detection, ~2s), then visionos
+    // 5. Extract stream with yt-dlp: Ultra-fast Android client first (1.5s), then mweb, visionos, authenticated web
     const streamPromise = (async () => {
         let lastErr = null;
-        // Pure audio formats only: AAC itag 140 or Opus itag 251 (never video itag 18 which breaks HTML5 <audio>)
-        const audioFormat = '140/ba[ext=m4a]/251/ba/bestaudio';
+        const format = '140/251/18/bestaudio/ba/b';
+        const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-        // Attempt 1: Web Embedded player client (official YouTube embed client, never challenged on datacenter IPs, ~2s)
+        // Attempt 1: Ultra-fast Android client (skips configs & webpage, direct player endpoint, no n-sig challenge)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], audioFormat, 3800);
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs,webpage;player_client=android'], format, 4000);
         } catch (err) {
-            console.warn(`yt-dlp web_embedded attempt failed for ${videoId}: ${err.message}. Retrying visionos...`);
+            console.warn(`yt-dlp android attempt failed for ${videoId}: ${err.message}. Retrying mweb...`);
             lastErr = err;
         }
 
-        // Attempt 2: VisionOS client (clean Apple WebKit stream, zero bot check)
+        // Attempt 2: MWeb client (fast, skips configs & webpage)
         try {
-            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], audioFormat, 3800);
+            return await runYtDlp(['--extractor-args', 'youtube:player_skip=configs,webpage;player_client=mweb'], format, 4500);
         } catch (err) {
-            console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying smart fallback...`);
+            console.warn(`yt-dlp mweb attempt failed for ${videoId}: ${err.message}. Retrying visionos...`);
+            lastErr = err;
+        }
+
+        // Attempt 3: VisionOS client
+        try {
+            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], format, 5000);
+        } catch (err) {
+            console.warn(`yt-dlp visionos attempt failed for ${videoId}: ${err.message}. Retrying authenticated web...`);
+            lastErr = err;
+        }
+
+        // Attempt 4: Authenticated session with desktop cookies (for age-restricted or member-only videos)
+        if (hasCookies) {
+            try {
+                return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 7000);
+            } catch (err) {
+                console.warn(`yt-dlp cookies web attempt failed for ${videoId}: ${err.message}. Retrying default web...`);
+                lastErr = err;
+            }
+        }
+
+        // Attempt 5: Default fallback
+        try {
+            return await runYtDlp([], format, 5000);
+        } catch (err) {
             lastErr = err;
         }
 
@@ -289,7 +312,12 @@ async function getAudioStreamUrl(videoId) {
                         console.log(`⚡ Titre alternatif testé: ${altId} (${altVideo.title})`);
                         const altTarget = `https://www.youtube.com/watch?v=${altId}`;
                         try {
-                            return await runYtDlp(['--extractor-args', 'youtube:player_client=web_embedded'], audioFormat, 3500, altTarget);
+                            if (hasCookies) {
+                                try {
+                                    return await runYtDlp(['--cookies', cookiesPath, '--user-agent', ua, '--extractor-args', 'youtube:player_client=web'], format, 8000, altTarget);
+                                } catch (e) {}
+                            }
+                            return await runYtDlp(['--extractor-args', 'youtube:player_client=visionos'], 'bestaudio/140/251/18/ba/b', 6000, altTarget);
                         } catch (altErr) {
                             console.warn(`Alternative ${altId} extraction failed:`, altErr.message);
                         }
@@ -309,12 +337,10 @@ async function getAudioStreamUrl(videoId) {
         const expiresAt = Date.now() + ttl;
         // Save to instance in-memory cache
         streamCache.set(videoId, { url: streamUrl, expiresAt });
-        // Persist to database cache (local SQLite only)
-        if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
-            try {
-                await db.setStreamCache(videoId, streamUrl, expiresAt);
-            } catch (e) { }
-        }
+        // Persist to database cache
+        try {
+            await db.setStreamCache(videoId, streamUrl, expiresAt);
+        } catch (e) { }
         return streamUrl;
     }).catch((err) => {
         inFlightStreams.delete(videoId);
@@ -864,8 +890,7 @@ app.get('/api/debug', async (req, res) => {
         try { size = fs.statSync(YTDLP_PATH).size; } catch (e) { }
     }
     const cookiesPath = getCookiesPath();
-    const cookiesSize = fs.existsSync(cookiesPath) ? fs.statSync(cookiesPath).size : 0;
-    const hasCookies = cookiesSize > 10;
+    const hasCookies = fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10;
     const { execFile } = require('child_process');
     if (req.query.test_id) {
         const testId = req.query.test_id;
@@ -932,12 +957,14 @@ app.get(['/api/stream/:id', '/api/stream'], async (req, res) => {
         }
         const streamUrl = await getAudioStreamUrl(videoId);
 
-        // Clean headers to fetch Google Video stream without origin conflicts
+        // Standard headers to prevent Google Video 403 Forbidden
         const fetchHeaders = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
             'Accept': '*/*',
             'Accept-Encoding': 'identity;q=1, *;q=0',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            'Referer': 'https://www.youtube.com/',
+            'Origin': 'https://www.youtube.com'
         };
         if (req.headers.range) {
             fetchHeaders['Range'] = req.headers.range;
@@ -1031,8 +1058,9 @@ app.get(['/api/stream-url/:id', '/api/stream-url'], async (req, res) => {
             try { await db.deleteStreamCache(videoId); } catch (e) { }
         }
         const url = await getAudioStreamUrl(videoId);
-        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=18000, stale-while-revalidate=86400');
-        res.setHeader('CDN-Cache-Control', 'public, s-maxage=18000, stale-while-revalidate=86400');
+        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=14400, stale-while-revalidate=7200');
+        res.setHeader('CDN-Cache-Control', 'public, max-age=14400');
+        res.setHeader('Vercel-CDN-Cache-Control', 'public, max-age=14400');
         res.json({ url });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -2692,15 +2720,39 @@ app.post('/api/admin/purge-cache', adminMiddleware, async (req, res) => {
     }
 });
 
-// SEO crawler endpoints
+// SEO Endpoints: robots.txt & sitemap.xml
 app.get('/robots.txt', (req, res) => {
-    res.type('text/plain');
-    res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n\nSitemap: https://youtube-wayenots-projects.vercel.app/sitemap.xml\n`);
 });
 
 app.get('/sitemap.xml', (req, res) => {
-    res.type('application/xml');
-    res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://youtube-wayenots-projects.vercel.app/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://youtube-wayenots-projects.vercel.app/vibestream</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://youtube-wayenots-projects.vercel.app/explore</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://youtube-wayenots-projects.vercel.app/vibetube</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>`);
 });
 
 // Single Page Application Fallback
